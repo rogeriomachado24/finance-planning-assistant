@@ -1,11 +1,10 @@
-"""Enforce the dependency rule: the domain layer imports only the standard library
-and itself, never FastAPI, SQLAlchemy, LangChain or other app layers."""
+"""Enforce the dependency rules between layers (docs/PHASE1_DESIGN.md, section 5)."""
 
 import ast
 import sys
 from pathlib import Path
 
-DOMAIN_DIR = Path(__file__).resolve().parents[1] / "app" / "domain"
+APP_DIR = Path(__file__).resolve().parents[1] / "app"
 
 
 def imported_modules(path: Path) -> set[str]:
@@ -18,14 +17,32 @@ def imported_modules(path: Path) -> set[str]:
     return modules
 
 
+def imports_by_file(package: str) -> dict[str, set[str]]:
+    files = list((APP_DIR / package).glob("*.py"))
+    assert files, f"no modules found in app/{package}"
+    return {path.name: imported_modules(path) for path in files}
+
+
 def test_domain_depends_only_on_stdlib_and_itself():
-    files = list(DOMAIN_DIR.glob("*.py"))
-    assert files
     violations = {
-        f"{path.name}: {module}"
-        for path in files
-        for module in imported_modules(path)
+        f"{name}: {module}"
+        for name, modules in imports_by_file("domain").items()
+        for module in modules
         if module.split(".")[0] not in sys.stdlib_module_names
         and not module.startswith("app.domain")
     }
     assert not violations, f"domain imports outside its boundary: {sorted(violations)}"
+
+
+FORBIDDEN_IN_SERVICES = ("fastapi", "starlette", "langchain", "langgraph", "app.api", "app.agents")
+
+
+def test_services_know_nothing_about_http_or_llms():
+    """Services are shared by the REST API and the chat agent, so they depend on neither."""
+    violations = {
+        f"{name}: {module}"
+        for name, modules in imports_by_file("services").items()
+        for module in modules
+        if module.startswith(FORBIDDEN_IN_SERVICES)
+    }
+    assert not violations, f"services import from an outer layer: {sorted(violations)}"

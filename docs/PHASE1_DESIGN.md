@@ -164,7 +164,7 @@ Services (services/)     use cases: load profile, run scenarios, handle chat tur
    │            │
 Domain (domain/)         pure financial engine — no framework imports
    │
-DB (db/)                 SQLAlchemy models + repositories, SQLite → Postgres-ready
+DB (db/)                 SQLAlchemy models + Alembic migrations, SQLite → Postgres-ready
 ```
 
 **Dependency rule:** `domain` imports nothing from the rest of the app or from any framework.
@@ -221,7 +221,7 @@ parse_intent ─► validate ─► execute (no LLM) ─► explain ─► END
 |---|---|---|
 | GET | `/health` | liveness + LLM provider status |
 | GET / PUT | `/profile` | read / create-or-replace the single profile |
-| GET / POST | `/goals` | list goals / create (one active goal enforced) |
+| GET / POST | `/goals` | list goals / create (the new goal becomes the active one) |
 | GET / PUT | `/assumptions` | assumption sets |
 | POST | `/simulate` | projection for stored data, optional overrides |
 | POST | `/scenarios` | compare named scenarios |
@@ -265,5 +265,9 @@ Money columns use `Numeric`. No user table in Phase 1.
 | No debt interest or inflation in calculations | Keep the Phase 1 foundation simple; both are clean extensions later |
 | Debt payment stops when the balance reaches zero | Avoids the absurd case of paying a debt that no longer exists |
 | Structured intent router instead of a free tool-calling agent | Reliable with small local models; deterministic and testable |
+| Services query the session directly; no repository classes | Queries are one-liners; an extra layer would add indirection without benefit at this size |
+| Services take and return domain objects; money becomes `Decimal` only in the database | API and chat never handle records; the Decimal/float conversion lives in one module (`services/mapping.py`) |
+| Creating a goal makes it active and deactivates the previous one | One active goal without forcing the user to delete history; enforced by a partial unique index |
+| Comparison = built-in scenarios, then saved ones; built-in names are reserved | Saved scenarios extend the defaults instead of duplicating them |
 | Ollama as default provider | Free, local, private; provider stays configurable |
 | English UI, `en-IE` formatting, dates as "1 Jun 2032" | EUR with English conventions; unambiguous dates |
