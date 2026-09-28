@@ -28,6 +28,7 @@ from app.services.mapping import overrides_from_dict, overrides_to_dict
 from app.services.profile import get_profile
 
 CURRENT_PLAN = "Current plan"
+WHAT_IF = "What-if"
 RESERVED_NAMES = frozenset(s.name for s in default_scenarios(Assumptions()))
 
 
@@ -81,10 +82,14 @@ def simulate(
     today: date,
     overrides: ScenarioOverrides | None = None,
     assumption_set: str = DEFAULT_ASSUMPTION_SET,
-    name: str = CURRENT_PLAN,
+    name: str | None = None,
 ) -> ScenarioResult:
-    """Project the stored plan, optionally with what-if overrides, from the start of this month."""
-    scenario = Scenario(name, overrides or ScenarioOverrides())
+    """Project the stored plan, optionally with what-if overrides, from the start of this month.
+    Unnamed results are called "Current plan", or "What-if" when overrides are given."""
+    overrides = overrides or ScenarioOverrides()
+    if name is None:
+        name = CURRENT_PLAN if overrides == ScenarioOverrides() else WHAT_IF
+    scenario = Scenario(name, overrides)
     return run_scenario(
         scenario,
         get_profile(session),

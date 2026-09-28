@@ -32,6 +32,10 @@ class TestSimulate:
         )
         assert simulate(plan, TODAY) == expected
 
+    def test_default_names(self, plan: Session):
+        assert simulate(plan, TODAY).scenario_name == "Current plan"
+        assert simulate(plan, TODAY, MORE_INVESTED).scenario_name == "What-if"
+
     def test_starts_on_the_first_of_the_current_month(self, plan: Session):
         assert simulate(plan, TODAY).snapshots[0].date == date(2026, 10, 1)
 

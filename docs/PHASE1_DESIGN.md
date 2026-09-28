@@ -215,17 +215,27 @@ parse_intent ─► validate ─► execute (no LLM) ─► explain ─► END
 - **Language rules:** "Under these assumptions…", "This scenario results in…",
   "This is a projection, not a guarantee." Never "you should buy…".
 
-## 7. API (initial)
+## 7. API
+
+Interactive documentation at `/docs` (generated from the Pydantic schemas).
 
 | Method | Path | Purpose |
 |---|---|---|
-| GET | `/health` | liveness + LLM provider status |
-| GET / PUT | `/profile` | read / create-or-replace the single profile |
+| GET | `/health` | liveness + database check (LLM provider status added with the chat) |
+| GET / PUT | `/profile` | read / create-or-replace the single profile; GET also returns today's position |
 | GET / POST | `/goals` | list goals / create (the new goal becomes the active one) |
-| GET / PUT | `/assumptions` | assumption sets |
-| POST | `/simulate` | projection for stored data, optional overrides |
-| POST | `/scenarios` | compare named scenarios |
-| POST | `/chat` | one conversational turn |
+| GET | `/assumptions` | list assumption sets |
+| PUT | `/assumptions/{name}` | create or replace one assumption set |
+| POST | `/simulate` | projection of the stored plan, optional what-if overrides (never saved) |
+| POST | `/scenarios/compare` | run several scenarios side by side (default: built-in, then saved) |
+| GET / POST | `/scenarios` | list / save scenario definitions (same name replaces) |
+| DELETE | `/scenarios/{id}` | delete a saved scenario |
+| POST | `/chat` | one conversational turn (step 5) |
+
+Errors: `404` when something the request needs isn't stored yet, `422` for invalid input.
+Both carry a `detail` message; schema validation errors list the offending fields.
+Money in responses is rounded to the cent (half up); the dates are ISO (`2032-06-01`) and the UI
+formats them.
 
 ## 8. Data model
 
