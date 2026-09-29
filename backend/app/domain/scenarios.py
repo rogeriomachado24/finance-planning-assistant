@@ -10,9 +10,12 @@ from datetime import date
 
 from app.domain.cashflow import summarize_position
 from app.domain.errors import InvalidInputError
-from app.domain.goals import calculate_required_monthly_contribution, find_goal_month
+from app.domain.goals import (
+    calculate_required_monthly_contribution,
+    find_goal_month,
+    months_to_target_date,
+)
 from app.domain.models import Assumptions, FinancialProfile, Goal
-from app.domain.periods import months_between
 from app.domain.projection import (
     MAX_PROJECTION_MONTHS,
     MonthSnapshot,
@@ -115,15 +118,7 @@ def run_scenario(
     start: date,
     max_months: int = MAX_PROJECTION_MONTHS,
 ) -> ScenarioResult:
-    months_to_target = months_between(start, goal.target_date)
-    if months_to_target < 0:
-        raise InvalidInputError(
-            f"goal target date {goal.target_date} is before the projection start {start}"
-        )
-    if months_to_target > max_months:
-        raise InvalidInputError(
-            f"goal target date is more than {max_months} months after the projection start"
-        )
+    months_to_target = months_to_target_date(goal.target_date, start, max_months)
 
     eff_profile, eff_assumptions = scenario.overrides.apply(profile, assumptions)
     projection = project(eff_profile, eff_assumptions, start, max_months)

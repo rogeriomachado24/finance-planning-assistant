@@ -4,7 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Path, status
 
-from app.api.deps import SessionDep
+from app.api.deps import SessionDep, TodayDep
 from app.schemas.plan import (
     AssumptionSetOut,
     GoalIn,
@@ -47,9 +47,10 @@ def list_goals(session: SessionDep) -> list[GoalOut]:
 
 
 @router.post("/goals", tags=["goals"], status_code=status.HTTP_201_CREATED)
-def create_goal(body: GoalIn, session: SessionDep) -> GoalOut:
-    """Create a goal. It becomes the active goal; the previous one is kept, inactive."""
-    return GoalOut.from_saved(goals.create_goal(session, body.to_domain()))
+def create_goal(body: GoalIn, session: SessionDep, today: TodayDep) -> GoalOut:
+    """Create a goal. It becomes the active goal; the previous one is kept, inactive.
+    The target date must be this month or later, and at most 50 years ahead."""
+    return GoalOut.from_saved(goals.create_goal(session, body.to_domain(), today))
 
 
 @router.get("/assumptions", tags=["assumptions"])

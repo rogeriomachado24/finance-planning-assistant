@@ -64,6 +64,7 @@ export interface paths {
         /**
          * Create Goal
          * @description Create a goal. It becomes the active goal; the previous one is kept, inactive.
+         *     The target date must be this month or later, and at most 50 years ahead.
          */
         post: operations["create_goal_goals_post"];
         delete?: never;

@@ -5,8 +5,31 @@ from datetime import date
 
 from app.domain.errors import InvalidInputError
 from app.domain.models import Assumptions, FinancialProfile
+from app.domain.periods import months_between
 from app.domain.projection import MAX_PROJECTION_MONTHS, Projection, project
 from app.domain.rates import annual_to_monthly_rate, compound_growth_minus_one
+
+
+def months_to_target_date(
+    target_date: date, start: date, max_months: int = MAX_PROJECTION_MONTHS
+) -> int:
+    """Whole months from the projection start to the goal's target date.
+
+    Raises when the date is before the start (the goal can't be projected) or beyond the
+    projection horizon (50 years by default).
+    """
+    # Compare the dates themselves: months_between counts whole months, so a date a few
+    # days before the start would still come out as 0 rather than negative.
+    if target_date < start:
+        raise InvalidInputError(
+            f"goal target date {target_date} is before the projection start {start}"
+        )
+    months = months_between(start, target_date)
+    if months > max_months:
+        raise InvalidInputError(
+            f"goal target date is more than {max_months} months after the projection start"
+        )
+    return months
 
 
 @dataclass(frozen=True)

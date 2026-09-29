@@ -8,6 +8,7 @@ from app.domain.goals import (
     calculate_goal_date,
     calculate_goal_progress,
     calculate_required_monthly_contribution,
+    months_to_target_date,
 )
 from app.domain.models import Assumptions, FinancialProfile
 from app.domain.projection import project
@@ -140,3 +141,20 @@ class TestRequiredMonthlyContribution:
         )
         final = project(profile, Assumptions(annual_return=0.05), start, 68).at(68)
         assert final.liquid_assets == pytest.approx(80_000)
+
+
+class TestMonthsToTargetDate:
+    START = date(2026, 10, 1)
+
+    def test_counts_whole_months(self):
+        assert months_to_target_date(date(2032, 6, 1), self.START) == 68
+        assert months_to_target_date(self.START, self.START) == 0
+
+    def test_rejects_a_date_before_the_start(self):
+        with pytest.raises(InvalidInputError, match="before the projection start"):
+            months_to_target_date(date(2026, 9, 30), self.START)
+
+    def test_rejects_a_date_beyond_the_horizon(self):
+        assert months_to_target_date(date(2076, 10, 1), self.START) == 600
+        with pytest.raises(InvalidInputError, match="more than 600 months"):
+            months_to_target_date(date(2076, 11, 1), self.START)

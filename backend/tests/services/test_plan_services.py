@@ -18,7 +18,7 @@ from app.services.assumptions import (
 from app.services.errors import NotFoundError
 from app.services.goals import create_goal, get_active_goal, list_goals
 from app.services.profile import get_position, get_profile, save_profile
-from tests.sample_plan import BASE, GOAL, PROFILE
+from tests.sample_plan import BASE, GOAL, PROFILE, TODAY
 
 
 class TestProfile:
@@ -54,8 +54,8 @@ class TestGoals:
             get_active_goal(session)
 
     def test_new_goal_becomes_the_active_one(self, session: Session):
-        first = create_goal(session, GOAL)
-        second = create_goal(session, Goal("Buy a car", 15_000, date(2028, 1, 1)))
+        first = create_goal(session, GOAL, TODAY)
+        second = create_goal(session, Goal("Buy a car", 15_000, date(2028, 1, 1)), TODAY)
 
         assert get_active_goal(session) == second
         assert [(g.id, g.is_active) for g in list_goals(session)] == [
@@ -63,6 +63,16 @@ class TestGoals:
             (first.id, False),
         ]
         assert list_goals(session)[1].goal == GOAL
+
+    @pytest.mark.parametrize("target", [date(2026, 9, 30), date(2076, 11, 1)])
+    def test_target_date_must_be_projectable(self, session: Session, target: date):
+        """This month (Oct 2026) up to 50 years ahead; nothing is saved otherwise."""
+        with pytest.raises(InvalidInputError):
+            create_goal(session, Goal("Too early or too late", 1_000, target), TODAY)
+        assert list_goals(session) == []
+
+    def test_target_date_this_month_is_allowed(self, session: Session):
+        create_goal(session, Goal("Now", 1_000, date(2026, 10, 1)), TODAY)
 
 
 class TestAssumptionSets:

@@ -70,7 +70,7 @@ def load_demo_data(session: Session, today: date, reset: bool = False) -> SavedG
 
     ensure_assumption_presets(session)
     save_profile(session, DEMO_PROFILE)
-    goal = create_goal(session, demo_goal(today))
+    goal = create_goal(session, demo_goal(today), today)
     for scenario in DEMO_SCENARIOS:
         save_scenario(session, scenario)
     return goal

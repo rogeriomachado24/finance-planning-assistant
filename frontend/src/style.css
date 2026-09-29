@@ -23,6 +23,7 @@
   --color-good-text: #006300;
   --color-warning: #fab219;
   --color-critical: #d03b3b;
+  --color-error: #b3261e; /* error text: >= 4.5:1 on the surface, unlike the status red */
 }
 
 @layer base {
@@ -49,5 +50,6 @@
     --color-hairline: rgb(255 255 255 / 0.1);
     --color-series-1: #3987e5;
     --color-good-text: #0ca30c;
+    --color-error: #ff8a80;
   }
 }

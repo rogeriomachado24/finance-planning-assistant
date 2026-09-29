@@ -57,7 +57,7 @@ class TestSimulate:
         if missing != "profile":
             save_profile(session, PROFILE)
         if missing != "goal":
-            create_goal(session, GOAL)
+            create_goal(session, GOAL, TODAY)
         if missing != "assumptions":
             save_assumption_set(session, "base", BASE)
         with pytest.raises(NotFoundError):

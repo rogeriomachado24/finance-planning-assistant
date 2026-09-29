@@ -286,5 +286,8 @@ Money columns use `Numeric`. No user table in Phase 1.
 | Projection chart hand-drawn in SVG, no chart library | One line chart with custom annotations (target, target date, goal marker); full control of accessibility (keyboard crosshair, table view) and styling for ~200 lines |
 | Dates formatted with a fixed month list, not `Intl` | `Intl` en-IE output differs between browsers ("Sep" / "Sept"); the UI must read "1 Sep 2026" everywhere |
 | TypeScript pinned to 5.x | `openapi-typescript` and the Vue tooling don't support TypeScript 7 yet |
+| Rates typed as percentages in forms, stored as decimals | People think "5%", the engine uses 0.05; the UI converts units only, never computes |
+| A goal's target date is validated when the goal is created (this month up to 50 years ahead) | A saved goal can always be projected; the rule lives once in the domain (`months_to_target_date`) |
+| Validation errors shown next to their field, taken from the API's 422 response | One source of truth for the rules (Pydantic + domain); the browser's own checks only add early feedback |
 | Ollama as default provider | Free, local, private; provider stays configurable |
 | English UI, `en-IE` formatting, dates as "1 Jun 2032" | EUR with English conventions; unambiguous dates |

@@ -83,11 +83,12 @@ class TestSimulate:
         response = plan_client.post("/simulate", json={"overrides": {"bonus": 5000}})
         assert response.status_code == 422
 
-    def test_goal_date_in_the_past_is_422(self, plan_client: TestClient):
-        plan_client.post("/goals", json=GOAL_JSON | {"target_date": "2025-01-01"})
-        response = plan_client.post("/simulate", json={})
+    def test_goal_date_in_the_past_is_rejected_when_saved(self, plan_client: TestClient):
+        response = plan_client.post("/goals", json=GOAL_JSON | {"target_date": "2025-01-01"})
         assert response.status_code == 422
         assert "before the projection start" in response.json()["detail"]
+        # the existing goal stays active, so projections keep working
+        assert plan_client.post("/simulate", json={}).status_code == 200
 
 
 class TestScenarios:

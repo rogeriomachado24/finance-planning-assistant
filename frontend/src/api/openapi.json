@@ -120,7 +120,7 @@
           "goals"
         ],
         "summary": "Create Goal",
-        "description": "Create a goal. It becomes the active goal; the previous one is kept, inactive.",
+        "description": "Create a goal. It becomes the active goal; the previous one is kept, inactive.\nThe target date must be this month or later, and at most 50 years ahead.",
         "operationId": "create_goal_goals_post",
         "requestBody": {
           "content": {

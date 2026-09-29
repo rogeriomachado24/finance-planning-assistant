@@ -1,10 +1,13 @@
 from dataclasses import dataclass
+from datetime import date
 
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.db.models import GoalRecord
+from app.domain.goals import months_to_target_date
 from app.domain.models import Goal
+from app.domain.periods import first_of_month
 from app.services.errors import NotFoundError
 from app.services.mapping import goal_from_record, goal_to_record
 
@@ -35,8 +38,13 @@ def get_active_goal(session: Session) -> SavedGoal:
     return _saved(record)
 
 
-def create_goal(session: Session, goal: Goal) -> SavedGoal:
-    """Save a new goal as the active one. The previous active goal is kept, but deactivated."""
+def create_goal(session: Session, goal: Goal, today: date) -> SavedGoal:
+    """Save a new goal as the active one. The previous active goal is kept, but deactivated.
+
+    The target date must fall within the projection horizon starting this month, so a saved
+    goal can always be projected.
+    """
+    months_to_target_date(goal.target_date, first_of_month(today))
     session.execute(update(GoalRecord).where(GoalRecord.is_active).values(is_active=False))
     record = goal_to_record(goal)
     session.add(record)

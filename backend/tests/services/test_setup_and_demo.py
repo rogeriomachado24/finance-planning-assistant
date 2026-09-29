@@ -85,7 +85,7 @@ class TestDemoData:
         if existing == "profile":
             save_profile(session, replace(DEMO_PROFILE, cash=1))
         elif existing == "goal":
-            create_goal(session, GOAL)
+            create_goal(session, GOAL, TODAY)
         else:
             save_scenario(session, Scenario("Mine"))
         assert has_user_data(session)
@@ -94,7 +94,7 @@ class TestDemoData:
 
     def test_reset_replaces_everything(self, session: Session):
         save_profile(session, replace(DEMO_PROFILE, cash=1))
-        create_goal(session, GOAL)
+        create_goal(session, GOAL, TODAY)
         save_assumption_set(
             session, "base", replace(ASSUMPTION_PRESETS["base"], annual_return=0.04)
         )

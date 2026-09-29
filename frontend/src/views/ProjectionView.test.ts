@@ -1,8 +1,9 @@
-/** The dashboard, mounted with a fake API: what the user sees in each state. */
-import { flushPromises, mount } from "@vue/test-utils";
+/** The projection page, mounted with a fake API: what the user sees in each state. */
+import { flushPromises, mount, RouterLinkStub } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { AssumptionSet, Goal, ScenarioResult, Snapshot } from "./api/client";
-import App from "./App.vue";
+import type { AssumptionSet, Goal, ScenarioResult, Snapshot } from "../api/client";
+import { fakeApi, lastBody } from "../test/fakeApi";
+import ProjectionView from "./ProjectionView.vue";
 
 const RATES = { annual_return: 0.05, annual_salary_growth: 0.02, annual_expense_growth: 0.02, annual_inflation: 0.02 };
 
@@ -55,18 +56,8 @@ function result(overrides: Partial<ScenarioResult> = {}): ScenarioResult {
   };
 }
 
-/** Answer each API path with the given status and body. */
-function fakeApi(routes: Record<string, [number, unknown]>) {
-  const fetchMock = vi.fn(async (url: string) => {
-    const [status, body] = routes[url.replace(/^\/api/, "")] ?? [404, { detail: "no route" }];
-    return new Response(JSON.stringify(body), { status });
-  });
-  vi.stubGlobal("fetch", fetchMock);
-  return fetchMock;
-}
-
 async function mountApp() {
-  const wrapper = mount(App);
+  const wrapper = mount(ProjectionView, { global: { stubs: { RouterLink: RouterLinkStub } } });
   await flushPromises();
   return wrapper;
 }
@@ -119,9 +110,7 @@ describe("dashboard", () => {
     await wrapper.find('input[value="conservative"]').setValue();
     await flushPromises();
 
-    const lastCall = fetchMock.mock.calls.at(-1) as unknown as [string, RequestInit];
-    expect(lastCall[0]).toBe("/api/simulate");
-    expect(JSON.parse(lastCall[1].body as string)).toEqual({ assumption_set: "conservative" });
+    expect(lastBody(fetchMock, "POST", "/simulate")).toEqual({ assumption_set: "conservative" });
   });
 
   it("explains how to get started when no plan is stored", async () => {
@@ -134,6 +123,7 @@ describe("dashboard", () => {
 
     expect(text).toContain("No plan yet");
     expect(text).toContain("no financial profile has been saved yet");
+    expect(text).toContain("Set up your plan");
     expect(text).toContain("python -m app.seed");
   });
 
