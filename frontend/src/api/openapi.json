@@ -1,0 +1,1342 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Personal Finance Planning Assistant",
+    "description": "\nFinancial goal simulator. All figures come from a deterministic, tested engine.\n\n**Projections, not advice:** results depend entirely on the assumptions shown with them\nand are not guarantees. Amounts are EUR, rates are decimals (`0.05` = 5%).\n",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Health",
+        "description": "Liveness check. LLM provider status is added with the chat.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/profile": {
+      "get": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Get Profile",
+        "description": "The saved profile and today's position (surplus, savings rate, net worth).",
+        "operationId": "get_profile_profile_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileOut"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Put Profile",
+        "description": "Create or replace the profile.",
+        "operationId": "put_profile_profile_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/goals": {
+      "get": {
+        "tags": [
+          "goals"
+        ],
+        "summary": "List Goals",
+        "description": "All goals: the active one first, then previous ones, newest first.",
+        "operationId": "list_goals_goals_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/GoalOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Goals Goals Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "goals"
+        ],
+        "summary": "Create Goal",
+        "description": "Create a goal. It becomes the active goal; the previous one is kept, inactive.",
+        "operationId": "create_goal_goals_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoalIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/assumptions": {
+      "get": {
+        "tags": [
+          "assumptions"
+        ],
+        "summary": "List Assumption Sets",
+        "operationId": "list_assumption_sets_assumptions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AssumptionSetOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Assumption Sets Assumptions Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/assumptions/{name}": {
+      "put": {
+        "tags": [
+          "assumptions"
+        ],
+        "summary": "Put Assumption Set",
+        "description": "Create or replace the assumption set with this name (e.g. `base`).",
+        "operationId": "put_assumption_set_assumptions__name__put",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50,
+              "title": "Name"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Rates"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssumptionSetOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/simulate": {
+      "post": {
+        "tags": [
+          "projections"
+        ],
+        "summary": "Simulate",
+        "description": "Project the saved plan from the start of this month, optionally with what-if overrides.\nOverrides are never saved.",
+        "operationId": "simulate_simulate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScenarioResultOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scenarios/compare": {
+      "post": {
+        "tags": [
+          "projections"
+        ],
+        "summary": "Compare",
+        "description": "Run several scenarios on the saved plan, side by side.",
+        "operationId": "compare_scenarios_compare_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompareRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ScenarioResultOut"
+                  },
+                  "type": "array",
+                  "title": "Response Compare Scenarios Compare Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scenarios": {
+      "get": {
+        "tags": [
+          "projections"
+        ],
+        "summary": "List Scenarios",
+        "description": "Saved scenario definitions (the built-in ones are not listed).",
+        "operationId": "list_scenarios_scenarios_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SavedScenarioOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Scenarios Scenarios Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "projections"
+        ],
+        "summary": "Save Scenario",
+        "description": "Save a scenario definition. A scenario with the same name is replaced.",
+        "operationId": "save_scenario_scenarios_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScenarioIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedScenarioOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scenarios/{scenario_id}": {
+      "delete": {
+        "tags": [
+          "projections"
+        ],
+        "summary": "Delete Scenario",
+        "operationId": "delete_scenario_scenarios__scenario_id__delete",
+        "parameters": [
+          {
+            "name": "scenario_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Scenario Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AssumptionSetOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "assumptions": {
+            "$ref": "#/components/schemas/Rates"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "assumptions"
+        ],
+        "title": "AssumptionSetOut"
+      },
+      "CompareRequest": {
+        "properties": {
+          "assumption_set": {
+            "type": "string",
+            "title": "Assumption Set",
+            "default": "base"
+          },
+          "scenarios": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ScenarioIn"
+                },
+                "type": "array",
+                "maxItems": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenarios",
+            "description": "Scenarios to run. Omit to run the built-in scenarios, then the saved ones."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "CompareRequest"
+      },
+      "GoalIn": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "goal_type": {
+            "$ref": "#/components/schemas/GoalType",
+            "default": "other"
+          },
+          "target_amount": {
+            "type": "number",
+            "maximum": 1000000000.0,
+            "minimum": 0.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Target Amount",
+            "description": "Amount of cash + investments to reach."
+          },
+          "target_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Target Date"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "target_amount",
+          "target_date"
+        ],
+        "title": "GoalIn"
+      },
+      "GoalOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "goal_type": {
+            "$ref": "#/components/schemas/GoalType",
+            "default": "other"
+          },
+          "target_amount": {
+            "type": "number",
+            "maximum": 1000000000.0,
+            "minimum": 0.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Target Amount",
+            "description": "Amount of cash + investments to reach."
+          },
+          "target_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Target Date"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "target_amount",
+          "target_date",
+          "id",
+          "is_active"
+        ],
+        "title": "GoalOut"
+      },
+      "GoalType": {
+        "type": "string",
+        "enum": [
+          "house",
+          "emergency_fund",
+          "retirement",
+          "education",
+          "vehicle",
+          "travel",
+          "other"
+        ],
+        "title": "GoalType"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthOut": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "database": {
+            "type": "string",
+            "title": "Database"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "database"
+        ],
+        "title": "HealthOut"
+      },
+      "OverridesIn": {
+        "properties": {
+          "monthly_investment_contribution": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Investment Contribution",
+            "description": "New monthly contribution. Can't be combined with the delta."
+          },
+          "monthly_investment_contribution_delta": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000000.0,
+                "minimum": -1000000000.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Investment Contribution Delta",
+            "description": "Change to the saved monthly contribution, e.g. 200 or -100."
+          },
+          "monthly_net_income": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Net Income"
+          },
+          "monthly_expenses": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Expenses"
+          },
+          "annual_return": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "exclusiveMinimum": -1.0,
+                "description": "Annual rate as a decimal: 0.05 = 5%."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Annual Return"
+          },
+          "annual_salary_growth": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "exclusiveMinimum": -1.0,
+                "description": "Annual rate as a decimal: 0.05 = 5%."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Annual Salary Growth"
+          },
+          "annual_expense_growth": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "exclusiveMinimum": -1.0,
+                "description": "Annual rate as a decimal: 0.05 = 5%."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Annual Expense Growth"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "OverridesIn",
+        "description": "Changes relative to the saved plan. Omitted fields keep their saved value."
+      },
+      "PositionOut": {
+        "properties": {
+          "total_monthly_income": {
+            "type": "number",
+            "title": "Total Monthly Income"
+          },
+          "monthly_expenses": {
+            "type": "number",
+            "title": "Monthly Expenses"
+          },
+          "monthly_debt_payment": {
+            "type": "number",
+            "title": "Monthly Debt Payment"
+          },
+          "monthly_surplus": {
+            "type": "number",
+            "title": "Monthly Surplus"
+          },
+          "savings_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Savings Rate",
+            "description": "Surplus / income; null when income is 0."
+          },
+          "liquid_assets": {
+            "type": "number",
+            "title": "Liquid Assets",
+            "description": "Cash + investments."
+          },
+          "net_worth": {
+            "type": "number",
+            "title": "Net Worth"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_monthly_income",
+          "monthly_expenses",
+          "monthly_debt_payment",
+          "monthly_surplus",
+          "savings_rate",
+          "liquid_assets",
+          "net_worth"
+        ],
+        "title": "PositionOut"
+      },
+      "Profile": {
+        "properties": {
+          "monthly_net_income": {
+            "type": "number",
+            "title": "Monthly Net Income"
+          },
+          "monthly_expenses": {
+            "type": "number",
+            "title": "Monthly Expenses"
+          },
+          "cash": {
+            "type": "number",
+            "title": "Cash"
+          },
+          "investments": {
+            "type": "number",
+            "title": "Investments"
+          },
+          "monthly_investment_contribution": {
+            "type": "number",
+            "title": "Monthly Investment Contribution"
+          },
+          "other_monthly_income": {
+            "type": "number",
+            "title": "Other Monthly Income"
+          },
+          "debt_balance": {
+            "type": "number",
+            "title": "Debt Balance"
+          },
+          "monthly_debt_payment": {
+            "type": "number",
+            "title": "Monthly Debt Payment"
+          },
+          "age": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age"
+          }
+        },
+        "type": "object",
+        "required": [
+          "monthly_net_income",
+          "monthly_expenses",
+          "cash",
+          "investments",
+          "monthly_investment_contribution",
+          "other_monthly_income",
+          "debt_balance",
+          "monthly_debt_payment",
+          "age"
+        ],
+        "title": "Profile",
+        "description": "Profile values as output. No input limits: a what-if may legitimately exceed them."
+      },
+      "ProfileIn": {
+        "properties": {
+          "monthly_net_income": {
+            "type": "number",
+            "maximum": 1000000000.0,
+            "minimum": 0.0,
+            "title": "Monthly Net Income",
+            "description": "Take-home pay; grows with salary growth."
+          },
+          "monthly_expenses": {
+            "type": "number",
+            "maximum": 1000000000.0,
+            "minimum": 0.0,
+            "title": "Monthly Expenses",
+            "description": "Living expenses, excluding debt payments."
+          },
+          "cash": {
+            "type": "number",
+            "maximum": 1000000000.0,
+            "minimum": 0.0,
+            "title": "Cash",
+            "default": 0
+          },
+          "investments": {
+            "type": "number",
+            "maximum": 1000000000.0,
+            "minimum": 0.0,
+            "title": "Investments",
+            "default": 0
+          },
+          "monthly_investment_contribution": {
+            "type": "number",
+            "maximum": 1000000000.0,
+            "minimum": 0.0,
+            "title": "Monthly Investment Contribution",
+            "default": 0
+          },
+          "other_monthly_income": {
+            "type": "number",
+            "maximum": 1000000000.0,
+            "minimum": 0.0,
+            "title": "Other Monthly Income",
+            "description": "Income that does not grow.",
+            "default": 0
+          },
+          "debt_balance": {
+            "type": "number",
+            "maximum": 1000000000.0,
+            "minimum": 0.0,
+            "title": "Debt Balance",
+            "default": 0
+          },
+          "monthly_debt_payment": {
+            "type": "number",
+            "maximum": 1000000000.0,
+            "minimum": 0.0,
+            "title": "Monthly Debt Payment",
+            "default": 0
+          },
+          "age": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 120.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "monthly_net_income",
+          "monthly_expenses"
+        ],
+        "title": "ProfileIn"
+      },
+      "ProfileOut": {
+        "properties": {
+          "profile": {
+            "$ref": "#/components/schemas/Profile"
+          },
+          "position": {
+            "$ref": "#/components/schemas/PositionOut",
+            "description": "Today's figures, computed from the profile."
+          }
+        },
+        "type": "object",
+        "required": [
+          "profile",
+          "position"
+        ],
+        "title": "ProfileOut"
+      },
+      "Rates": {
+        "properties": {
+          "annual_return": {
+            "type": "number",
+            "maximum": 1.0,
+            "exclusiveMinimum": -1.0,
+            "title": "Annual Return",
+            "description": "Annual rate as a decimal: 0.05 = 5%.",
+            "default": 0
+          },
+          "annual_salary_growth": {
+            "type": "number",
+            "maximum": 1.0,
+            "exclusiveMinimum": -1.0,
+            "title": "Annual Salary Growth",
+            "description": "Annual rate as a decimal: 0.05 = 5%.",
+            "default": 0
+          },
+          "annual_expense_growth": {
+            "type": "number",
+            "maximum": 1.0,
+            "exclusiveMinimum": -1.0,
+            "title": "Annual Expense Growth",
+            "description": "Annual rate as a decimal: 0.05 = 5%.",
+            "default": 0
+          },
+          "annual_inflation": {
+            "type": "number",
+            "maximum": 1.0,
+            "exclusiveMinimum": -1.0,
+            "title": "Annual Inflation",
+            "description": "Displayed only; not used in calculations.",
+            "default": 0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "Rates"
+      },
+      "SavedScenarioOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Description",
+            "default": ""
+          },
+          "overrides": {
+            "$ref": "#/components/schemas/OverridesIn",
+            "default": {}
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "id"
+        ],
+        "title": "SavedScenarioOut"
+      },
+      "ScenarioIn": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Description",
+            "default": ""
+          },
+          "overrides": {
+            "$ref": "#/components/schemas/OverridesIn",
+            "default": {}
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "ScenarioIn"
+      },
+      "ScenarioResultOut": {
+        "properties": {
+          "scenario_name": {
+            "type": "string",
+            "title": "Scenario Name"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/Profile",
+            "description": "Effective profile, after overrides."
+          },
+          "assumptions": {
+            "$ref": "#/components/schemas/Rates",
+            "description": "Effective assumptions, after overrides."
+          },
+          "monthly_contribution": {
+            "type": "number",
+            "title": "Monthly Contribution"
+          },
+          "monthly_surplus": {
+            "type": "number",
+            "title": "Monthly Surplus",
+            "description": "Surplus in the first projected month."
+          },
+          "target_amount": {
+            "type": "number",
+            "title": "Target Amount"
+          },
+          "target_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Target Date"
+          },
+          "months_to_target_date": {
+            "type": "integer",
+            "title": "Months To Target Date"
+          },
+          "projected_goal_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projected Goal Date",
+            "description": "Null when not reached within 50 years."
+          },
+          "months_to_goal": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Months To Goal"
+          },
+          "projected_value_at_target_date": {
+            "type": "number",
+            "title": "Projected Value At Target Date"
+          },
+          "reaches_goal": {
+            "type": "boolean",
+            "title": "Reaches Goal"
+          },
+          "shortfall": {
+            "type": "number",
+            "title": "Shortfall"
+          },
+          "required_monthly_contribution": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required Monthly Contribution",
+            "description": "Monthly amount that reaches the target on the target date at the assumed return. Null when the target date has arrived and the goal isn't reached."
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/WarningOut"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "snapshots": {
+            "items": {
+              "$ref": "#/components/schemas/SnapshotOut"
+            },
+            "type": "array",
+            "title": "Snapshots",
+            "description": "Monthly series, from today (month 0)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "scenario_name",
+          "profile",
+          "assumptions",
+          "monthly_contribution",
+          "monthly_surplus",
+          "target_amount",
+          "target_date",
+          "months_to_target_date",
+          "projected_goal_date",
+          "months_to_goal",
+          "projected_value_at_target_date",
+          "reaches_goal",
+          "shortfall",
+          "required_monthly_contribution",
+          "warnings",
+          "snapshots"
+        ],
+        "title": "ScenarioResultOut"
+      },
+      "SimulateRequest": {
+        "properties": {
+          "assumption_set": {
+            "type": "string",
+            "title": "Assumption Set",
+            "default": "base"
+          },
+          "overrides": {
+            "$ref": "#/components/schemas/OverridesIn",
+            "default": {}
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name",
+            "description": "Defaults to \"Current plan\", or \"What-if\" when overrides are set."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "SimulateRequest"
+      },
+      "SnapshotOut": {
+        "properties": {
+          "month": {
+            "type": "integer",
+            "title": "Month"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "income": {
+            "type": "number",
+            "title": "Income"
+          },
+          "expenses": {
+            "type": "number",
+            "title": "Expenses"
+          },
+          "debt_payment": {
+            "type": "number",
+            "title": "Debt Payment"
+          },
+          "surplus": {
+            "type": "number",
+            "title": "Surplus"
+          },
+          "contribution": {
+            "type": "number",
+            "title": "Contribution"
+          },
+          "withdrawal": {
+            "type": "number",
+            "title": "Withdrawal"
+          },
+          "cash": {
+            "type": "number",
+            "title": "Cash"
+          },
+          "investments": {
+            "type": "number",
+            "title": "Investments"
+          },
+          "debt": {
+            "type": "number",
+            "title": "Debt"
+          },
+          "liquid_assets": {
+            "type": "number",
+            "title": "Liquid Assets"
+          },
+          "net_worth": {
+            "type": "number",
+            "title": "Net Worth"
+          }
+        },
+        "type": "object",
+        "required": [
+          "month",
+          "date",
+          "income",
+          "expenses",
+          "debt_payment",
+          "surplus",
+          "contribution",
+          "withdrawal",
+          "cash",
+          "investments",
+          "debt",
+          "liquid_assets",
+          "net_worth"
+        ],
+        "title": "SnapshotOut",
+        "description": "Balances at the end of the month, and the flows during it."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "WarningCode": {
+        "type": "string",
+        "enum": [
+          "contribution_reduced",
+          "investments_withdrawn",
+          "liquid_funds_exhausted",
+          "debt_paid_off"
+        ],
+        "title": "WarningCode"
+      },
+      "WarningOut": {
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/WarningCode"
+          },
+          "month": {
+            "type": "integer",
+            "title": "Month",
+            "description": "First month in which the condition occurs."
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "month",
+          "date",
+          "message"
+        ],
+        "title": "WarningOut"
+      }
+    }
+  }
+}

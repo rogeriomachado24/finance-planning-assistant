@@ -281,5 +281,10 @@ Money columns use `Numeric`. No user table in Phase 1.
 | Comparison = built-in scenarios, then saved ones; built-in names are reserved | Saved scenarios extend the defaults instead of duplicating them |
 | Assumption presets are added automatically at startup; demo data only on request (`python -m app.seed`) | The app needs assumptions to project anything, but a real user enters their own finances. Presets are never overwritten once stored |
 | Migrations run at server startup | A single-user local app shouldn't need a manual migration step |
+| Frontend types generated from the OpenAPI description, checked in; a backend test fails if the copy is stale | The UI can't silently drift from the API contract |
+| Vite dev proxy (`/api` -> FastAPI) instead of CORS | Same-origin in development; nothing to configure or secure |
+| Projection chart hand-drawn in SVG, no chart library | One line chart with custom annotations (target, target date, goal marker); full control of accessibility (keyboard crosshair, table view) and styling for ~200 lines |
+| Dates formatted with a fixed month list, not `Intl` | `Intl` en-IE output differs between browsers ("Sep" / "Sept"); the UI must read "1 Sep 2026" everywhere |
+| TypeScript pinned to 5.x | `openapi-typescript` and the Vue tooling don't support TypeScript 7 yet |
 | Ollama as default provider | Free, local, private; provider stays configurable |
 | English UI, `en-IE` formatting, dates as "1 Jun 2032" | EUR with English conventions; unambiguous dates |

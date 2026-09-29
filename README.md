@@ -18,7 +18,7 @@ architecture and build order.
 - [x] Design
 - [x] Financial engine (`backend/app/domain`) with unit and property-based tests
 - [x] Database, services and REST API, with demo data
-- [ ] Vue dashboard
+- [ ] Vue dashboard (projection page done; forms and scenario comparison next)
 - [ ] LangGraph chat (Ollama / mock)
 
 ## Backend quick start
@@ -43,3 +43,19 @@ Then open <http://127.0.0.1:8000/docs> to try every endpoint in the browser.
 - Set `DATABASE_URL` (or put it in `backend/.env`) to use a different database.
 
 On macOS/Linux use `.venv/bin/python` instead.
+
+## Frontend quick start
+
+Requires Node.js 20+. Start the backend first (above), then:
+
+```powershell
+cd frontend
+npm install
+npm run dev      # http://localhost:5173 (calls to /api are forwarded to the backend)
+npm test         # unit and component tests
+npm run build    # type-check and production build
+```
+
+The frontend's TypeScript types are generated from the backend's OpenAPI description. After
+changing the API: `python -m app.export_openapi` in `backend/`, then `npm run api:types` in
+`frontend/`. A backend test fails if you forget the first step.
