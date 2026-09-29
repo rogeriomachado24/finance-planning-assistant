@@ -1,5 +1,6 @@
 """FastAPI application. Run with: uvicorn app.main:app --reload (from backend/)."""
 
+import threading
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -29,6 +30,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         prepare_database(settings.database_url, session_factory)  # migrations + presets
+        # Load the chat model in the background; the API is usable immediately.
+        threading.Thread(target=app.state.chat_provider.warm_up, daemon=True).start()
         yield
         engine.dispose()
 

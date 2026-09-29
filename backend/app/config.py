@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     """Who parses chat messages and words the replies. `mock` needs no model."""
     ollama_model: str = "phi3"
     ollama_base_url: str = "http://127.0.0.1:11434"
+    ollama_rewrite_replies: bool = False
+    """Let the model reword replies (strictly checked). Off: see docs/PHASE1_DESIGN.md."""
 
 
 @lru_cache

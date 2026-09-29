@@ -25,7 +25,7 @@ from app.agents.intents import (
     NeedsClarification,
     Unsupported,
 )
-from app.agents.providers import ChatProvider
+from app.agents.providers import TEMPLATE, ChatProvider
 from app.domain.errors import InvalidInputError
 from app.schemas.plan import Rates
 from app.schemas.scenarios import ComparedScenarioOut
@@ -54,6 +54,10 @@ class ChatState(TypedDict, total=False):
     assumptions: dict | None
     results: list[dict]
     reply: str
+    parsed_by: str
+    """Who understood the message: the model's name, or "rules"."""
+    worded_by: str
+    """Who wrote the reply: the model's name, or "template"."""
 
 
 def build_chat_graph(
@@ -61,12 +65,14 @@ def build_chat_graph(
 ):
     def parse_intent(state: ChatState) -> ChatState:
         previous = state.get("previous_intent")
-        intent = provider.parse(
+        parsed = provider.parse(
             state["message"], IntentAdapter.validate_python(previous) if previous else None
         )
         # Reset this turn's outputs so nothing leaks from the previous answer.
         return {
-            "intent": intent.model_dump(mode="json"),
+            "intent": parsed.intent.model_dump(mode="json"),
+            "parsed_by": parsed.source,
+            "worded_by": TEMPLATE,
             "status": "answered",
             "note": "",
             "assumption_set": None,
@@ -112,9 +118,15 @@ def build_chat_graph(
             results=[ComparedScenarioOut.model_validate(r) for r in state["results"]],
             assumption_set=state["assumption_set"],
             rates=Rates.model_validate(state["assumptions"]),
+            question=state["message"],
         )
+        worded = provider.explain(facts)
         # Remember what was answered, so "and with €300 instead?" can build on it.
-        return {"reply": provider.explain(facts), "previous_intent": state["intent"]}
+        return {
+            "reply": worded.text,
+            "worded_by": worded.source,
+            "previous_intent": state["intent"],
+        }
 
     def ask_clarification(state: ChatState) -> ChatState:
         return {"reply": state["note"]}

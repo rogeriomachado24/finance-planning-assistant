@@ -208,8 +208,16 @@ parse_intent ─► validate ─► execute (no LLM) ─► explain ─► END
 - **Read-only:** what-ifs never modify the saved profile.
 - **Memory:** in-memory LangGraph checkpointer keyed by `thread_id`, so follow-ups work
   ("and with €300 instead?").
-- **Providers:** `LLM_PROVIDER=ollama | mock` (default `ollama`, model set by `OLLAMA_MODEL`,
-  e.g. `qwen2.5:7b`). A factory builds the chat model; adding Gemini/OpenAI later is one branch.
+- **Providers:** `LLM_PROVIDER=ollama | mock` (code default `mock`, so tests and CI never need a
+  model; a local `.env` selects `ollama`; model set by `OLLAMA_MODEL`, currently `phi3`). A factory
+  builds the provider; adding Gemini/OpenAI later is one branch.
+- **Measured, not assumed:** `python -m app.agents.evaluate --model phi3` scores parsers on a
+  labelled set (35 messages, some deliberately outside the rules' patterns). Result: rules 86%,
+  phi3 alone 63%, rules first then phi3 89%. So the rules parse first and the model handles only
+  messages the rules can't place; its output is checked (numbers must appear in the message) and
+  rejected output falls back to the rules. Replies are templated by default: phi3's rewording
+  produced wrong statements ("a month before" for 11 months, an invented date, two scenarios
+  merged) that automated checks can't all catch.
 - **Mock mode:** regex intent parser plus templated explanations. Used in CI and when no
   model is available.
 - **Language rules:** "Under these assumptions…", "This scenario results in…",
@@ -293,6 +301,10 @@ Money columns use `Numeric`. No user table in Phase 1.
 | Income and expenses accept deltas as well as absolute values | "Spend €200 less" must not require the chat to compute 1,700 − 200; the engine applies the change |
 | Chat state is plain JSON; every projection intent runs as a comparison with the current plan | The checkpointer stores no custom classes; what-if answers get their difference from the domain, never from the LLM |
 | Clarifications and refusals are always templated, even with an LLM | They carry no figures and must follow the language rules exactly |
+| Rules parse first; the LLM only when the rules can't place a message | Measured: letting phi3 override the rules lowered accuracy (74% vs 86%), because its plausible-but-wrong answers pass number checks |
+| LLM output is checked deterministically; failures fall back silently | Numbers in a parsed request must appear in the message; reworded replies must copy every figure as a whole phrase from the facts |
+| Replies are templated by default; LLM rewording is opt-in (`OLLAMA_REWRITE_REPLIES`) | A small model's rewording introduced factual errors; exact, checkable wording matters more than style in a finance tool |
+| The model warms up in a background thread at startup | Ollama's first load took ~90 s; the API is usable immediately and the chat falls back to rules until the model answers |
 | Comparison chart: one line per scenario in fixed categorical colours, legend + tooltip + table instead of end labels | End labels of converging lines collide; colour follows the scenario, never its position; at most 8 hues, extra scenarios appear in the table only |
 | Ollama as default provider | Free, local, private; provider stays configurable |
 | English UI, `en-IE` formatting, dates as "1 Jun 2032" | EUR with English conventions; unambiguous dates |

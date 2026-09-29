@@ -13,7 +13,11 @@ from tests.api.conftest import BASE_JSON, GOAL_JSON, PROFILE_JSON
 
 
 def test_health(client: TestClient):
-    assert client.get("/health").json() == {"status": "ok", "database": "ok"}
+    assert client.get("/health").json() == {
+        "status": "ok",
+        "database": "ok",
+        "llm": {"provider": "mock", "available": True},
+    }
 
 
 def test_interactive_docs_are_served(client: TestClient):

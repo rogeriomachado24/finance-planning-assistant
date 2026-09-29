@@ -50,6 +50,7 @@ class Facts:
     results: list[ComparedScenarioOut]
     assumption_set: str | None
     rates: Rates | None
+    question: str = ""
 
 
 # ---- formatting (same conventions as the UI: €91,962, 1 Jun 2032, 5%) ------------------------
@@ -95,9 +96,19 @@ def months_earlier(months: int) -> str:
 
 
 def template_reply(facts: Facts) -> str:
-    intent = facts.intent
-    if isinstance(intent, ExplainAssumptions):
+    if isinstance(facts.intent, ExplainAssumptions):
         return _assumptions_reply(facts)
+    return f"{template_body(facts)}\n\n{footer(facts)}"
+
+
+def footer(facts: Facts) -> str:
+    """The assumptions and the disclaimer: always appended by code, never by a model."""
+    return f"{assumptions_line(facts)} {DISCLAIMER}"
+
+
+def template_body(facts: Facts) -> str:
+    """The facts of a projection answer, in plain sentences (without the footer)."""
+    intent = facts.intent
     current = facts.results[0].result
     if isinstance(intent, WhatIf):
         body = _what_if(facts.results, intent.overrides)
@@ -114,7 +125,7 @@ def template_reply(facts: Facts) -> str:
             )
     else:  # pragma: no cover - the graph only explains answerable intents
         raise ValueError(f"no template for {intent.kind}")
-    return f"{body}\n\n{assumptions_line(facts)} {DISCLAIMER}"
+    return body
 
 
 def assumptions_line(facts: Facts) -> str:

@@ -13,7 +13,7 @@ export interface paths {
         };
         /**
          * Health
-         * @description Liveness check. LLM provider status is added with the chat.
+         * @description Liveness check: the database and the chat's language model.
          */
         get: operations["health_health_get"];
         put?: never;
@@ -273,6 +273,16 @@ export interface components {
             results: components["schemas"]["ComparedScenarioOut"][];
             /** Provider */
             provider: string;
+            /**
+             * Parsed By
+             * @description Who understood the message: a model name, or "rules".
+             */
+            parsed_by: string;
+            /**
+             * Worded By
+             * @description Who wrote the reply: a model name, or "template".
+             */
+            worded_by: string;
         };
         /** CompareOut */
         CompareOut: {
@@ -387,6 +397,20 @@ export interface components {
             status: string;
             /** Database */
             database: string;
+            llm: components["schemas"]["LlmStatus"];
+        };
+        /** LlmStatus */
+        LlmStatus: {
+            /**
+             * Provider
+             * @description "mock" (no model) or the model name, e.g. "phi3".
+             */
+            provider: string;
+            /**
+             * Available
+             * @description Whether the model answers. The chat works either way: without a model, rules and templates handle every message.
+             */
+            available: boolean;
         };
         /**
          * OverridesIn

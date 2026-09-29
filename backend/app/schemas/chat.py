@@ -30,3 +30,5 @@ class ChatResponse(BaseModel):
         description="The engine's results; the first is the current plan (the baseline)."
     )
     provider: str
+    parsed_by: str = Field(description='Who understood the message: a model name, or "rules".')
+    worded_by: str = Field(description='Who wrote the reply: a model name, or "template".')

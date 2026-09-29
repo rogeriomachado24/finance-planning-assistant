@@ -41,6 +41,10 @@ Then open <http://127.0.0.1:8000/docs> to try every endpoint in the browser.
 - `app.seed` adds a sample person with a house-deposit goal. It refuses to overwrite data you
   entered yourself; `python -m app.seed --reset` deletes everything and reloads the demo.
 - Set `DATABASE_URL` (or put it in `backend/.env`) to use a different database.
+- Chat (`POST /chat`): works with no AI model (rules and templates). To use a local model,
+  install [Ollama](https://ollama.com), run `ollama pull phi3`, and copy `backend/.env.example`
+  to `backend/.env` (`LLM_PROVIDER=ollama`). The model only helps understand questions the rules
+  don't; it never calculates. `python -m app.agents.evaluate --model phi3` scores it.
 
 On macOS/Linux use `.venv/bin/python` instead.
 

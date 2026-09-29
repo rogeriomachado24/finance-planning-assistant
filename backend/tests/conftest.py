@@ -1,3 +1,4 @@
+import os
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -11,6 +12,10 @@ from app.services.assumptions import save_assumption_set
 from app.services.goals import create_goal
 from app.services.profile import save_profile
 from tests.sample_plan import BASE, GOAL, PROFILE, TODAY
+
+# Tests never depend on a local model: force the mock chat provider, whatever backend/.env
+# says (environment variables take priority over the .env file).
+os.environ["LLM_PROVIDER"] = "mock"
 
 
 @pytest.fixture
