@@ -15,10 +15,12 @@ from app.domain.models import Assumptions
 from app.domain.periods import first_of_month
 from app.domain.scenarios import (
     Scenario,
+    ScenarioDelta,
     ScenarioOverrides,
     ScenarioResult,
     compare_scenarios,
     default_scenarios,
+    delta_from_baseline,
     run_scenario,
 )
 from app.services.assumptions import DEFAULT_ASSUMPTION_SET, get_assumption_set
@@ -99,21 +101,47 @@ def simulate(
     )
 
 
+@dataclass(frozen=True)
+class ComparedScenario:
+    scenario: Scenario
+    result: ScenarioResult
+    vs_baseline: ScenarioDelta
+    """Difference from the first scenario in the comparison (the baseline)."""
+    saved_id: int | None
+    """Set for saved scenarios, None for built-in or ad-hoc ones."""
+
+
 def compare(
     session: Session,
     today: date,
     assumption_set: str = DEFAULT_ASSUMPTION_SET,
     scenarios: list[Scenario] | None = None,
-) -> list[ScenarioResult]:
-    """Run several scenarios on the stored plan. By default: the built-in scenarios
-    (current plan, higher contribution, higher income) followed by the saved ones."""
+) -> list[ComparedScenario]:
+    """Run several scenarios on the stored plan; the first one is the baseline. By default:
+    the built-in scenarios (current plan first), followed by the saved ones."""
     assumptions = get_assumption_set(session, assumption_set).assumptions
+    saved_ids: dict[str, int] = {}
     if scenarios is None:
-        scenarios = default_scenarios(assumptions) + [s.scenario for s in list_scenarios(session)]
-    return compare_scenarios(
+        saved = list_scenarios(session)
+        saved_ids = {s.scenario.name: s.id for s in saved}
+        scenarios = default_scenarios(assumptions) + [s.scenario for s in saved]
+    if not scenarios:
+        raise InvalidInputError("at least one scenario is needed to compare")
+
+    results = compare_scenarios(
         scenarios,
         get_profile(session),
         assumptions,
         get_active_goal(session).goal,
         first_of_month(today),
     )
+    baseline = results[0]
+    return [
+        ComparedScenario(
+            scenario=scenario,
+            result=result,
+            vs_baseline=delta_from_baseline(result, baseline),
+            saved_id=saved_ids.get(scenario.name),
+        )
+        for scenario, result in zip(scenarios, results, strict=True)
+    ]

@@ -13,7 +13,8 @@ export function fakeApi(routes: Record<string, Route>) {
     const method = init?.method ?? "GET";
     const [status, body] = routes[`${method} ${path}`] ??
       routes[path] ?? [404, { detail: `no fake route for ${method} ${path}` }];
-    return new Response(JSON.stringify(body), { status });
+    // A 204 (No Content) response must not have a body.
+    return new Response(status === 204 ? null : JSON.stringify(body), { status });
   });
   vi.stubGlobal("fetch", fetchMock);
   return fetchMock;

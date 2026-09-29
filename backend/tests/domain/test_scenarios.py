@@ -11,6 +11,7 @@ from app.domain.scenarios import (
     ScenarioOverrides,
     compare_scenarios,
     default_scenarios,
+    delta_from_baseline,
     run_scenario,
 )
 
@@ -163,3 +164,40 @@ class TestScenarioComparison:
             higher_contribution.projected_value_at_target_date
             > current.projected_value_at_target_date
         )
+
+
+class TestDeltaFromBaseline:
+    def test_baseline_against_itself_is_zero(self, profile, assumptions, goal, start):
+        current = run_scenario(Scenario("Current plan"), profile, assumptions, goal, start)
+        delta = delta_from_baseline(current, current)
+        assert (delta.goal_months_earlier, delta.value_at_target_difference) == (0, 0)
+
+    def test_more_invested_is_earlier_and_higher(self, profile, assumptions, goal, start):
+        current = run_scenario(Scenario("Current plan"), profile, assumptions, goal, start)
+        more = run_scenario(
+            Scenario("More", ScenarioOverrides(monthly_net_income=4000)),
+            profile,
+            assumptions,
+            goal,
+            start,
+        )
+        delta = delta_from_baseline(more, current)
+        assert delta.goal_months_earlier == current.months_to_goal - more.months_to_goal > 0
+        assert delta.value_at_target_difference == pytest.approx(
+            more.projected_value_at_target_date - current.projected_value_at_target_date
+        )
+        assert delta_from_baseline(current, more).goal_months_earlier < 0
+
+    def test_unknown_when_a_goal_is_never_reached(self, profile, assumptions, goal, start):
+        current = run_scenario(Scenario("Current plan"), profile, assumptions, goal, start)
+        broke = run_scenario(
+            Scenario(
+                "Broke", ScenarioOverrides(monthly_net_income=0, monthly_investment_contribution=0)
+            ),
+            profile,
+            assumptions,
+            goal,
+            start,
+        )
+        assert broke.months_to_goal is None
+        assert delta_from_baseline(broke, current).goal_months_earlier is None

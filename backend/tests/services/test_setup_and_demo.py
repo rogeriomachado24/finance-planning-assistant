@@ -73,7 +73,7 @@ class TestDemoData:
         goal = load_demo_data(session, TODAY).goal
         assert goal.target_date == date(2032, 6, 1)
         assert get_profile(session) == DEMO_PROFILE
-        names = [r.scenario_name for r in compare(session, TODAY)]
+        names = [c.result.scenario_name for c in compare(session, TODAY)]
         assert names == ["Current plan", "Higher contribution", "Higher income", "Spend €200 less"]
 
     def test_goal_is_always_six_years_ahead(self, session: Session):

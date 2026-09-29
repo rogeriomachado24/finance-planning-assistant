@@ -4,6 +4,8 @@ from fastapi import APIRouter, Response, status
 
 from app.api.deps import SessionDep, TodayDep
 from app.schemas.scenarios import (
+    ComparedScenarioOut,
+    CompareOut,
     CompareRequest,
     SavedScenarioOut,
     ScenarioIn,
@@ -26,11 +28,16 @@ def simulate(body: SimulateRequest, session: SessionDep, today: TodayDep) -> Sce
 
 
 @router.post("/scenarios/compare")
-def compare(body: CompareRequest, session: SessionDep, today: TodayDep) -> list[ScenarioResultOut]:
-    """Run several scenarios on the saved plan, side by side."""
+def compare(body: CompareRequest, session: SessionDep, today: TodayDep) -> CompareOut:
+    """Run several scenarios on the saved plan, side by side. The first scenario is the
+    baseline that the differences are measured from (by default, the current plan)."""
     given = None if body.scenarios is None else [s.to_domain() for s in body.scenarios]
-    results = scenarios.compare(session, today, body.assumption_set, given)
-    return [ScenarioResultOut.from_domain(r) for r in results]
+    compared = scenarios.compare(session, today, body.assumption_set, given)
+    return CompareOut(
+        assumption_set=body.assumption_set,
+        baseline=compared[0].scenario.name,
+        scenarios=[ComparedScenarioOut.from_domain(c) for c in compared],
+    )
 
 
 @router.get("/scenarios")

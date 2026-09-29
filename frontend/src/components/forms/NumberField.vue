@@ -16,6 +16,7 @@ withDefaults(
     min?: number;
     max?: number;
     step?: number | "any";
+    placeholder?: string;
   }>(),
   { unit: "none", step: 0.01 },
 );
@@ -44,6 +45,7 @@ function onInput(event: Event) {
           :min="min"
           :max="max"
           :step="step"
+          :placeholder="placeholder"
           :aria-describedby="describedBy"
           :aria-invalid="invalid || undefined"
           @input="onInput"

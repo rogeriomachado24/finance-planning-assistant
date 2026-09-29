@@ -100,12 +100,14 @@ class TestScenarios:
         scenario_id = saved.json()["id"]
         assert [s["name"] for s in plan_client.get("/scenarios").json()] == ["Invest 200 more"]
 
-        results = plan_client.post("/scenarios/compare", json={}).json()
-        assert [r["scenario_name"] for r in results] == [
-            "Current plan",
-            "Higher contribution",
-            "Higher income",
-            "Invest 200 more",
+        body = plan_client.post("/scenarios/compare", json={}).json()
+        assert body["assumption_set"] == "base"
+        assert body["baseline"] == "Current plan"
+        assert [(s["name"], s["saved_id"]) for s in body["scenarios"]] == [
+            ("Current plan", None),
+            ("Higher contribution", None),
+            ("Higher income", None),
+            ("Invest 200 more", scenario_id),
         ]
 
         assert plan_client.delete(f"/scenarios/{scenario_id}").status_code == 204
@@ -114,9 +116,21 @@ class TestScenarios:
 
     def test_compare_given_scenarios_only(self, plan_client: TestClient):
         body = {"scenarios": [{"name": "Lower expenses", "overrides": {"monthly_expenses": 1500}}]}
-        results = plan_client.post("/scenarios/compare", json=body).json()
-        assert [r["scenario_name"] for r in results] == ["Lower expenses"]
-        assert results[0]["monthly_surplus"] == 1000
+        compared = plan_client.post("/scenarios/compare", json=body).json()["scenarios"]
+        assert [s["name"] for s in compared] == ["Lower expenses"]
+        assert compared[0]["result"]["monthly_surplus"] == 1000
+
+    def test_differences_from_the_baseline_come_rounded_from_the_api(self, plan_client: TestClient):
+        current, contribution, income = plan_client.post("/scenarios/compare", json={}).json()[
+            "scenarios"
+        ]
+        assert current["vs_baseline"] == {"goal_months_earlier": 0, "value_at_target_difference": 0}
+        assert income["vs_baseline"]["goal_months_earlier"] > 0
+        difference = contribution["vs_baseline"]["value_at_target_difference"]
+        assert difference > 0 and round(difference, 2) == difference
+
+    def test_an_empty_scenario_list_is_422(self, plan_client: TestClient):
+        assert plan_client.post("/scenarios/compare", json={"scenarios": []}).status_code == 422
 
     def test_built_in_name_is_422(self, plan_client: TestClient):
         response = plan_client.post("/scenarios", json={"name": "Current plan"})

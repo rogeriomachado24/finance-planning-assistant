@@ -227,7 +227,7 @@ Interactive documentation at `/docs` (generated from the Pydantic schemas).
 | GET | `/assumptions` | list assumption sets |
 | PUT | `/assumptions/{name}` | create or replace one assumption set |
 | POST | `/simulate` | projection of the stored plan, optional what-if overrides (never saved) |
-| POST | `/scenarios/compare` | run several scenarios side by side (default: built-in, then saved) |
+| POST | `/scenarios/compare` | run several scenarios side by side (default: built-in, then saved); each comes with its difference from the first (baseline) scenario |
 | GET / POST | `/scenarios` | list / save scenario definitions (same name replaces) |
 | DELETE | `/scenarios/{id}` | delete a saved scenario |
 | POST | `/chat` | one conversational turn (step 5) |
@@ -262,8 +262,8 @@ Money columns use `Numeric`. No user table in Phase 1.
 1. Skeleton and tooling ✓
 2. Domain engine and tests ✓
 3. DB, services, REST API and integration tests, seed demo data ✓
-4. **Vue dashboard: onboarding forms, projection chart, scenario comparison** ← next
-5. LangGraph chat: mock provider first, then Ollama
+4. Vue dashboard: onboarding forms, projection chart, scenario comparison ✓
+5. **LangGraph chat: mock provider first, then Ollama** ← next
 6. Polish: README, architecture diagram, screenshots, CI
 
 ## 11. Decision log
@@ -289,5 +289,7 @@ Money columns use `Numeric`. No user table in Phase 1.
 | Rates typed as percentages in forms, stored as decimals | People think "5%", the engine uses 0.05; the UI converts units only, never computes |
 | A goal's target date is validated when the goal is created (this month up to 50 years ahead) | A saved goal can always be projected; the rule lives once in the domain (`months_to_target_date`) |
 | Validation errors shown next to their field, taken from the API's 422 response | One source of truth for the rules (Pydantic + domain); the browser's own checks only add early feedback |
+| Differences between scenarios (months earlier, euros more) computed in the domain (`delta_from_baseline`) and returned by the API | Subtracting two results is financial maths; the UI only formats |
+| Comparison chart: one line per scenario in fixed categorical colours, legend + tooltip + table instead of end labels | End labels of converging lines collide; colour follows the scenario, never its position; at most 8 hues, extra scenarios appear in the table only |
 | Ollama as default provider | Free, local, private; provider stays configurable |
 | English UI, `en-IE` formatting, dates as "1 Jun 2032" | EUR with English conventions; unambiguous dates |

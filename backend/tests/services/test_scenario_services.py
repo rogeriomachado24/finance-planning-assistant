@@ -66,13 +66,35 @@ class TestSimulate:
 
 class TestCompare:
     def test_runs_built_in_then_saved_scenarios(self, plan: Session):
-        save_scenario(plan, Scenario("Invest 200 more", MORE_INVESTED))
-        names = [r.scenario_name for r in compare(plan, TODAY)]
-        assert names == ["Current plan", "Higher contribution", "Higher income", "Invest 200 more"]
+        saved = save_scenario(plan, Scenario("Invest 200 more", MORE_INVESTED))
+        compared = compare(plan, TODAY)
+        assert [c.result.scenario_name for c in compared] == [
+            "Current plan",
+            "Higher contribution",
+            "Higher income",
+            "Invest 200 more",
+        ]
+        assert [c.saved_id for c in compared] == [None, None, None, saved.id]
+        assert compared[1].scenario.description == "Invest 100 EUR more per month."
+
+    def test_differences_are_measured_against_the_first_scenario(self, plan: Session):
+        current, *others = compare(plan, TODAY)
+        assert current.vs_baseline.goal_months_earlier == 0
+        assert current.vs_baseline.value_at_target_difference == 0
+        higher_income = others[1]
+        assert higher_income.vs_baseline.goal_months_earlier > 0
+        assert higher_income.vs_baseline.value_at_target_difference == (
+            higher_income.result.projected_value_at_target_date
+            - current.result.projected_value_at_target_date
+        )
 
     def test_runs_only_the_given_scenarios(self, plan: Session):
         results = compare(plan, TODAY, scenarios=[Scenario("Only this", MORE_INVESTED)])
-        assert [r.scenario_name for r in results] == ["Only this"]
+        assert [r.result.scenario_name for r in results] == ["Only this"]
+
+    def test_an_empty_list_is_rejected(self, plan: Session):
+        with pytest.raises(InvalidInputError):
+            compare(plan, TODAY, scenarios=[])
 
 
 class TestSavedScenarios:

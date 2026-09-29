@@ -50,3 +50,16 @@ export function formatDuration(months: number): string {
   if (rest || !years) parts.push(`${rest} ${rest === 1 ? "month" : "months"}`);
   return parts.join(" ");
 }
+
+/** API difference in months -> "4 months earlier", "1 year later", "Same time". */
+export function formatMonthsEarlier(monthsEarlier: number): string {
+  if (monthsEarlier === 0) return "Same time";
+  return `${formatDuration(Math.abs(monthsEarlier))} ${monthsEarlier > 0 ? "earlier" : "later"}`;
+}
+
+/** API difference in euros -> "+€8,900", "−€1,050" (true minus sign), "€0". */
+export function formatSignedEur(value: number): string {
+  const text = formatEur(Math.abs(value));
+  if (text === "€0") return text;
+  return `${value > 0 ? "+" : "−"}${text}`;
+}

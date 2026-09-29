@@ -284,7 +284,7 @@
           "projections"
         ],
         "summary": "Compare",
-        "description": "Run several scenarios on the saved plan, side by side.",
+        "description": "Run several scenarios on the saved plan, side by side. The first scenario is the\nbaseline that the differences are measured from (by default, the current plan).",
         "operationId": "compare_scenarios_compare_post",
         "requestBody": {
           "content": {
@@ -302,11 +302,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/ScenarioResultOut"
-                  },
-                  "type": "array",
-                  "title": "Response Compare Scenarios Compare Post"
+                  "$ref": "#/components/schemas/CompareOut"
                 }
               }
             }
@@ -445,6 +441,33 @@
         ],
         "title": "AssumptionSetOut"
       },
+      "CompareOut": {
+        "properties": {
+          "assumption_set": {
+            "type": "string",
+            "title": "Assumption Set"
+          },
+          "baseline": {
+            "type": "string",
+            "title": "Baseline",
+            "description": "Name of the scenario the differences are measured from."
+          },
+          "scenarios": {
+            "items": {
+              "$ref": "#/components/schemas/ComparedScenarioOut"
+            },
+            "type": "array",
+            "title": "Scenarios"
+          }
+        },
+        "type": "object",
+        "required": [
+          "assumption_set",
+          "baseline",
+          "scenarios"
+        ],
+        "title": "CompareOut"
+      },
       "CompareRequest": {
         "properties": {
           "assumption_set": {
@@ -459,19 +482,87 @@
                   "$ref": "#/components/schemas/ScenarioIn"
                 },
                 "type": "array",
-                "maxItems": 10
+                "maxItems": 10,
+                "minItems": 1
               },
               {
                 "type": "null"
               }
             ],
             "title": "Scenarios",
-            "description": "Scenarios to run. Omit to run the built-in scenarios, then the saved ones."
+            "description": "Scenarios to run; the first is the baseline. Omit to run the built-in scenarios (current plan first), then the saved ones."
           }
         },
         "additionalProperties": false,
         "type": "object",
         "title": "CompareRequest"
+      },
+      "ComparedScenarioOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "saved_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Saved Id",
+            "description": "Id of a saved scenario; null for built-in ones."
+          },
+          "result": {
+            "$ref": "#/components/schemas/ScenarioResultOut"
+          },
+          "vs_baseline": {
+            "$ref": "#/components/schemas/DeltaOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "description",
+          "saved_id",
+          "result",
+          "vs_baseline"
+        ],
+        "title": "ComparedScenarioOut"
+      },
+      "DeltaOut": {
+        "properties": {
+          "goal_months_earlier": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goal Months Earlier",
+            "description": "Months earlier (positive) or later (negative) that the goal is reached. Null when either scenario doesn't reach it within 50 years."
+          },
+          "value_at_target_difference": {
+            "type": "number",
+            "title": "Value At Target Difference",
+            "description": "Cash + investments on the target date, minus the baseline's."
+          }
+        },
+        "type": "object",
+        "required": [
+          "goal_months_earlier",
+          "value_at_target_difference"
+        ],
+        "title": "DeltaOut",
+        "description": "How a scenario differs from the baseline (the first scenario compared)."
       },
       "GoalIn": {
         "properties": {

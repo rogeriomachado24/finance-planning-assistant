@@ -18,7 +18,7 @@ architecture and build order.
 - [x] Design
 - [x] Financial engine (`backend/app/domain`) with unit and property-based tests
 - [x] Database, services and REST API, with demo data
-- [ ] Vue dashboard (projection page and plan forms done; scenario comparison next)
+- [x] Vue dashboard: projection, plan forms, scenario comparison
 - [ ] LangGraph chat (Ollama / mock)
 
 ## Backend quick start

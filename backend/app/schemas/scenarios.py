@@ -7,11 +7,11 @@ from typing import Annotated, Self
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from app.domain.projection import MonthSnapshot, ProjectionWarning, WarningCode
-from app.domain.scenarios import Scenario, ScenarioOverrides, ScenarioResult
+from app.domain.scenarios import Scenario, ScenarioDelta, ScenarioOverrides, ScenarioResult
 from app.schemas.common import MAX_MONEY, Money, Rate, cents
 from app.schemas.plan import Name, Profile, Rates
 from app.services.assumptions import DEFAULT_ASSUMPTION_SET
-from app.services.scenarios import SavedScenario
+from app.services.scenarios import ComparedScenario, SavedScenario
 
 
 class OverridesIn(BaseModel):
@@ -80,8 +80,10 @@ class CompareRequest(BaseModel):
     assumption_set: str = DEFAULT_ASSUMPTION_SET
     scenarios: list[ScenarioIn] | None = Field(
         None,
+        min_length=1,
         max_length=10,
-        description="Scenarios to run. Omit to run the built-in scenarios, then the saved ones.",
+        description="Scenarios to run; the first is the baseline. Omit to run the built-in "
+        "scenarios (current plan first), then the saved ones.",
     )
 
 
@@ -163,3 +165,46 @@ class ScenarioResultOut(BaseModel):
             warnings=[WarningOut.from_domain(w) for w in r.warnings],
             snapshots=[SnapshotOut.from_domain(s) for s in r.snapshots],
         )
+
+
+class DeltaOut(BaseModel):
+    """How a scenario differs from the baseline (the first scenario compared)."""
+
+    goal_months_earlier: int | None = Field(
+        description="Months earlier (positive) or later (negative) that the goal is reached. "
+        "Null when either scenario doesn't reach it within 50 years."
+    )
+    value_at_target_difference: float = Field(
+        description="Cash + investments on the target date, minus the baseline's."
+    )
+
+    @classmethod
+    def from_domain(cls, delta: ScenarioDelta) -> Self:
+        return cls(
+            goal_months_earlier=delta.goal_months_earlier,
+            value_at_target_difference=cents(delta.value_at_target_difference),
+        )
+
+
+class ComparedScenarioOut(BaseModel):
+    name: str
+    description: str
+    saved_id: int | None = Field(description="Id of a saved scenario; null for built-in ones.")
+    result: ScenarioResultOut
+    vs_baseline: DeltaOut
+
+    @classmethod
+    def from_domain(cls, compared: ComparedScenario) -> Self:
+        return cls(
+            name=compared.scenario.name,
+            description=compared.scenario.description,
+            saved_id=compared.saved_id,
+            result=ScenarioResultOut.from_domain(compared.result),
+            vs_baseline=DeltaOut.from_domain(compared.vs_baseline),
+        )
+
+
+class CompareOut(BaseModel):
+    assumption_set: str
+    baseline: str = Field(description="Name of the scenario the differences are measured from.")
+    scenarios: list[ComparedScenarioOut]

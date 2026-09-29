@@ -142,7 +142,8 @@ export interface paths {
         put?: never;
         /**
          * Compare
-         * @description Run several scenarios on the saved plan, side by side.
+         * @description Run several scenarios on the saved plan, side by side. The first scenario is the
+         *     baseline that the differences are measured from (by default, the current plan).
          */
         post: operations["compare_scenarios_compare_post"];
         delete?: never;
@@ -202,6 +203,18 @@ export interface components {
             name: string;
             assumptions: components["schemas"]["Rates"];
         };
+        /** CompareOut */
+        CompareOut: {
+            /** Assumption Set */
+            assumption_set: string;
+            /**
+             * Baseline
+             * @description Name of the scenario the differences are measured from.
+             */
+            baseline: string;
+            /** Scenarios */
+            scenarios: components["schemas"]["ComparedScenarioOut"][];
+        };
         /** CompareRequest */
         CompareRequest: {
             /**
@@ -211,9 +224,39 @@ export interface components {
             assumption_set: string;
             /**
              * Scenarios
-             * @description Scenarios to run. Omit to run the built-in scenarios, then the saved ones.
+             * @description Scenarios to run; the first is the baseline. Omit to run the built-in scenarios (current plan first), then the saved ones.
              */
             scenarios?: components["schemas"]["ScenarioIn"][] | null;
+        };
+        /** ComparedScenarioOut */
+        ComparedScenarioOut: {
+            /** Name */
+            name: string;
+            /** Description */
+            description: string;
+            /**
+             * Saved Id
+             * @description Id of a saved scenario; null for built-in ones.
+             */
+            saved_id: number | null;
+            result: components["schemas"]["ScenarioResultOut"];
+            vs_baseline: components["schemas"]["DeltaOut"];
+        };
+        /**
+         * DeltaOut
+         * @description How a scenario differs from the baseline (the first scenario compared).
+         */
+        DeltaOut: {
+            /**
+             * Goal Months Earlier
+             * @description Months earlier (positive) or later (negative) that the goal is reached. Null when either scenario doesn't reach it within 50 years.
+             */
+            goal_months_earlier: number | null;
+            /**
+             * Value At Target Difference
+             * @description Cash + investments on the target date, minus the baseline's.
+             */
+            value_at_target_difference: number;
         };
         /** GoalIn */
         GoalIn: {
@@ -828,7 +871,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ScenarioResultOut"][];
+                    "application/json": components["schemas"]["CompareOut"];
                 };
             };
             /** @description Validation Error */

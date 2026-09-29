@@ -156,6 +156,29 @@ def run_scenario(
     )
 
 
+@dataclass(frozen=True)
+class ScenarioDelta:
+    """How a scenario's outcome differs from a baseline scenario (usually the current plan)."""
+
+    goal_months_earlier: int | None
+    """Months earlier (positive) or later (negative) that the goal is reached. None when
+    either scenario doesn't reach it within the projection horizon."""
+    value_at_target_difference: float
+    """Liquid assets on the target date, minus the baseline's."""
+
+
+def delta_from_baseline(result: ScenarioResult, baseline: ScenarioResult) -> ScenarioDelta:
+    earlier = None
+    if result.months_to_goal is not None and baseline.months_to_goal is not None:
+        earlier = baseline.months_to_goal - result.months_to_goal
+    return ScenarioDelta(
+        goal_months_earlier=earlier,
+        value_at_target_difference=(
+            result.projected_value_at_target_date - baseline.projected_value_at_target_date
+        ),
+    )
+
+
 def compare_scenarios(
     scenarios: list[Scenario],
     profile: FinancialProfile,

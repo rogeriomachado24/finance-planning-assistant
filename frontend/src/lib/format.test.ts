@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { formatDate, formatDuration, formatEur, formatEurCompact, formatPercent } from "./format";
+import {
+  formatDate,
+  formatDuration,
+  formatEur,
+  formatEurCompact,
+  formatMonthsEarlier,
+  formatPercent,
+  formatSignedEur,
+} from "./format";
 
 describe("formatEur", () => {
   it("formats whole euros with en-IE grouping", () => {
@@ -43,5 +51,25 @@ describe("formatDuration", () => {
     [0, "0 months"],
   ])("%i months -> %s", (months, expected) => {
     expect(formatDuration(months)).toBe(expected);
+  });
+});
+
+describe("differences from the baseline", () => {
+  it.each([
+    [0, "Same time"],
+    [4, "4 months earlier"],
+    [-1, "1 month later"],
+    [14, "1 year 2 months earlier"],
+  ])("%i months -> %s", (months, expected) => {
+    expect(formatMonthsEarlier(months)).toBe(expected);
+  });
+
+  it.each([
+    [8900.4, "+€8,900"],
+    [-1050, "−€1,050"],
+    [0, "€0"],
+    [0.3, "€0"],
+  ])("%f -> %s", (value, expected) => {
+    expect(formatSignedEur(value)).toBe(expected);
   });
 });

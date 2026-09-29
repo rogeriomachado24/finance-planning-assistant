@@ -19,6 +19,11 @@ export type ProfileIn = Schemas["ProfileIn"];
 export type ProfileOut = Schemas["ProfileOut"];
 export type PositionOut = Schemas["PositionOut"];
 export type SimulateRequest = Schemas["SimulateRequest"];
+export type Comparison = Schemas["CompareOut"];
+export type ComparedScenario = Schemas["ComparedScenarioOut"];
+export type Overrides = Schemas["OverridesIn"];
+export type ScenarioIn = Schemas["ScenarioIn"];
+export type SavedScenario = Schemas["SavedScenarioOut"];
 
 export class ApiError extends Error {
   constructor(
@@ -68,6 +73,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const fallback = response.status >= 500 ? UNREACHABLE : `Request failed (${response.status})`;
     throw new ApiError(response.status, detail?.message ?? fallback, detail?.fieldErrors);
   }
+  if (response.status === 204) return undefined as T; // e.g. DELETE: no body
   return (await response.json()) as T;
 }
 
@@ -83,4 +89,8 @@ export const api = {
   assumptionSets: () => request<AssumptionSet[]>("/assumptions"),
   saveAssumptionSet: (name: string, rates: Rates) =>
     request<AssumptionSet>(`/assumptions/${encodeURIComponent(name)}`, send("PUT", rates)),
+  compare: (assumptionSet: string) =>
+    request<Comparison>("/scenarios/compare", send("POST", { assumption_set: assumptionSet })),
+  saveScenario: (body: ScenarioIn) => request<SavedScenario>("/scenarios", send("POST", body)),
+  deleteScenario: (id: number) => request<void>(`/scenarios/${id}`, { method: "DELETE" }),
 };

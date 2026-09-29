@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import type { ScenarioResult } from "../api/client";
-import ProjectionChart from "./ProjectionChart.vue";
+import GoalChart from "./GoalChart.vue";
 import ProjectionTable from "./ProjectionTable.vue";
 
 defineProps<{ result: ScenarioResult; assumptionSetName: string }>();
@@ -35,13 +35,20 @@ const showTable = ref(false);
       :months-to-target="result.months_to_target_date"
       :months-to-goal="result.months_to_goal"
     />
-    <ProjectionChart
+    <GoalChart
       v-else
-      :snapshots="result.snapshots"
+      :series="[
+        {
+          key: 'plan',
+          name: result.scenario_name,
+          color: 'var(--color-series-1)',
+          snapshots: result.snapshots,
+          monthsToGoal: result.months_to_goal,
+        },
+      ]"
       :target-amount="result.target_amount"
       :target-date="result.target_date"
       :months-to-target="result.months_to_target_date"
-      :months-to-goal="result.months_to_goal"
     />
   </figure>
 </template>
