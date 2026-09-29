@@ -56,7 +56,7 @@ class TestSimulate:
         assert response.json()["detail"] == "no financial profile has been saved yet"
 
     def test_unknown_assumption_set_is_404(self, plan_client: TestClient):
-        response = plan_client.post("/simulate", json={"assumption_set": "optimistic"})
+        response = plan_client.post("/simulate", json={"assumption_set": "pessimistic"})
         assert response.status_code == 404
 
     @pytest.mark.parametrize(

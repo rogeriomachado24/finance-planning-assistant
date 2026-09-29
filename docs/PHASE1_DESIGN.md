@@ -261,8 +261,8 @@ Money columns use `Numeric`. No user table in Phase 1.
 
 1. Skeleton and tooling ✓
 2. Domain engine and tests ✓
-3. **DB, services, REST API and integration tests, seed demo data** ← next
-4. Vue dashboard: onboarding forms, projection chart, scenario comparison
+3. DB, services, REST API and integration tests, seed demo data ✓
+4. **Vue dashboard: onboarding forms, projection chart, scenario comparison** ← next
 5. LangGraph chat: mock provider first, then Ollama
 6. Polish: README, architecture diagram, screenshots, CI
 
@@ -279,5 +279,7 @@ Money columns use `Numeric`. No user table in Phase 1.
 | Services take and return domain objects; money becomes `Decimal` only in the database | API and chat never handle records; the Decimal/float conversion lives in one module (`services/mapping.py`) |
 | Creating a goal makes it active and deactivates the previous one | One active goal without forcing the user to delete history; enforced by a partial unique index |
 | Comparison = built-in scenarios, then saved ones; built-in names are reserved | Saved scenarios extend the defaults instead of duplicating them |
+| Assumption presets are added automatically at startup; demo data only on request (`python -m app.seed`) | The app needs assumptions to project anything, but a real user enters their own finances. Presets are never overwritten once stored |
+| Migrations run at server startup | A single-user local app shouldn't need a manual migration step |
 | Ollama as default provider | Free, local, private; provider stays configurable |
 | English UI, `en-IE` formatting, dates as "1 Jun 2032" | EUR with English conventions; unambiguous dates |

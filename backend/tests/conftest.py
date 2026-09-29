@@ -10,11 +10,16 @@ from app.db.session import create_db_engine, create_session_factory
 
 
 @pytest.fixture
-def db_url(tmp_path: Path) -> str:
+def empty_db_url(tmp_path: Path) -> str:
+    """A path where no database exists yet (nothing migrated)."""
+    return f"sqlite:///{(tmp_path / 'test.db').as_posix()}"
+
+
+@pytest.fixture
+def db_url(empty_db_url: str) -> str:
     """A fresh SQLite database built by the real migrations, not by `metadata.create_all`."""
-    url = f"sqlite:///{(tmp_path / 'test.db').as_posix()}"
-    upgrade_to_head(url)
-    return url
+    upgrade_to_head(empty_db_url)
+    return empty_db_url
 
 
 @pytest.fixture

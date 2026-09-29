@@ -5,7 +5,9 @@ from dataclasses import fields
 import pytest
 from fastapi.testclient import TestClient
 
+from app.config import Settings
 from app.domain.models import Assumptions, FinancialProfile
+from app.main import create_app
 from app.schemas.plan import Profile, ProfileIn, Rates
 from tests.api.conftest import BASE_JSON, GOAL_JSON, PROFILE_JSON
 
@@ -88,15 +90,33 @@ class TestGoals:
 
 
 class TestAssumptions:
-    def test_put_by_name_then_list(self, client: TestClient):
-        client.put("/assumptions/base", json=BASE_JSON)
-        client.put("/assumptions/optimistic", json=BASE_JSON | {"annual_return": 0.07})
+    def test_presets_are_there_from_the_first_start(self, client: TestClient):
         listed = client.get("/assumptions").json()
         assert [(s["name"], s["assumptions"]["annual_return"]) for s in listed] == [
+            ("conservative", 0.02),
             ("base", 0.05),
             ("optimistic", 0.07),
+        ]
+
+    def test_put_replaces_by_name_or_adds(self, client: TestClient):
+        client.put("/assumptions/base", json=BASE_JSON | {"annual_return": 0.045})
+        client.put("/assumptions/my-own", json=BASE_JSON | {"annual_return": 0.06})
+        listed = client.get("/assumptions").json()
+        assert [(s["name"], s["assumptions"]["annual_return"]) for s in listed] == [
+            ("conservative", 0.02),
+            ("base", 0.045),
+            ("optimistic", 0.07),
+            ("my-own", 0.06),
         ]
 
     def test_percent_instead_of_decimal_is_422(self, client: TestClient):
         response = client.put("/assumptions/base", json=BASE_JSON | {"annual_return": 7})
         assert response.status_code == 422
+
+
+def test_startup_builds_a_database_that_does_not_exist_yet(empty_db_url: str):
+    app = create_app(Settings(database_url=empty_db_url))
+    with TestClient(app) as client:
+        assert client.get("/health").json()["database"] == "ok"
+        assert len(client.get("/assumptions").json()) == 3
+        assert client.get("/profile").status_code == 404  # no demo data unless asked for

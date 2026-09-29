@@ -17,7 +17,7 @@ architecture and build order.
 
 - [x] Design
 - [x] Financial engine (`backend/app/domain`) with unit and property-based tests
-- [ ] Database, services and REST API
+- [x] Database, services and REST API, with demo data
 - [ ] Vue dashboard
 - [ ] LangGraph chat (Ollama / mock)
 
@@ -29,7 +29,17 @@ Requires Python 3.12+.
 cd backend
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e ".[dev]"
-.\.venv\Scripts\python.exe -m pytest
+.\.venv\Scripts\python.exe -m pytest                        # run the tests
+.\.venv\Scripts\python.exe -m app.seed                      # optional: load the demo plan
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload # start the API
 ```
+
+Then open <http://127.0.0.1:8000/docs> to try every endpoint in the browser.
+
+- The database is a SQLite file, `backend/finance.db`. It's created and migrated automatically
+  when the server starts, with three editable assumption sets (conservative, base, optimistic).
+- `app.seed` adds a sample person with a house-deposit goal. It refuses to overwrite data you
+  entered yourself; `python -m app.seed --reset` deletes everything and reloads the demo.
+- Set `DATABASE_URL` (or put it in `backend/.env`) to use a different database.
 
 On macOS/Linux use `.venv/bin/python` instead.

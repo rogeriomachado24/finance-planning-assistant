@@ -11,6 +11,28 @@ from app.services.mapping import assumptions_from_record, write_assumptions
 
 DEFAULT_ASSUMPTION_SET = "base"
 
+ASSUMPTION_PRESETS = {
+    "conservative": Assumptions(
+        annual_return=0.02,
+        annual_salary_growth=0.01,
+        annual_expense_growth=0.03,
+        annual_inflation=0.03,
+    ),
+    "base": Assumptions(
+        annual_return=0.05,
+        annual_salary_growth=0.02,
+        annual_expense_growth=0.02,
+        annual_inflation=0.02,
+    ),
+    "optimistic": Assumptions(
+        annual_return=0.07,
+        annual_salary_growth=0.03,
+        annual_expense_growth=0.02,
+        annual_inflation=0.02,
+    ),
+}
+"""Illustrative starting values that the user can edit. Not forecasts."""
+
 
 @dataclass(frozen=True)
 class SavedAssumptionSet:
@@ -35,6 +57,18 @@ def get_assumption_set(session: Session, name: str = DEFAULT_ASSUMPTION_SET) -> 
     if record is None:
         raise NotFoundError(f"no assumption set named {name!r}")
     return _saved(record)
+
+
+def ensure_assumption_presets(session: Session) -> list[str]:
+    """Add any preset that isn't stored yet; never overwrite one. Returns the names added."""
+    existing = set(session.scalars(select(AssumptionSetRecord.name)))
+    added = [name for name in ASSUMPTION_PRESETS if name not in existing]
+    for name in added:
+        record = AssumptionSetRecord(name=name)
+        write_assumptions(record, ASSUMPTION_PRESETS[name])
+        session.add(record)
+    session.commit()
+    return added
 
 
 def save_assumption_set(
