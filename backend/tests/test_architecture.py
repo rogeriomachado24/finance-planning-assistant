@@ -46,3 +46,25 @@ def test_services_know_nothing_about_http_or_llms():
         if module.startswith(FORBIDDEN_IN_SERVICES)
     }
     assert not violations, f"services import from an outer layer: {sorted(violations)}"
+
+
+def test_services_do_not_depend_on_the_chat_layer():
+    violations = {
+        f"{name}: {module}"
+        for name, modules in imports_by_file("services").items()
+        for module in modules
+        if module.startswith(("app.agents", "app.tools"))
+    }
+    assert not violations, f"services import the chat layer: {sorted(violations)}"
+
+
+def test_chat_layer_does_not_depend_on_http():
+    """The graph and its tools are driven by the API, never the other way round."""
+    violations = {
+        f"{package}/{name}: {module}"
+        for package in ("agents", "tools")
+        for name, modules in imports_by_file(package).items()
+        for module in modules
+        if module.startswith(("app.api", "fastapi", "starlette"))
+    }
+    assert not violations, f"chat layer imports the HTTP layer: {sorted(violations)}"

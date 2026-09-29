@@ -40,6 +40,21 @@ class TestOverrides:
         assert new_assumptions.annual_salary_growth == 0.05
         assert new_assumptions.annual_inflation == assumptions.annual_inflation
 
+    def test_income_and_expense_deltas(self, profile, assumptions):
+        overrides = ScenarioOverrides(monthly_net_income_delta=300, monthly_expenses_delta=-200)
+        new_profile, _ = overrides.apply(profile, assumptions)
+        assert new_profile.monthly_net_income == 2800
+        assert new_profile.monthly_expenses == 1500
+
+    @pytest.mark.parametrize("name", ["monthly_net_income", "monthly_expenses"])
+    def test_rejects_absolute_and_delta_for_any_amount(self, name):
+        with pytest.raises(InvalidInputError, match=f"set either {name} or its delta"):
+            ScenarioOverrides(**{name: 1000, f"{name}_delta": 100})
+
+    def test_rejects_delta_that_makes_expenses_negative(self, profile, assumptions):
+        with pytest.raises(InvalidInputError):
+            ScenarioOverrides(monthly_expenses_delta=-5000).apply(profile, assumptions)
+
     def test_does_not_modify_the_inputs(self, profile, assumptions):
         ScenarioOverrides(monthly_investment_contribution_delta=200).apply(profile, assumptions)
         assert profile.monthly_investment_contribution == 400

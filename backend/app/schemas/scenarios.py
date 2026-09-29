@@ -13,6 +13,9 @@ from app.schemas.plan import Name, Profile, Rates
 from app.services.assumptions import DEFAULT_ASSUMPTION_SET
 from app.services.scenarios import ComparedScenario, SavedScenario
 
+Delta = Annotated[float, Field(ge=-MAX_MONEY, le=MAX_MONEY, allow_inf_nan=False)]
+"""A change to a monthly amount: positive or negative EUR."""
+
 
 class OverridesIn(BaseModel):
     """Changes relative to the saved plan. Omitted fields keep their saved value."""
@@ -22,15 +25,17 @@ class OverridesIn(BaseModel):
     monthly_investment_contribution: Money | None = Field(
         None, description="New monthly contribution. Can't be combined with the delta."
     )
-    monthly_investment_contribution_delta: float | None = Field(
-        None,
-        ge=-MAX_MONEY,
-        le=MAX_MONEY,
-        allow_inf_nan=False,
-        description="Change to the saved monthly contribution, e.g. 200 or -100.",
+    monthly_investment_contribution_delta: Delta | None = Field(
+        None, description="Change to the saved monthly contribution, e.g. 200 or -100."
     )
     monthly_net_income: Money | None = None
+    monthly_net_income_delta: Delta | None = Field(
+        None, description="Change to monthly take-home pay, e.g. 300 or -200."
+    )
     monthly_expenses: Money | None = None
+    monthly_expenses_delta: Delta | None = Field(
+        None, description="Change to monthly expenses, e.g. -200 to spend 200 less."
+    )
     annual_return: Rate | None = None
     annual_salary_growth: Rate | None = None
     annual_expense_growth: Rate | None = None

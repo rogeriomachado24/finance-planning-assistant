@@ -134,8 +134,8 @@ A scenario is a **named set of overrides applied to the saved profile and assump
 {"name": "Higher contribution", "overrides": {"monthly_investment_contribution_delta": 100}}
 ```
 
-Supported overrides: contribution (absolute or delta), net income, expenses, annual return,
-salary growth, expense growth. The chat produces exactly the same structure, so "what if I invest
+Supported overrides: contribution, net income and expenses (each absolute or delta), annual
+return, salary growth, expense growth. The chat produces exactly the same structure, so "what if I invest
 €200 more per month?" becomes `{"monthly_investment_contribution_delta": 200}`.
 
 Two separate dimensions:
@@ -290,6 +290,9 @@ Money columns use `Numeric`. No user table in Phase 1.
 | A goal's target date is validated when the goal is created (this month up to 50 years ahead) | A saved goal can always be projected; the rule lives once in the domain (`months_to_target_date`) |
 | Validation errors shown next to their field, taken from the API's 422 response | One source of truth for the rules (Pydantic + domain); the browser's own checks only add early feedback |
 | Differences between scenarios (months earlier, euros more) computed in the domain (`delta_from_baseline`) and returned by the API | Subtracting two results is financial maths; the UI only formats |
+| Income and expenses accept deltas as well as absolute values | "Spend €200 less" must not require the chat to compute 1,700 − 200; the engine applies the change |
+| Chat state is plain JSON; every projection intent runs as a comparison with the current plan | The checkpointer stores no custom classes; what-if answers get their difference from the domain, never from the LLM |
+| Clarifications and refusals are always templated, even with an LLM | They carry no figures and must follow the language rules exactly |
 | Comparison chart: one line per scenario in fixed categorical colours, legend + tooltip + table instead of end labels | End labels of converging lines collide; colour follows the scenario, never its position; at most 8 hues, extra scenarios appear in the table only |
 | Ollama as default provider | Free, local, private; provider stays configurable |
 | English UI, `en-IE` formatting, dates as "1 Jun 2032" | EUR with English conventions; unambiguous dates |

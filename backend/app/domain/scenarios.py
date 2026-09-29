@@ -26,41 +26,35 @@ from app.domain.projection import (
 
 @dataclass(frozen=True)
 class ScenarioOverrides:
-    """Changes relative to the saved plan. `None` means "keep the saved value"."""
+    """Changes relative to the saved plan. `None` means "keep the saved value".
+
+    Monthly amounts can be set to a new value or changed by a delta ("spend 200 less" is
+    `monthly_expenses_delta=-200`), so callers such as the chat never do the arithmetic.
+    """
 
     monthly_investment_contribution: float | None = None
     monthly_investment_contribution_delta: float | None = None
     monthly_net_income: float | None = None
+    monthly_net_income_delta: float | None = None
     monthly_expenses: float | None = None
+    monthly_expenses_delta: float | None = None
     annual_return: float | None = None
     annual_salary_growth: float | None = None
     annual_expense_growth: float | None = None
 
     def __post_init__(self) -> None:
-        if (
-            self.monthly_investment_contribution is not None
-            and self.monthly_investment_contribution_delta is not None
-        ):
-            raise InvalidInputError(
-                "set either monthly_investment_contribution or its delta, not both"
-            )
+        for name in _AMOUNTS_WITH_DELTA:
+            if getattr(self, name) is not None and getattr(self, f"{name}_delta") is not None:
+                raise InvalidInputError(f"set either {name} or its delta, not both")
 
     def apply(
         self, profile: FinancialProfile, assumptions: Assumptions
     ) -> tuple[FinancialProfile, Assumptions]:
         """Return the effective profile and assumptions. Validation re-runs on the results,
         so an override that produces an invalid value (e.g. a negative contribution) raises."""
-        contribution = profile.monthly_investment_contribution
-        if self.monthly_investment_contribution is not None:
-            contribution = self.monthly_investment_contribution
-        elif self.monthly_investment_contribution_delta is not None:
-            contribution += self.monthly_investment_contribution_delta
-
         new_profile = replace(
             profile,
-            monthly_investment_contribution=contribution,
-            monthly_net_income=_keep(self.monthly_net_income, profile.monthly_net_income),
-            monthly_expenses=_keep(self.monthly_expenses, profile.monthly_expenses),
+            **{name: self._amount(name, getattr(profile, name)) for name in _AMOUNTS_WITH_DELTA},
         )
         new_assumptions = replace(
             assumptions,
@@ -71,6 +65,15 @@ class ScenarioOverrides:
             ),
         )
         return new_profile, new_assumptions
+
+    def _amount(self, name: str, current: float) -> float:
+        absolute, delta = getattr(self, name), getattr(self, f"{name}_delta")
+        if absolute is not None:
+            return absolute
+        return current if delta is None else current + delta
+
+
+_AMOUNTS_WITH_DELTA = ("monthly_investment_contribution", "monthly_net_income", "monthly_expenses")
 
 
 def _keep[T](override: T | None, current: T) -> T:

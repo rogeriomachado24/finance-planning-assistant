@@ -420,6 +420,48 @@
           }
         }
       }
+    },
+    "/chat": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Chat",
+        "description": "One conversational turn. The message is turned into a structured request, the\ndeterministic engine runs it, and the reply explains the result. Nothing is saved:\nwhat-ifs never change the plan. Pass `thread_id` back to continue the conversation.",
+        "operationId": "chat_chat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -440,6 +482,115 @@
           "assumptions"
         ],
         "title": "AssumptionSetOut"
+      },
+      "ChatRequest": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Message"
+          },
+          "thread_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thread Id",
+            "description": "Continue a conversation. Omit to start a new one."
+          },
+          "assumption_set": {
+            "type": "string",
+            "title": "Assumption Set",
+            "description": "Used unless the message names another set.",
+            "default": "base"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "ChatRequest"
+      },
+      "ChatResponse": {
+        "properties": {
+          "thread_id": {
+            "type": "string",
+            "title": "Thread Id"
+          },
+          "reply": {
+            "type": "string",
+            "title": "Reply",
+            "description": "Commentary. The figures to display are in `results`."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "answered",
+              "clarification",
+              "declined"
+            ],
+            "title": "Status"
+          },
+          "intent": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Intent",
+            "description": "How the message was understood (structured)."
+          },
+          "assumption_set": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assumption Set"
+          },
+          "assumptions": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Rates"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The rates behind `results`."
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/ComparedScenarioOut"
+            },
+            "type": "array",
+            "title": "Results",
+            "description": "The engine's results; the first is the current plan (the baseline)."
+          },
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          }
+        },
+        "type": "object",
+        "required": [
+          "thread_id",
+          "reply",
+          "status",
+          "intent",
+          "assumption_set",
+          "assumptions",
+          "results",
+          "provider"
+        ],
+        "title": "ChatResponse"
       },
       "CompareOut": {
         "properties": {
@@ -755,6 +906,20 @@
             ],
             "title": "Monthly Net Income"
           },
+          "monthly_net_income_delta": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000000.0,
+                "minimum": -1000000000.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Net Income Delta",
+            "description": "Change to monthly take-home pay, e.g. 300 or -200."
+          },
           "monthly_expenses": {
             "anyOf": [
               {
@@ -767,6 +932,20 @@
               }
             ],
             "title": "Monthly Expenses"
+          },
+          "monthly_expenses_delta": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000000.0,
+                "minimum": -1000000000.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Expenses Delta",
+            "description": "Change to monthly expenses, e.g. -200 to spend 200 less."
           },
           "annual_return": {
             "anyOf": [

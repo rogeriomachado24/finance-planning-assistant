@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -13,6 +14,11 @@ class Settings(BaseSettings):
 
     database_url: str = f"sqlite:///{(BACKEND_DIR / 'finance.db').as_posix()}"
     """SQLAlchemy URL. Defaults to a SQLite file in `backend/`, whatever the working directory."""
+
+    llm_provider: Literal["mock", "ollama"] = "mock"
+    """Who parses chat messages and words the replies. `mock` needs no model."""
+    ollama_model: str = "phi3"
+    ollama_base_url: str = "http://127.0.0.1:11434"
 
 
 @lru_cache

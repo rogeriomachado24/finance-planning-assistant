@@ -5,7 +5,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api import health, plan, scenarios
+from app.agents.graph import build_chat_graph
+from app.agents.providers import build_provider
+from app.api import chat, health, plan, scenarios
 from app.api.errors import register_error_handlers
 from app.config import Settings, get_settings
 from app.db.session import create_db_engine, create_session_factory
@@ -37,8 +39,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     app.state.session_factory = session_factory
+    app.state.chat_provider = build_provider(settings)
+    app.state.chat_graph = build_chat_graph(session_factory, app.state.chat_provider)
     register_error_handlers(app)
-    for module in (health, plan, scenarios):
+    for module in (health, plan, scenarios, chat):
         app.include_router(module.router)
     return app
 

@@ -193,6 +193,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/chat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Chat
+         * @description One conversational turn. The message is turned into a structured request, the
+         *     deterministic engine runs it, and the reply explains the result. Nothing is saved:
+         *     what-ifs never change the plan. Pass `thread_id` back to continue the conversation.
+         */
+        post: operations["chat_chat_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -202,6 +224,55 @@ export interface components {
             /** Name */
             name: string;
             assumptions: components["schemas"]["Rates"];
+        };
+        /** ChatRequest */
+        ChatRequest: {
+            /** Message */
+            message: string;
+            /**
+             * Thread Id
+             * @description Continue a conversation. Omit to start a new one.
+             */
+            thread_id?: string | null;
+            /**
+             * Assumption Set
+             * @description Used unless the message names another set.
+             * @default base
+             */
+            assumption_set: string;
+        };
+        /** ChatResponse */
+        ChatResponse: {
+            /** Thread Id */
+            thread_id: string;
+            /**
+             * Reply
+             * @description Commentary. The figures to display are in `results`.
+             */
+            reply: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "answered" | "clarification" | "declined";
+            /**
+             * Intent
+             * @description How the message was understood (structured).
+             */
+            intent: {
+                [key: string]: unknown;
+            };
+            /** Assumption Set */
+            assumption_set: string | null;
+            /** @description The rates behind `results`. */
+            assumptions: components["schemas"]["Rates"] | null;
+            /**
+             * Results
+             * @description The engine's results; the first is the current plan (the baseline).
+             */
+            results: components["schemas"]["ComparedScenarioOut"][];
+            /** Provider */
+            provider: string;
         };
         /** CompareOut */
         CompareOut: {
@@ -334,8 +405,18 @@ export interface components {
             monthly_investment_contribution_delta?: number | null;
             /** Monthly Net Income */
             monthly_net_income?: number | null;
+            /**
+             * Monthly Net Income Delta
+             * @description Change to monthly take-home pay, e.g. 300 or -200.
+             */
+            monthly_net_income_delta?: number | null;
             /** Monthly Expenses */
             monthly_expenses?: number | null;
+            /**
+             * Monthly Expenses Delta
+             * @description Change to monthly expenses, e.g. -200 to spend 200 less.
+             */
+            monthly_expenses_delta?: number | null;
             /** Annual Return */
             annual_return?: number | null;
             /** Annual Salary Growth */
@@ -955,6 +1036,39 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    chat_chat_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatResponse"];
+                };
             };
             /** @description Validation Error */
             422: {
