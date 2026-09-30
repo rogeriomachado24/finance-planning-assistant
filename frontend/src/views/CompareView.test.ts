@@ -14,7 +14,7 @@ function result(name: string, goalDate: string, monthsToGoal: number, value: num
     profile: {
       monthly_net_income: 2500, monthly_expenses: 1700, cash: 10_000, investments: 15_000,
       monthly_investment_contribution: 400, other_monthly_income: 0, debt_balance: 0,
-      monthly_debt_payment: 0, age: 32,
+      monthly_debt_payment: 0, age: 32, investment_risk: "medium",
     },
     assumptions: RATES,
     monthly_contribution: 400,

@@ -19,6 +19,9 @@ export type ProfileIn = Schemas["ProfileIn"];
 export type ProfileOut = Schemas["ProfileOut"];
 export type PositionOut = Schemas["PositionOut"];
 export type SimulateRequest = Schemas["SimulateRequest"];
+export type InvestmentRisk = Schemas["InvestmentRisk"];
+export type Uncertainty = Schemas["UncertaintyOut"];
+export type UncertaintyRequest = Schemas["UncertaintyRequest"];
 export type Comparison = Schemas["CompareOut"];
 export type ComparedScenario = Schemas["ComparedScenarioOut"];
 export type Overrides = Schemas["OverridesIn"];
@@ -87,6 +90,8 @@ const send = (method: string, body: unknown): RequestInit => ({ method, body: JS
 export const api = {
   simulate: (body: Partial<SimulateRequest> = {}) =>
     request<ScenarioResult>("/simulate", send("POST", body)),
+  simulateUncertainty: (body: Partial<UncertaintyRequest> = {}) =>
+    request<Uncertainty>("/simulate/uncertainty", send("POST", body)),
   profile: () => request<ProfileOut>("/profile"),
   saveProfile: (body: ProfileIn) => request<ProfileOut>("/profile", send("PUT", body)),
   goals: () => request<Goal[]>("/goals"),

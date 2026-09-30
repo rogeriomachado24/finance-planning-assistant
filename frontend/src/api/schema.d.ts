@@ -151,6 +151,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/simulate/uncertainty": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Simulate Uncertainty
+         * @description Run the saved plan (optionally with what-if overrides) over many simulated futures,
+         *     with yearly investment returns varying around the assumed return at the profile's
+         *     investment risk. The same seed always gives the same result.
+         */
+        post: operations["simulate_uncertainty_simulate_uncertainty_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/scenarios/compare": {
         parameters: {
             query?: never;
@@ -244,6 +266,22 @@ export interface components {
             /** Name */
             name: string;
             assumptions: components["schemas"]["Rates"];
+        };
+        /** BandPointOut */
+        BandPointOut: {
+            /** Month */
+            month: number;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** P10 */
+            p10: number;
+            /** P50 */
+            p50: number;
+            /** P90 */
+            p90: number;
         };
         /** ChatRequest */
         ChatRequest: {
@@ -405,6 +443,19 @@ export interface components {
              */
             kind: "goal_date";
         };
+        /**
+         * GoalDatesOut
+         * @description Dates by which 10%, 50% and 90% of futures have first reached the target. Null when
+         *     that share of futures doesn't reach it within the horizon.
+         */
+        GoalDatesOut: {
+            /** P10 */
+            p10: string | null;
+            /** P50 */
+            p50: string | null;
+            /** P90 */
+            p90: string | null;
+        };
         /** GoalIn */
         GoalIn: {
             /** Name */
@@ -483,6 +534,12 @@ export interface components {
             database: string;
             llm: components["schemas"]["LlmStatus"];
         };
+        /**
+         * InvestmentRisk
+         * @description How widely the portfolio's yearly returns vary (docs/PHASE2_DESIGN.md, 2.3).
+         * @enum {string}
+         */
+        InvestmentRisk: "low" | "medium" | "high";
         /** LlmStatus */
         LlmStatus: {
             /**
@@ -550,6 +607,15 @@ export interface components {
              */
             first_year_return?: number | null;
         };
+        /** PercentilesOut */
+        PercentilesOut: {
+            /** P10 */
+            p10: number;
+            /** P50 */
+            p50: number;
+            /** P90 */
+            p90: number;
+        };
         /** PlanStatusOut */
         PlanStatusOut: {
             /**
@@ -614,6 +680,7 @@ export interface components {
             monthly_debt_payment: number;
             /** Age */
             age: number | null;
+            investment_risk: components["schemas"]["InvestmentRisk"];
         };
         /** ProfileIn */
         ProfileIn: {
@@ -660,6 +727,11 @@ export interface components {
             monthly_debt_payment: number;
             /** Age */
             age?: number | null;
+            /**
+             * @description How widely yearly investment returns vary: low 5%, medium 10%, high 15% volatility. Used only by the uncertainty simulation.
+             * @default medium
+             */
+            investment_risk: components["schemas"]["InvestmentRisk"];
         };
         /** ProfileOut */
         ProfileOut: {
@@ -693,6 +765,19 @@ export interface components {
              * @default 0
              */
             annual_inflation: number;
+        };
+        /** ReachedByOut */
+        ReachedByOut: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /**
+             * Share
+             * @description Share of futures that have reached the target by then.
+             */
+            share: number;
         };
         /**
          * RequiredContribution
@@ -852,6 +937,96 @@ export interface components {
             liquid_assets: number;
             /** Net Worth */
             net_worth: number;
+        };
+        /** UncertaintyOut */
+        UncertaintyOut: {
+            /** Scenario Name */
+            scenario_name: string;
+            /** Assumption Set */
+            assumption_set: string;
+            /** @description Effective assumptions, after overrides. */
+            assumptions: components["schemas"]["Rates"];
+            investment_risk: components["schemas"]["InvestmentRisk"];
+            /**
+             * Volatility
+             * @description Yearly volatility of returns for the risk level.
+             */
+            volatility: number;
+            /** Paths */
+            paths: number;
+            /** Seed */
+            seed: number;
+            /**
+             * Horizon Months
+             * @description Target date plus 10 years, at most 50 years.
+             */
+            horizon_months: number;
+            /** Target Amount */
+            target_amount: number;
+            /**
+             * Target Date
+             * Format: date
+             */
+            target_date: string;
+            /** Months To Target Date */
+            months_to_target_date: number;
+            /**
+             * Probability By Target Date
+             * @description Share of futures with cash + investments at or above the target on the target date.
+             */
+            probability_by_target_date: number;
+            /**
+             * Probability Margin
+             * @description Half-width of the 95% interval of that share: 1.96 * sqrt(p(1 - p) / n).
+             */
+            probability_margin: number;
+            goal_dates: components["schemas"]["GoalDatesOut"];
+            /**
+             * Not Reached Share
+             * @description Share of futures that don't reach the target within the horizon.
+             */
+            not_reached_share: number;
+            /** @description Cash + investments on the target date: 10th, 50th and 90th percentile. */
+            value_at_target_date: components["schemas"]["PercentilesOut"];
+            /** @description How far below the target the futures that miss it are. Null when none do. */
+            shortfall_when_missed: components["schemas"]["PercentilesOut"] | null;
+            /**
+             * Reached By
+             * @description Each 1 January within the horizon, and the target date.
+             */
+            reached_by: components["schemas"]["ReachedByOut"][];
+            /**
+             * Bands
+             * @description Cash + investments percentiles for every month, from today (month 0).
+             */
+            bands: components["schemas"]["BandPointOut"][];
+        };
+        /** UncertaintyRequest */
+        UncertaintyRequest: {
+            /**
+             * Assumption Set
+             * @default base
+             */
+            assumption_set: string;
+            /** @default {} */
+            overrides: components["schemas"]["OverridesIn"];
+            /**
+             * Name
+             * @description Defaults to "Current plan", or "What-if" when overrides are set.
+             */
+            name?: string | null;
+            /**
+             * Paths
+             * @description Number of simulated futures.
+             * @default 1000
+             */
+            paths: number;
+            /**
+             * Seed
+             * @description Fixes the random returns: the same seed always gives the same futures.
+             * @default 2026
+             */
+            seed: number;
         };
         /**
          * Unsupported
@@ -1150,6 +1325,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScenarioResultOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    simulate_uncertainty_simulate_uncertainty_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UncertaintyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UncertaintyOut"];
                 };
             };
             /** @description Validation Error */

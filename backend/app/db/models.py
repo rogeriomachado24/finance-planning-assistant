@@ -5,13 +5,14 @@ database never holds a value the engine would reject, whoever writes it.
 """
 
 from datetime import date
+from enum import StrEnum
 from typing import Any
 
 from sqlalchemy import JSON, CheckConstraint, Enum, Index, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, Money, Rate, TimestampMixin
-from app.domain.models import GoalType
+from app.domain.models import GoalType, InvestmentRisk
 
 SINGLE_PROFILE_ID = 1
 
@@ -24,6 +25,16 @@ def _valid_rate(*columns: str) -> tuple[CheckConstraint, ...]:
     return tuple(CheckConstraint(f"{c} > -1 AND {c} <= 1", name=f"{c}_range") for c in columns)
 
 
+def _string_enum(enum: type[StrEnum], length: int) -> Enum:
+    """Stored as its value, e.g. "medium", in a plain string column."""
+    return Enum(
+        enum,
+        native_enum=False,
+        length=length,
+        values_callable=lambda members: [member.value for member in members],
+    )
+
+
 class FinancialProfileRecord(TimestampMixin, Base):
     """The user's current position. Phase 1 has exactly one profile, always with id 1."""
 
@@ -31,6 +42,10 @@ class FinancialProfileRecord(TimestampMixin, Base):
     __table_args__ = (
         CheckConstraint(f"id = {SINGLE_PROFILE_ID}", name="single_profile"),
         CheckConstraint("age BETWEEN 0 AND 120", name="age_range"),
+        CheckConstraint(
+            "investment_risk IN ({})".format(", ".join(f"'{r.value}'" for r in InvestmentRisk)),
+            name="investment_risk_values",
+        ),
         *_non_negative(
             "monthly_net_income",
             "other_monthly_income",
@@ -53,6 +68,11 @@ class FinancialProfileRecord(TimestampMixin, Base):
     monthly_investment_contribution: Mapped[Money]
     debt_balance: Mapped[Money]
     monthly_debt_payment: Mapped[Money]
+    investment_risk: Mapped[InvestmentRisk] = mapped_column(
+        _string_enum(InvestmentRisk, length=10),
+        default=InvestmentRisk.MEDIUM,
+        server_default=InvestmentRisk.MEDIUM.value,
+    )
 
 
 class GoalRecord(TimestampMixin, Base):
@@ -73,14 +93,7 @@ class GoalRecord(TimestampMixin, Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100))
-    goal_type: Mapped[GoalType] = mapped_column(
-        Enum(
-            GoalType,
-            native_enum=False,
-            length=30,
-            values_callable=lambda enum: [member.value for member in enum],
-        )
-    )
+    goal_type: Mapped[GoalType] = mapped_column(_string_enum(GoalType, length=30))
     target_amount: Mapped[Money]
     target_date: Mapped[date]
     description: Mapped[str | None] = mapped_column(Text)

@@ -4,7 +4,13 @@
  * surplus and savings rate the API computed from what was stored.
  */
 import { reactive, ref, watch } from "vue";
-import { api, type PositionOut, type Profile, type ProfileIn } from "../../api/client";
+import {
+  api,
+  type InvestmentRisk,
+  type PositionOut,
+  type Profile,
+  type ProfileIn,
+} from "../../api/client";
 import { useSubmit } from "../../composables/useSubmit";
 import { formatEur, formatPercent } from "../../lib/format";
 import NumberField from "./NumberField.vue";
@@ -13,8 +19,11 @@ import SaveBar from "./SaveBar.vue";
 const props = defineProps<{ initial: Profile | null }>();
 const emit = defineEmits<{ saved: [] }>();
 
-type MoneyField = Exclude<keyof ProfileIn, "age">;
-type FormState = Record<MoneyField, number | null> & { age: number | null };
+type MoneyField = Exclude<keyof ProfileIn, "age" | "investment_risk">;
+type FormState = Record<MoneyField, number | null> & {
+  age: number | null;
+  investment_risk: InvestmentRisk;
+};
 
 const form = reactive<FormState>({
   monthly_net_income: props.initial?.monthly_net_income ?? null,
@@ -26,6 +35,7 @@ const form = reactive<FormState>({
   debt_balance: props.initial?.debt_balance ?? null,
   monthly_debt_payment: props.initial?.monthly_debt_payment ?? null,
   age: props.initial?.age ?? null,
+  investment_risk: props.initial?.investment_risk ?? "medium",
 });
 
 type Field = { key: MoneyField; label: string; hint: string; example: string; required?: boolean };
@@ -62,6 +72,13 @@ const GROUPS: { title: string; fields: Field[] }[] = [
   },
 ];
 
+// Volatility per level, as in the backend (docs/PHASE2_DESIGN.md, 2.3). Text only.
+const RISK_LEVELS: { value: InvestmentRisk; label: string; detail: string }[] = [
+  { value: "low", label: "Low", detail: "Returns vary by about 5% a year. Mostly bonds and cash-like funds." },
+  { value: "medium", label: "Medium", detail: "Returns vary by about 10% a year. A balanced mix." },
+  { value: "high", label: "High", detail: "Returns vary by about 15% a year. Mostly shares." },
+];
+
 const position = ref<PositionOut | null>(null);
 const savedZeros = ref(false);
 
@@ -80,6 +97,7 @@ const { status, error, fieldErrors, submit, markEdited } = useSubmit(
       debt_balance: form.debt_balance ?? 0,
       monthly_debt_payment: form.monthly_debt_payment ?? 0,
       age: form.age,
+      investment_risk: form.investment_risk,
     };
     return api.saveProfile(body);
   },
@@ -112,6 +130,37 @@ watch(form, markEdited);
           :error="fieldErrors[field.key]"
         />
       </div>
+    </fieldset>
+
+    <fieldset aria-describedby="profile-investment_risk-hint">
+      <legend class="text-sm font-semibold">Investment risk</legend>
+      <p id="profile-investment_risk-hint" class="mt-1 text-xs text-ink-2">
+        How widely your investments' yearly returns vary in the simulated futures. The typical
+        return comes from your assumptions. Not sure? Medium is the default.
+      </p>
+      <div class="mt-2 grid gap-2 sm:grid-cols-3">
+        <label
+          v-for="level in RISK_LEVELS"
+          :key="level.value"
+          class="flex cursor-pointer gap-2 rounded-md border border-axis p-3 text-sm has-[:checked]:border-series-1 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-series-1"
+        >
+          <input
+            :id="`profile-investment_risk-${level.value}`"
+            v-model="form.investment_risk"
+            type="radio"
+            name="investment_risk"
+            :value="level.value"
+            class="mt-0.5 accent-series-1"
+          />
+          <span>
+            <span class="block font-medium">{{ level.label }}</span>
+            <span class="block text-xs text-ink-2">{{ level.detail }}</span>
+          </span>
+        </label>
+      </div>
+      <p v-if="fieldErrors.investment_risk" class="mt-1 text-xs font-medium text-error">
+        {{ fieldErrors.investment_risk }}
+      </p>
     </fieldset>
 
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

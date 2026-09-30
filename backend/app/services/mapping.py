@@ -10,13 +10,12 @@ from typing import Any
 
 from app.db.models import AssumptionSetRecord, FinancialProfileRecord, GoalRecord
 from app.domain.errors import InvalidInputError
-from app.domain.models import Assumptions, FinancialProfile, Goal
+from app.domain.models import PROFILE_MONEY_FIELDS, Assumptions, FinancialProfile, Goal
 from app.domain.scenarios import ScenarioOverrides
 
 CENT = Decimal("0.01")
 RATE_PRECISION = Decimal("0.000001")
 
-PROFILE_MONEY_FIELDS = tuple(f.name for f in fields(FinancialProfile) if f.name != "age")
 RATE_FIELDS = tuple(f.name for f in fields(Assumptions))
 
 
@@ -30,11 +29,12 @@ def to_rate(value: float) -> Decimal:
 
 def profile_from_record(record: FinancialProfileRecord) -> FinancialProfile:
     money = {name: float(getattr(record, name)) for name in PROFILE_MONEY_FIELDS}
-    return FinancialProfile(age=record.age, **money)
+    return FinancialProfile(age=record.age, investment_risk=record.investment_risk, **money)
 
 
 def write_profile(record: FinancialProfileRecord, profile: FinancialProfile) -> None:
     record.age = profile.age
+    record.investment_risk = profile.investment_risk
     for name in PROFILE_MONEY_FIELDS:
         setattr(record, name, to_money(getattr(profile, name)))
 

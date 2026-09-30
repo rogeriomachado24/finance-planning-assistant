@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db.models import AssumptionSetRecord, FinancialProfileRecord, GoalRecord, ScenarioRecord
-from app.domain.models import GoalType
+from app.domain.models import GoalType, InvestmentRisk
 
 
 def profile_record(**changes) -> FinancialProfileRecord:
@@ -84,6 +84,12 @@ class TestFinancialProfile:
     def test_age_is_optional_but_bounded(self, session: Session):
         assert reload(session, profile_record(age=None)).age is None
         assert_rejected(session, profile_record(id=1, age=121))
+
+    def test_investment_risk_defaults_to_medium(self, session: Session):
+        assert reload(session, profile_record()).investment_risk is InvestmentRisk.MEDIUM
+
+    def test_rejects_an_unknown_risk_level(self, session: Session):
+        assert_rejected(session, profile_record(investment_risk="extreme"))
 
 
 class TestGoal:

@@ -300,6 +300,48 @@
         }
       }
     },
+    "/simulate/uncertainty": {
+      "post": {
+        "tags": [
+          "projections"
+        ],
+        "summary": "Simulate Uncertainty",
+        "description": "Run the saved plan (optionally with what-if overrides) over many simulated futures,\nwith yearly investment returns varying around the assumed return at the profile's\ninvestment risk. The same seed always gives the same result.",
+        "operationId": "simulate_uncertainty_simulate_uncertainty_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UncertaintyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UncertaintyOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/scenarios/compare": {
       "post": {
         "tags": [
@@ -504,6 +546,40 @@
           "assumptions"
         ],
         "title": "AssumptionSetOut"
+      },
+      "BandPointOut": {
+        "properties": {
+          "month": {
+            "type": "integer",
+            "title": "Month"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "p10": {
+            "type": "number",
+            "title": "P10"
+          },
+          "p50": {
+            "type": "number",
+            "title": "P50"
+          },
+          "p90": {
+            "type": "number",
+            "title": "P90"
+          }
+        },
+        "type": "object",
+        "required": [
+          "month",
+          "date",
+          "p10",
+          "p50",
+          "p90"
+        ],
+        "title": "BandPointOut"
       },
       "ChatRequest": {
         "properties": {
@@ -876,6 +952,54 @@
         "title": "GoalDate",
         "description": "'When will I reach my goal?'"
       },
+      "GoalDatesOut": {
+        "properties": {
+          "p10": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P10"
+          },
+          "p50": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P50"
+          },
+          "p90": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P90"
+          }
+        },
+        "type": "object",
+        "required": [
+          "p10",
+          "p50",
+          "p90"
+        ],
+        "title": "GoalDatesOut",
+        "description": "Dates by which 10%, 50% and 90% of futures have first reached the target. Null when\nthat share of futures doesn't reach it within the horizon."
+      },
       "GoalIn": {
         "properties": {
           "name": {
@@ -1053,6 +1177,16 @@
           "llm"
         ],
         "title": "HealthOut"
+      },
+      "InvestmentRisk": {
+        "type": "string",
+        "enum": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "title": "InvestmentRisk",
+        "description": "How widely the portfolio's yearly returns vary (docs/PHASE2_DESIGN.md, 2.3)."
       },
       "LlmStatus": {
         "properties": {
@@ -1241,6 +1375,29 @@
         "title": "OverridesIn",
         "description": "Changes relative to the saved plan. Omitted fields keep their saved value."
       },
+      "PercentilesOut": {
+        "properties": {
+          "p10": {
+            "type": "number",
+            "title": "P10"
+          },
+          "p50": {
+            "type": "number",
+            "title": "P50"
+          },
+          "p90": {
+            "type": "number",
+            "title": "P90"
+          }
+        },
+        "type": "object",
+        "required": [
+          "p10",
+          "p50",
+          "p90"
+        ],
+        "title": "PercentilesOut"
+      },
       "PlanStatusOut": {
         "properties": {
           "has_profile": {
@@ -1363,6 +1520,9 @@
               }
             ],
             "title": "Age"
+          },
+          "investment_risk": {
+            "$ref": "#/components/schemas/InvestmentRisk"
           }
         },
         "type": "object",
@@ -1375,7 +1535,8 @@
           "other_monthly_income",
           "debt_balance",
           "monthly_debt_payment",
-          "age"
+          "age",
+          "investment_risk"
         ],
         "title": "Profile",
         "description": "Profile values as output. No input limits: a what-if may legitimately exceed them."
@@ -1451,6 +1612,11 @@
               }
             ],
             "title": "Age"
+          },
+          "investment_risk": {
+            "$ref": "#/components/schemas/InvestmentRisk",
+            "description": "How widely yearly investment returns vary: low 5%, medium 10%, high 15% volatility. Used only by the uncertainty simulation.",
+            "default": "medium"
           }
         },
         "additionalProperties": false,
@@ -1516,6 +1682,26 @@
         "additionalProperties": false,
         "type": "object",
         "title": "Rates"
+      },
+      "ReachedByOut": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "share": {
+            "type": "number",
+            "title": "Share",
+            "description": "Share of futures that have reached the target by then."
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "share"
+        ],
+        "title": "ReachedByOut"
       },
       "RequiredContribution": {
         "properties": {
@@ -1863,6 +2049,174 @@
         ],
         "title": "SnapshotOut",
         "description": "Balances at the end of the month, and the flows during it."
+      },
+      "UncertaintyOut": {
+        "properties": {
+          "scenario_name": {
+            "type": "string",
+            "title": "Scenario Name"
+          },
+          "assumption_set": {
+            "type": "string",
+            "title": "Assumption Set"
+          },
+          "assumptions": {
+            "$ref": "#/components/schemas/Rates",
+            "description": "Effective assumptions, after overrides."
+          },
+          "investment_risk": {
+            "$ref": "#/components/schemas/InvestmentRisk"
+          },
+          "volatility": {
+            "type": "number",
+            "title": "Volatility",
+            "description": "Yearly volatility of returns for the risk level."
+          },
+          "paths": {
+            "type": "integer",
+            "title": "Paths"
+          },
+          "seed": {
+            "type": "integer",
+            "title": "Seed"
+          },
+          "horizon_months": {
+            "type": "integer",
+            "title": "Horizon Months",
+            "description": "Target date plus 10 years, at most 50 years."
+          },
+          "target_amount": {
+            "type": "number",
+            "title": "Target Amount"
+          },
+          "target_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Target Date"
+          },
+          "months_to_target_date": {
+            "type": "integer",
+            "title": "Months To Target Date"
+          },
+          "probability_by_target_date": {
+            "type": "number",
+            "title": "Probability By Target Date",
+            "description": "Share of futures with cash + investments at or above the target on the target date."
+          },
+          "probability_margin": {
+            "type": "number",
+            "title": "Probability Margin",
+            "description": "Half-width of the 95% interval of that share: 1.96 * sqrt(p(1 - p) / n)."
+          },
+          "goal_dates": {
+            "$ref": "#/components/schemas/GoalDatesOut"
+          },
+          "not_reached_share": {
+            "type": "number",
+            "title": "Not Reached Share",
+            "description": "Share of futures that don't reach the target within the horizon."
+          },
+          "value_at_target_date": {
+            "$ref": "#/components/schemas/PercentilesOut",
+            "description": "Cash + investments on the target date: 10th, 50th and 90th percentile."
+          },
+          "shortfall_when_missed": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PercentilesOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How far below the target the futures that miss it are. Null when none do."
+          },
+          "reached_by": {
+            "items": {
+              "$ref": "#/components/schemas/ReachedByOut"
+            },
+            "type": "array",
+            "title": "Reached By",
+            "description": "Each 1 January within the horizon, and the target date."
+          },
+          "bands": {
+            "items": {
+              "$ref": "#/components/schemas/BandPointOut"
+            },
+            "type": "array",
+            "title": "Bands",
+            "description": "Cash + investments percentiles for every month, from today (month 0)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "scenario_name",
+          "assumption_set",
+          "assumptions",
+          "investment_risk",
+          "volatility",
+          "paths",
+          "seed",
+          "horizon_months",
+          "target_amount",
+          "target_date",
+          "months_to_target_date",
+          "probability_by_target_date",
+          "probability_margin",
+          "goal_dates",
+          "not_reached_share",
+          "value_at_target_date",
+          "shortfall_when_missed",
+          "reached_by",
+          "bands"
+        ],
+        "title": "UncertaintyOut"
+      },
+      "UncertaintyRequest": {
+        "properties": {
+          "assumption_set": {
+            "type": "string",
+            "title": "Assumption Set",
+            "default": "base"
+          },
+          "overrides": {
+            "$ref": "#/components/schemas/OverridesIn",
+            "default": {}
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name",
+            "description": "Defaults to \"Current plan\", or \"What-if\" when overrides are set."
+          },
+          "paths": {
+            "type": "integer",
+            "maximum": 10000.0,
+            "minimum": 1.0,
+            "title": "Paths",
+            "description": "Number of simulated futures.",
+            "default": 1000
+          },
+          "seed": {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0,
+            "title": "Seed",
+            "description": "Fixes the random returns: the same seed always gives the same futures.",
+            "default": 2026
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "UncertaintyRequest"
       },
       "Unsupported": {
         "properties": {

@@ -36,7 +36,7 @@ function result(overrides: Partial<ScenarioResult> = {}): ScenarioResult {
     profile: {
       monthly_net_income: 2500, monthly_expenses: 1700, cash: 10_000, investments: 15_000,
       monthly_investment_contribution: 400, other_monthly_income: 0, debt_balance: 0,
-      monthly_debt_payment: 0, age: 32,
+      monthly_debt_payment: 0, age: 32, investment_risk: "medium",
     },
     assumptions: RATES,
     monthly_contribution: 400,
@@ -145,7 +145,7 @@ describe("where you are today", () => {
     profile: {
       monthly_net_income: 2500, monthly_expenses: 1700, cash: 10_000, investments: 15_000,
       monthly_investment_contribution: 400, other_monthly_income: 0, debt_balance: 2_000,
-      monthly_debt_payment: 0, age: 32,
+      monthly_debt_payment: 0, age: 32, investment_risk: "medium",
     },
     position: {
       total_monthly_income: 2500, monthly_expenses: 1700, monthly_debt_payment: 0,

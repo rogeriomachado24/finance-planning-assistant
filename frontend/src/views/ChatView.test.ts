@@ -19,7 +19,7 @@ function scenario(name: string, goalDate: string, value: number, earlier: number
       profile: {
         monthly_net_income: 2500, monthly_expenses: 1700, cash: 10_000, investments: 15_000,
         monthly_investment_contribution: 400, other_monthly_income: 0, debt_balance: 0,
-        monthly_debt_payment: 0, age: 32,
+        monthly_debt_payment: 0, age: 32, investment_risk: "medium",
       },
       assumptions: RATES, monthly_contribution: 400, monthly_surplus: 800, target_amount: 80_000,
       target_date: "2032-06-01", months_to_target_date: 69, projected_goal_date: goalDate,

@@ -79,6 +79,14 @@ def delete_scenario(session: Session, scenario_id: int) -> None:
     session.commit()
 
 
+def what_if(overrides: ScenarioOverrides | None, name: str | None) -> Scenario:
+    """Unnamed scenarios are called "Current plan", or "What-if" when overrides are given."""
+    overrides = overrides or ScenarioOverrides()
+    if name is None:
+        name = CURRENT_PLAN if overrides == ScenarioOverrides() else WHAT_IF
+    return Scenario(name, overrides)
+
+
 def simulate(
     session: Session,
     today: date,
@@ -86,14 +94,9 @@ def simulate(
     assumption_set: str = DEFAULT_ASSUMPTION_SET,
     name: str | None = None,
 ) -> ScenarioResult:
-    """Project the stored plan, optionally with what-if overrides, from the start of this month.
-    Unnamed results are called "Current plan", or "What-if" when overrides are given."""
-    overrides = overrides or ScenarioOverrides()
-    if name is None:
-        name = CURRENT_PLAN if overrides == ScenarioOverrides() else WHAT_IF
-    scenario = Scenario(name, overrides)
+    """Project the stored plan, optionally with what-if overrides, from the start of this month."""
     return run_scenario(
-        scenario,
+        what_if(overrides, name),
         get_profile(session),
         get_assumption_set(session, assumption_set).assumptions,
         get_active_goal(session).goal,

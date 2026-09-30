@@ -20,7 +20,7 @@ const SAVED_PROFILE: ProfileOut = {
   profile: {
     monthly_net_income: 2500, monthly_expenses: 1700, cash: 10_000, investments: 0,
     monthly_investment_contribution: 0, other_monthly_income: 0, debt_balance: 0,
-    monthly_debt_payment: 0, age: null,
+    monthly_debt_payment: 0, age: null, investment_risk: "medium",
   },
   position: {
     total_monthly_income: 2500, monthly_expenses: 1700, monthly_debt_payment: 0,
@@ -75,9 +75,23 @@ describe("plan page", () => {
     expect(lastBody(fetchMock, "PUT", "/profile")).toEqual({
       monthly_net_income: 2500, monthly_expenses: 1700, other_monthly_income: 0, cash: 10_000,
       investments: 0, monthly_investment_contribution: 0, debt_balance: 0,
-      monthly_debt_payment: 0, age: null,
+      monthly_debt_payment: 0, age: null, investment_risk: "medium",
     });
     expect(wrapper.text()).toContain("Saved. Monthly surplus €800, savings rate 32%.");
+  });
+
+  it("saves the chosen investment risk, medium by default", async () => {
+    const fetchMock = fakeApi({ ...EMPTY_DB, "PUT /profile": [200, SAVED_PROFILE] });
+    const wrapper = await mountPlan();
+
+    expect(wrapper.find<HTMLInputElement>("#profile-investment_risk-medium").element.checked).toBe(true);
+    await wrapper.find("#profile-monthly_net_income").setValue("2500");
+    await wrapper.find("#profile-monthly_expenses").setValue("1700");
+    await wrapper.find("#profile-investment_risk-high").setValue(true);
+    await formWith(wrapper, "profile-cash").trigger("submit");
+    await flushPromises();
+
+    expect(lastBody(fetchMock, "PUT", "/profile")).toMatchObject({ investment_risk: "high" });
   });
 
   it("shows validation errors from the API next to the field", async () => {

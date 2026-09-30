@@ -7,7 +7,14 @@ from typing import Annotated, Self
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from app.domain.cashflow import FinancialPosition
-from app.domain.models import Assumptions, FinancialProfile, Goal, GoalType
+from app.domain.models import (
+    PROFILE_MONEY_FIELDS,
+    Assumptions,
+    FinancialProfile,
+    Goal,
+    GoalType,
+    InvestmentRisk,
+)
 from app.schemas.common import Money, Rate, cents
 from app.services.assumptions import SavedAssumptionSet
 from app.services.goals import SavedGoal
@@ -27,6 +34,11 @@ class ProfileIn(BaseModel):
     debt_balance: Money = 0
     monthly_debt_payment: Money = 0
     age: int | None = Field(None, ge=0, le=120)
+    investment_risk: InvestmentRisk = Field(
+        InvestmentRisk.MEDIUM,
+        description="How widely yearly investment returns vary: low 5%, medium 10%, high 15% "
+        "volatility. Used only by the uncertainty simulation.",
+    )
 
     def to_domain(self) -> FinancialProfile:
         return FinancialProfile(**self.model_dump())
@@ -44,11 +56,12 @@ class Profile(BaseModel):
     debt_balance: float
     monthly_debt_payment: float
     age: int | None
+    investment_risk: InvestmentRisk
 
     @classmethod
     def from_domain(cls, profile: FinancialProfile) -> Self:
         data = asdict(profile)
-        return cls(**{k: v if k == "age" else cents(v) for k, v in data.items()})
+        return cls(**{k: cents(v) if k in PROFILE_MONEY_FIELDS else v for k, v in data.items()})
 
 
 class PositionOut(BaseModel):

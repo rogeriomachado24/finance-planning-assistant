@@ -188,6 +188,7 @@ def facts() -> Facts:
             "debt_balance": 0,
             "monthly_debt_payment": 0,
             "age": 32,
+            "investment_risk": "medium",
         },
         "assumptions": {
             "annual_return": 0.05,

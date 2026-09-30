@@ -13,21 +13,13 @@ import math
 import random
 from dataclasses import dataclass
 from datetime import date
-from enum import StrEnum
 
 from app.domain.errors import InvalidInputError
 from app.domain.goals import months_to_target_date
-from app.domain.models import Assumptions, FinancialProfile, Goal
+from app.domain.models import Assumptions, FinancialProfile, Goal, InvestmentRisk
 from app.domain.periods import add_months
 from app.domain.projection import MAX_PROJECTION_MONTHS, project
 from app.domain.scenarios import Scenario
-
-
-class InvestmentRisk(StrEnum):
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-
 
 VOLATILITY = {InvestmentRisk.LOW: 0.05, InvestmentRisk.MEDIUM: 0.10, InvestmentRisk.HIGH: 0.15}
 """Yearly volatility (standard deviation of log returns) per risk level. Illustrative."""

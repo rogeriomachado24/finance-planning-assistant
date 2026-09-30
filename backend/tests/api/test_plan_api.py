@@ -56,6 +56,11 @@ class TestProfile:
     def test_only_income_and_expenses_are_required(self, client: TestClient):
         body = client.put("/profile", json={"monthly_net_income": 2000, "monthly_expenses": 1500})
         assert body.json()["profile"]["cash"] == 0
+        assert body.json()["profile"]["investment_risk"] == "medium"
+
+    def test_investment_risk_is_saved(self, client: TestClient):
+        client.put("/profile", json=PROFILE_JSON | {"investment_risk": "high"})
+        assert client.get("/profile").json()["profile"]["investment_risk"] == "high"
 
     @pytest.mark.parametrize(
         "change",
@@ -63,6 +68,7 @@ class TestProfile:
             {"cash": -1},
             {"monthly_expenses": 2_000_000_000},
             {"age": 150},
+            {"investment_risk": "extreme"},
             {"salary": 3000},  # unknown field: probably a typo, so rejected
         ],
     )

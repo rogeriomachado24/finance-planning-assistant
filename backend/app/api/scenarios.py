@@ -12,7 +12,8 @@ from app.schemas.scenarios import (
     ScenarioResultOut,
     SimulateRequest,
 )
-from app.services import scenarios
+from app.schemas.uncertainty import UncertaintyOut, UncertaintyRequest
+from app.services import scenarios, uncertainty
 
 router = APIRouter(tags=["projections"])
 
@@ -25,6 +26,25 @@ def simulate(body: SimulateRequest, session: SessionDep, today: TodayDep) -> Sce
         session, today, body.overrides.to_domain(), body.assumption_set, body.name
     )
     return ScenarioResultOut.from_domain(result)
+
+
+@router.post("/simulate/uncertainty")
+def simulate_uncertainty(
+    body: UncertaintyRequest, session: SessionDep, today: TodayDep
+) -> UncertaintyOut:
+    """Run the saved plan (optionally with what-if overrides) over many simulated futures,
+    with yearly investment returns varying around the assumed return at the profile's
+    investment risk. The same seed always gives the same result."""
+    result = uncertainty.simulate(
+        session,
+        today,
+        body.overrides.to_domain(),
+        body.assumption_set,
+        body.name,
+        body.paths,
+        body.seed,
+    )
+    return UncertaintyOut.from_service(result)
 
 
 @router.post("/scenarios/compare")

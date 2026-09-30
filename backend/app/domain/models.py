@@ -15,6 +15,14 @@ def _require_non_negative(obj: object, *names: str) -> None:
             raise InvalidInputError(f"{name} must be >= 0; got {value}")
 
 
+class InvestmentRisk(StrEnum):
+    """How widely the portfolio's yearly returns vary (docs/PHASE2_DESIGN.md, 2.3)."""
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
 @dataclass(frozen=True)
 class FinancialProfile:
     """The user's current position. Facts about today, not forecasts."""
@@ -29,9 +37,11 @@ class FinancialProfile:
     debt_balance: float = 0.0
     monthly_debt_payment: float = 0.0
     age: int | None = None
+    investment_risk: InvestmentRisk = InvestmentRisk.MEDIUM
+    """Used only by the uncertainty simulation; the typical return comes from the assumptions."""
 
     def __post_init__(self) -> None:
-        _require_non_negative(self, *(f.name for f in fields(self) if f.name != "age"))
+        _require_non_negative(self, *PROFILE_MONEY_FIELDS)
         if self.age is not None and not 0 <= self.age <= 120:
             raise InvalidInputError(f"age must be between 0 and 120; got {self.age}")
 
@@ -42,6 +52,11 @@ class FinancialProfile:
     @property
     def liquid_assets(self) -> float:
         return self.cash + self.investments
+
+
+PROFILE_MONEY_FIELDS = tuple(
+    f.name for f in fields(FinancialProfile) if f.name not in ("age", "investment_risk")
+)
 
 
 @dataclass(frozen=True)
