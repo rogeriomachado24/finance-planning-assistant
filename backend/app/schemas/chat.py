@@ -2,6 +2,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
+from app.agents.intents import Intent
 from app.schemas.plan import Rates
 from app.schemas.scenarios import ComparedScenarioOut
 from app.services.assumptions import DEFAULT_ASSUMPTION_SET
@@ -23,7 +24,7 @@ class ChatResponse(BaseModel):
     thread_id: str
     reply: str = Field(description="Commentary. The figures to display are in `results`.")
     status: Literal["answered", "clarification", "declined"]
-    intent: dict = Field(description="How the message was understood (structured).")
+    intent: Intent = Field(description="How the message was understood (structured).")
     assumption_set: str | None
     assumptions: Rates | None = Field(description="The rates behind `results`.")
     results: list[ComparedScenarioOut] = Field(

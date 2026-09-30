@@ -19,7 +19,7 @@ architecture and build order.
 - [x] Financial engine (`backend/app/domain`) with unit and property-based tests
 - [x] Database, services and REST API, with demo data
 - [x] Vue dashboard: projection, plan forms, scenario comparison
-- [ ] LangGraph chat (Ollama / mock)
+- [x] LangGraph chat (Ollama / mock) with a chat page
 
 ## Backend quick start
 

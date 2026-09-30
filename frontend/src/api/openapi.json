@@ -539,10 +539,47 @@
             "title": "Status"
           },
           "intent": {
-            "additionalProperties": true,
-            "type": "object",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/RunProjection"
+              },
+              {
+                "$ref": "#/components/schemas/GoalDate"
+              },
+              {
+                "$ref": "#/components/schemas/RequiredContribution"
+              },
+              {
+                "$ref": "#/components/schemas/WhatIf"
+              },
+              {
+                "$ref": "#/components/schemas/CompareScenarios"
+              },
+              {
+                "$ref": "#/components/schemas/ExplainAssumptions"
+              },
+              {
+                "$ref": "#/components/schemas/NeedsClarification"
+              },
+              {
+                "$ref": "#/components/schemas/Unsupported"
+              }
+            ],
             "title": "Intent",
-            "description": "How the message was understood (structured)."
+            "description": "How the message was understood (structured).",
+            "discriminator": {
+              "propertyName": "kind",
+              "mapping": {
+                "compare_scenarios": "#/components/schemas/CompareScenarios",
+                "explain_assumptions": "#/components/schemas/ExplainAssumptions",
+                "goal_date": "#/components/schemas/GoalDate",
+                "needs_clarification": "#/components/schemas/NeedsClarification",
+                "required_contribution": "#/components/schemas/RequiredContribution",
+                "run_projection": "#/components/schemas/RunProjection",
+                "unsupported": "#/components/schemas/Unsupported",
+                "what_if": "#/components/schemas/WhatIf"
+              }
+            }
           },
           "assumption_set": {
             "anyOf": [
@@ -660,6 +697,36 @@
         "type": "object",
         "title": "CompareRequest"
       },
+      "CompareScenarios": {
+        "properties": {
+          "assumption_set": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "conservative",
+                  "base",
+                  "optimistic"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assumption Set",
+            "description": "Only when the user names one; otherwise the default set is used."
+          },
+          "kind": {
+            "type": "string",
+            "const": "compare_scenarios",
+            "title": "Kind",
+            "default": "compare_scenarios"
+          }
+        },
+        "type": "object",
+        "title": "CompareScenarios",
+        "description": "'Compare my options', 'show the scenarios'."
+      },
       "ComparedScenarioOut": {
         "properties": {
           "name": {
@@ -726,6 +793,66 @@
         ],
         "title": "DeltaOut",
         "description": "How a scenario differs from the baseline (the first scenario compared)."
+      },
+      "ExplainAssumptions": {
+        "properties": {
+          "assumption_set": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "conservative",
+                  "base",
+                  "optimistic"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assumption Set",
+            "description": "Only when the user names one; otherwise the default set is used."
+          },
+          "kind": {
+            "type": "string",
+            "const": "explain_assumptions",
+            "title": "Kind",
+            "default": "explain_assumptions"
+          }
+        },
+        "type": "object",
+        "title": "ExplainAssumptions",
+        "description": "'What are you assuming?'"
+      },
+      "GoalDate": {
+        "properties": {
+          "assumption_set": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "conservative",
+                  "base",
+                  "optimistic"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assumption Set",
+            "description": "Only when the user names one; otherwise the default set is used."
+          },
+          "kind": {
+            "type": "string",
+            "const": "goal_date",
+            "title": "Kind",
+            "default": "goal_date"
+          }
+        },
+        "type": "object",
+        "title": "GoalDate",
+        "description": "'When will I reach my goal?'"
       },
       "GoalIn": {
         "properties": {
@@ -898,6 +1025,26 @@
           "available"
         ],
         "title": "LlmStatus"
+      },
+      "NeedsClarification": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "needs_clarification",
+            "title": "Kind",
+            "default": "needs_clarification"
+          },
+          "question": {
+            "type": "string",
+            "title": "Question"
+          }
+        },
+        "type": "object",
+        "required": [
+          "question"
+        ],
+        "title": "NeedsClarification",
+        "description": "Understood partly, but something is missing, e.g. an amount without what it applies to."
       },
       "OverridesIn": {
         "properties": {
@@ -1281,6 +1428,66 @@
         "type": "object",
         "title": "Rates"
       },
+      "RequiredContribution": {
+        "properties": {
+          "assumption_set": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "conservative",
+                  "base",
+                  "optimistic"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assumption Set",
+            "description": "Only when the user names one; otherwise the default set is used."
+          },
+          "kind": {
+            "type": "string",
+            "const": "required_contribution",
+            "title": "Kind",
+            "default": "required_contribution"
+          }
+        },
+        "type": "object",
+        "title": "RequiredContribution",
+        "description": "'How much do I need to invest each month to get there on time?'"
+      },
+      "RunProjection": {
+        "properties": {
+          "assumption_set": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "conservative",
+                  "base",
+                  "optimistic"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assumption Set",
+            "description": "Only when the user names one; otherwise the default set is used."
+          },
+          "kind": {
+            "type": "string",
+            "const": "run_projection",
+            "title": "Kind",
+            "default": "run_projection"
+          }
+        },
+        "type": "object",
+        "title": "RunProjection",
+        "description": "'Am I on track?', 'show my projection'."
+      },
       "SavedScenarioOut": {
         "properties": {
           "name": {
@@ -1564,6 +1771,31 @@
         "title": "SnapshotOut",
         "description": "Balances at the end of the month, and the flows during it."
       },
+      "Unsupported": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "unsupported",
+            "title": "Kind",
+            "default": "unsupported"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "advice",
+              "out_of_scope",
+              "not_understood"
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "title": "Unsupported",
+        "description": "Advice requests and anything outside the simulator's scope."
+      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -1642,6 +1874,42 @@
           "message"
         ],
         "title": "WarningOut"
+      },
+      "WhatIf": {
+        "properties": {
+          "assumption_set": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "conservative",
+                  "base",
+                  "optimistic"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assumption Set",
+            "description": "Only when the user names one; otherwise the default set is used."
+          },
+          "kind": {
+            "type": "string",
+            "const": "what_if",
+            "title": "Kind",
+            "default": "what_if"
+          },
+          "overrides": {
+            "$ref": "#/components/schemas/OverridesIn"
+          }
+        },
+        "type": "object",
+        "required": [
+          "overrides"
+        ],
+        "title": "WhatIf",
+        "description": "'What if I invest €200 more per month?' The plan itself is never changed."
       }
     }
   }

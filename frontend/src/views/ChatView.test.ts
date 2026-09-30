@@ -1,0 +1,151 @@
+/** The Ask page with a fake API: what's sent, what's shown, and how failures behave. */
+import { flushPromises, mount, RouterLinkStub } from "@vue/test-utils";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { AssumptionSet, ChatResponse, ComparedScenario } from "../api/client";
+import { useChat } from "../composables/useChat";
+import { fakeApi, lastBody } from "../test/fakeApi";
+import ChatView from "./ChatView.vue";
+
+const RATES = { annual_return: 0.05, annual_salary_growth: 0.02, annual_expense_growth: 0.02, annual_inflation: 0.02 };
+const SETS: AssumptionSet[] = ["conservative", "base", "optimistic"].map((name) => ({ name, assumptions: RATES }));
+const HEALTH = { status: "ok", database: "ok", llm: { provider: "phi3", available: true } };
+
+function scenario(name: string, goalDate: string, value: number, earlier: number, diff: number): ComparedScenario {
+  return {
+    name, description: "", saved_id: null,
+    vs_baseline: { goal_months_earlier: earlier, value_at_target_difference: diff },
+    result: {
+      scenario_name: name,
+      profile: {
+        monthly_net_income: 2500, monthly_expenses: 1700, cash: 10_000, investments: 15_000,
+        monthly_investment_contribution: 400, other_monthly_income: 0, debt_balance: 0,
+        monthly_debt_payment: 0, age: 32,
+      },
+      assumptions: RATES, monthly_contribution: 400, monthly_surplus: 800, target_amount: 80_000,
+      target_date: "2032-06-01", months_to_target_date: 69, projected_goal_date: goalDate,
+      months_to_goal: 58 - earlier, projected_value_at_target_date: value, reaches_goal: true,
+      shortfall: 0, required_monthly_contribution: 630.81, warnings: [], snapshots: [],
+    },
+  };
+}
+
+const WHAT_IF: ChatResponse = {
+  thread_id: "t-1",
+  reply: "With €200 more invested each month, the goal is reached on 1 Jun 2031.\n\nAssumptions: base set. This is a projection, not a guarantee.",
+  status: "answered",
+  intent: {
+    kind: "what_if", assumption_set: null,
+    overrides: { monthly_investment_contribution_delta: 200 },
+  },
+  assumption_set: "base",
+  assumptions: RATES,
+  results: [
+    scenario("Current plan", "2031-07-01", 91_961.6, 0, 0),
+    scenario("What-if", "2031-06-01", 94_059.4, 1, 2_097.8),
+  ],
+  provider: "phi3",
+  parsed_by: "rules",
+  worded_by: "template",
+};
+
+const ADVICE: ChatResponse = {
+  ...WHAT_IF,
+  reply: "I can't recommend what to do or which products to choose.",
+  status: "declined",
+  intent: { kind: "unsupported", reason: "advice" },
+  assumption_set: null,
+  assumptions: null,
+  results: [],
+};
+
+async function mountChat() {
+  const wrapper = mount(ChatView, { global: { stubs: { RouterLink: RouterLinkStub } } });
+  await flushPromises();
+  return wrapper;
+}
+
+async function ask(wrapper: Awaited<ReturnType<typeof mountChat>>, text: string) {
+  await wrapper.find("#chat-input").setValue(text);
+  await wrapper.find("form").trigger("submit");
+  await flushPromises();
+}
+
+beforeEach(() => useChat().reset());
+afterEach(() => vi.unstubAllGlobals());
+
+describe("Ask page", () => {
+  it("offers examples and says whether the model is ready", async () => {
+    fakeApi({ "GET /assumptions": [200, SETS], "GET /health": [200, HEALTH] });
+    const wrapper = await mountChat();
+    expect(wrapper.text()).toContain("AI model: phi3, ready");
+    expect(wrapper.text()).toContain("never calculates");
+    expect(wrapper.findAll("button").some((b) => b.text() === "Compare my options")).toBe(true);
+  });
+
+  it("shows the reply, the engine's figures and how the question was understood", async () => {
+    const fetchMock = fakeApi({
+      "GET /assumptions": [200, SETS], "GET /health": [200, HEALTH], "POST /chat": [200, WHAT_IF],
+    });
+    const wrapper = await mountChat();
+    await ask(wrapper, "What if I invest €200 more per month?");
+
+    expect(lastBody(fetchMock, "POST", "/chat")).toEqual({
+      message: "What if I invest €200 more per month?", thread_id: null, assumption_set: "base",
+    });
+    const reply = wrapper.find("article");
+    expect(reply.text()).toContain("This is a projection, not a guarantee.");
+    expect(reply.text()).toContain("€91,962"); // current plan card
+    expect(reply.text()).toContain("€94,059"); // what-if card
+    expect(reply.text().replace(/\s+/g, " ")).toContain("1 month earlier · +€2,098");
+    expect(reply.text()).toContain("Understood as: what if: invest €200 more a month · by rules");
+  });
+
+  it("continues the same conversation, with the chosen assumption set", async () => {
+    const fetchMock = fakeApi({
+      "GET /assumptions": [200, SETS], "GET /health": [200, HEALTH], "POST /chat": [200, WHAT_IF],
+    });
+    const wrapper = await mountChat();
+    await ask(wrapper, "What if I invest €200 more per month?");
+    await wrapper.find('input[value="optimistic"]').setValue();
+    await ask(wrapper, "And with €300 instead?");
+
+    expect(lastBody(fetchMock, "POST", "/chat")).toMatchObject({
+      thread_id: "t-1", assumption_set: "optimistic",
+    });
+  });
+
+  it("labels refusals by their reason and shows no figures", async () => {
+    fakeApi({ "GET /assumptions": [200, SETS], "GET /health": [200, HEALTH], "POST /chat": [200, ADVICE] });
+    const wrapper = await mountChat();
+    await ask(wrapper, "Should I buy an ETF?");
+
+    const reply = wrapper.find("article");
+    expect(reply.text()).toContain("I don't give advice");
+    expect(reply.text()).not.toContain("€");
+  });
+
+  it("keeps the question when the API fails, and retries it", async () => {
+    fakeApi({ "GET /assumptions": [200, SETS], "GET /health": [200, HEALTH], "POST /chat": [500, null] });
+    const wrapper = await mountChat();
+    await ask(wrapper, "Am I on track?");
+    expect(wrapper.find('[role="alert"]').text()).toContain("Is the backend running?");
+
+    fakeApi({ "GET /assumptions": [200, SETS], "GET /health": [200, HEALTH], "POST /chat": [200, WHAT_IF] });
+    await wrapper.findAll("button").find((b) => b.text() === "Try again")!.trigger("click");
+    await flushPromises();
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+    expect(wrapper.findAll(".bg-ink").filter((b) => b.text() === "Am I on track?")).toHaveLength(1);
+    expect(wrapper.find("article").exists()).toBe(true);
+  });
+
+  it("starts a new conversation", async () => {
+    const fetchMock = fakeApi({
+      "GET /assumptions": [200, SETS], "GET /health": [200, HEALTH], "POST /chat": [200, WHAT_IF],
+    });
+    const wrapper = await mountChat();
+    await ask(wrapper, "What if I invest €200 more per month?");
+    await wrapper.findAll("button").find((b) => b.text() === "New conversation")!.trigger("click");
+    await ask(wrapper, "Am I on track?");
+    expect(lastBody(fetchMock, "POST", "/chat").thread_id).toBeNull();
+  });
+});

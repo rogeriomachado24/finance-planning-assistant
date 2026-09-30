@@ -86,6 +86,13 @@ def duration(months: int) -> str:
     return " ".join(parts)
 
 
+def relative_timing(months: int) -> str:
+    """For lists: 4 -> "4 months earlier", -1 -> "1 month later", 0 -> "same time"."""
+    if months == 0:
+        return "same time"
+    return f"{duration(abs(months))} {'earlier' if months > 0 else 'later'}"
+
+
 def months_earlier(months: int) -> str:
     if months == 0:
         return "at the same time as"
@@ -247,7 +254,7 @@ def _comparison(results: list[ComparedScenarioOut]) -> str:
         r, delta = s.result, s.vs_baseline
         when = day(r.projected_goal_date) if r.projected_goal_date else "not within 50 years"
         timing = (
-            f" ({months_earlier(delta.goal_months_earlier).replace(' than', '')})"
+            f" ({relative_timing(delta.goal_months_earlier)})"
             if delta.goal_months_earlier is not None
             else ""
         )

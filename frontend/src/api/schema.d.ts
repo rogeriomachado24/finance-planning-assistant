@@ -259,9 +259,7 @@ export interface components {
              * Intent
              * @description How the message was understood (structured).
              */
-            intent: {
-                [key: string]: unknown;
-            };
+            intent: components["schemas"]["RunProjection"] | components["schemas"]["GoalDate"] | components["schemas"]["RequiredContribution"] | components["schemas"]["WhatIf"] | components["schemas"]["CompareScenarios"] | components["schemas"]["ExplainAssumptions"] | components["schemas"]["NeedsClarification"] | components["schemas"]["Unsupported"];
             /** Assumption Set */
             assumption_set: string | null;
             /** @description The rates behind `results`. */
@@ -309,6 +307,22 @@ export interface components {
              */
             scenarios?: components["schemas"]["ScenarioIn"][] | null;
         };
+        /**
+         * CompareScenarios
+         * @description 'Compare my options', 'show the scenarios'.
+         */
+        CompareScenarios: {
+            /**
+             * Assumption Set
+             * @description Only when the user names one; otherwise the default set is used.
+             */
+            assumption_set?: ("conservative" | "base" | "optimistic") | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "compare_scenarios";
+        };
         /** ComparedScenarioOut */
         ComparedScenarioOut: {
             /** Name */
@@ -338,6 +352,38 @@ export interface components {
              * @description Cash + investments on the target date, minus the baseline's.
              */
             value_at_target_difference: number;
+        };
+        /**
+         * ExplainAssumptions
+         * @description 'What are you assuming?'
+         */
+        ExplainAssumptions: {
+            /**
+             * Assumption Set
+             * @description Only when the user names one; otherwise the default set is used.
+             */
+            assumption_set?: ("conservative" | "base" | "optimistic") | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "explain_assumptions";
+        };
+        /**
+         * GoalDate
+         * @description 'When will I reach my goal?'
+         */
+        GoalDate: {
+            /**
+             * Assumption Set
+             * @description Only when the user names one; otherwise the default set is used.
+             */
+            assumption_set?: ("conservative" | "base" | "optimistic") | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "goal_date";
         };
         /** GoalIn */
         GoalIn: {
@@ -411,6 +457,19 @@ export interface components {
              * @description Whether the model answers. The chat works either way: without a model, rules and templates handle every message.
              */
             available: boolean;
+        };
+        /**
+         * NeedsClarification
+         * @description Understood partly, but something is missing, e.g. an amount without what it applies to.
+         */
+        NeedsClarification: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "needs_clarification";
+            /** Question */
+            question: string;
         };
         /**
          * OverridesIn
@@ -574,6 +633,38 @@ export interface components {
              */
             annual_inflation: number;
         };
+        /**
+         * RequiredContribution
+         * @description 'How much do I need to invest each month to get there on time?'
+         */
+        RequiredContribution: {
+            /**
+             * Assumption Set
+             * @description Only when the user names one; otherwise the default set is used.
+             */
+            assumption_set?: ("conservative" | "base" | "optimistic") | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "required_contribution";
+        };
+        /**
+         * RunProjection
+         * @description 'Am I on track?', 'show my projection'.
+         */
+        RunProjection: {
+            /**
+             * Assumption Set
+             * @description Only when the user names one; otherwise the default set is used.
+             */
+            assumption_set?: ("conservative" | "base" | "optimistic") | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "run_projection";
+        };
         /** SavedScenarioOut */
         SavedScenarioOut: {
             /** Name */
@@ -700,6 +791,22 @@ export interface components {
             /** Net Worth */
             net_worth: number;
         };
+        /**
+         * Unsupported
+         * @description Advice requests and anything outside the simulator's scope.
+         */
+        Unsupported: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "unsupported";
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "advice" | "out_of_scope" | "not_understood";
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -733,6 +840,23 @@ export interface components {
             date: string;
             /** Message */
             message: string;
+        };
+        /**
+         * WhatIf
+         * @description 'What if I invest €200 more per month?' The plan itself is never changed.
+         */
+        WhatIf: {
+            /**
+             * Assumption Set
+             * @description Only when the user names one; otherwise the default set is used.
+             */
+            assumption_set?: ("conservative" | "base" | "optimistic") | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "what_if";
+            overrides: components["schemas"]["OverridesIn"];
         };
     };
     responses: never;

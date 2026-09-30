@@ -165,3 +165,11 @@ class TestNotAnswered:
         chat.say("Should I buy an ETF?")
         state = chat.say("And with €300 instead?")
         assert state["intent"]["overrides"]["monthly_expenses_delta"] == -300
+
+
+def test_comparison_lines_read_naturally(chat: Chat):
+    """Regression: a scenario reaching the goal in the same month read "(at the same time as)"."""
+    reply = chat.say("Compare my options")["reply"]
+    assert "(same time)" in reply or "earlier)" in reply
+    assert "as)" not in reply
+    assert "than)" not in reply

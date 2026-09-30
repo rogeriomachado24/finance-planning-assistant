@@ -1,5 +1,6 @@
 """FastAPI application. Run with: uvicorn app.main:app --reload (from backend/)."""
 
+import logging
 import threading
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -14,6 +15,18 @@ from app.config import Settings, get_settings
 from app.db.session import create_db_engine, create_session_factory
 from app.services.setup import prepare_database
 
+
+def _show_app_logs() -> None:
+    """Print the app's own INFO messages (e.g. why a model answer was rejected) in the
+    server log. Uvicorn only configures its own loggers."""
+    logger = logging.getLogger("app")
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("%(levelname)s:     %(name)s: %(message)s"))
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+
+
 DESCRIPTION = """
 Financial goal simulator. All figures come from a deterministic, tested engine.
 
@@ -23,6 +36,7 @@ and are not guarantees. Amounts are EUR, rates are decimals (`0.05` = 5%).
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
+    _show_app_logs()
     settings = settings or get_settings()
     engine = create_db_engine(settings.database_url)
     session_factory = create_session_factory(engine)

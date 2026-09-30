@@ -271,8 +271,8 @@ Money columns use `Numeric`. No user table in Phase 1.
 2. Domain engine and tests ✓
 3. DB, services, REST API and integration tests, seed demo data ✓
 4. Vue dashboard: onboarding forms, projection chart, scenario comparison ✓
-5. **LangGraph chat: mock provider first, then Ollama** ← next
-6. Polish: README, architecture diagram, screenshots, CI
+5. LangGraph chat: mock provider first, then Ollama, then the chat page ✓
+6. **Polish: README, architecture diagram, screenshots, CI** ← next
 
 ## 11. Decision log
 
@@ -304,6 +304,8 @@ Money columns use `Numeric`. No user table in Phase 1.
 | Rules parse first; the LLM only when the rules can't place a message | Measured: letting phi3 override the rules lowered accuracy (74% vs 86%), because its plausible-but-wrong answers pass number checks |
 | LLM output is checked deterministically; failures fall back silently | Numbers in a parsed request must appear in the message; reworded replies must copy every figure as a whole phrase from the facts |
 | Replies are templated by default; LLM rewording is opt-in (`OLLAMA_REWRITE_REPLIES`) | A small model's rewording introduced factual errors; exact, checkable wording matters more than style in a finance tool |
+| The chat response's `intent` is typed (the discriminated union), not a dict | The UI can show "Understood as …" from typed data; the OpenAPI docs list every intent |
+| Chat page: reply text as commentary, engine figures as cards, "Understood as …" and who parsed/wrote each reply | Misreadings are visible at once; the numbers shown never come from model text |
 | The model warms up in a background thread at startup | Ollama's first load took ~90 s; the API is usable immediately and the chat falls back to rules until the model answers |
 | Comparison chart: one line per scenario in fixed categorical colours, legend + tooltip + table instead of end labels | End labels of converging lines collide; colour follows the scenario, never its position; at most 8 hues, extra scenarios appear in the table only |
 | Ollama as default provider | Free, local, private; provider stays configurable |

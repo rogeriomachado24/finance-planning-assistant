@@ -24,6 +24,10 @@ export type ComparedScenario = Schemas["ComparedScenarioOut"];
 export type Overrides = Schemas["OverridesIn"];
 export type ScenarioIn = Schemas["ScenarioIn"];
 export type SavedScenario = Schemas["SavedScenarioOut"];
+export type ChatRequest = Schemas["ChatRequest"];
+export type ChatResponse = Schemas["ChatResponse"];
+export type ChatIntent = ChatResponse["intent"];
+export type Health = Schemas["HealthOut"];
 
 export class ApiError extends Error {
   constructor(
@@ -93,4 +97,6 @@ export const api = {
     request<Comparison>("/scenarios/compare", send("POST", { assumption_set: assumptionSet })),
   saveScenario: (body: ScenarioIn) => request<SavedScenario>("/scenarios", send("POST", body)),
   deleteScenario: (id: number) => request<void>(`/scenarios/${id}`, { method: "DELETE" }),
+  chat: (body: ChatRequest) => request<ChatResponse>("/chat", send("POST", body)),
+  health: () => request<Health>("/health"),
 };
