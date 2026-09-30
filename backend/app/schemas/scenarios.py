@@ -6,6 +6,7 @@ from typing import Annotated, Self
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
+from app.domain.goals import GoalProgress
 from app.domain.projection import MonthSnapshot, ProjectionWarning, WarningCode
 from app.domain.scenarios import Scenario, ScenarioDelta, ScenarioOverrides, ScenarioResult
 from app.schemas.common import MAX_MONEY, Money, Rate, cents
@@ -92,6 +93,20 @@ class CompareRequest(BaseModel):
     )
 
 
+class GoalProgressOut(BaseModel):
+    current_amount: float = Field(description="Cash + investments today.")
+    remaining: float = Field(description="Still to go; 0 once the target is covered.")
+    fraction: float = Field(description="Share of the target already there, from 0 to 1.")
+
+    @classmethod
+    def from_domain(cls, progress: GoalProgress) -> Self:
+        return cls(
+            current_amount=cents(progress.current_amount),
+            remaining=cents(progress.remaining),
+            fraction=round(progress.fraction, 4),
+        )
+
+
 class WarningOut(BaseModel):
     code: WarningCode
     month: int = Field(description="First month in which the condition occurs.")
@@ -146,6 +161,7 @@ class ScenarioResultOut(BaseModel):
         description="Monthly amount that reaches the target on the target date at the assumed "
         "return. Null when the target date has arrived and the goal isn't reached."
     )
+    goal_progress: GoalProgressOut
     warnings: list[WarningOut]
     snapshots: list[SnapshotOut] = Field(description="Monthly series, from today (month 0).")
 
@@ -167,6 +183,7 @@ class ScenarioResultOut(BaseModel):
             reaches_goal=r.reaches_goal,
             shortfall=cents(r.shortfall),
             required_monthly_contribution=None if required is None else cents(required),
+            goal_progress=GoalProgressOut.from_domain(r.goal_progress),
             warnings=[WarningOut.from_domain(w) for w in r.warnings],
             snapshots=[SnapshotOut.from_domain(s) for s in r.snapshots],
         )

@@ -50,6 +50,7 @@ function result(overrides: Partial<ScenarioResult> = {}): ScenarioResult {
     reaches_goal: true,
     shortfall: 0,
     required_monthly_contribution: 630.81,
+    goal_progress: { current_amount: 25_000, remaining: 55_000, fraction: 0.3125 },
     warnings: [],
     snapshots: Array.from({ length: 70 }, (_, m) => snapshot(m, 25_000 + m * 970)),
     ...overrides,
@@ -136,5 +137,44 @@ describe("dashboard", () => {
 
     expect(text).toContain("Couldn't load the projection");
     expect(text).toContain("Is the backend running?");
+  });
+});
+
+describe("where you are today", () => {
+  const PROFILE_OUT = {
+    profile: {
+      monthly_net_income: 2500, monthly_expenses: 1700, cash: 10_000, investments: 15_000,
+      monthly_investment_contribution: 400, other_monthly_income: 0, debt_balance: 2_000,
+      monthly_debt_payment: 0, age: 32,
+    },
+    position: {
+      total_monthly_income: 2500, monthly_expenses: 1700, monthly_debt_payment: 0,
+      monthly_surplus: 800, savings_rate: 0.32, liquid_assets: 25_000, net_worth: 23_000,
+    },
+  };
+
+  it("shows progress towards the goal and today's figures, all from the API", async () => {
+    fakeApi({
+      "/assumptions": [200, SETS], "/goals": [200, [GOAL]], "/simulate": [200, result()],
+      "/profile": [200, PROFILE_OUT],
+    });
+    const wrapper = await mountApp();
+    const today = wrapper.find('[aria-labelledby="today-heading"]');
+
+    expect(today.text()).toContain("€25,000 of €80,000 · 31.25% of the goal");
+    expect(today.text()).toContain("€55,000 to go");
+    const meter = today.find('[role="meter"]');
+    expect(meter.attributes("aria-valuenow")).toBe("31");
+    expect(meter.attributes("aria-valuetext")).toContain("31.25% of the goal");
+    expect(today.text()).toContain("€23,000"); // net worth
+    expect(today.text()).toContain("after €2,000 debt");
+    expect(today.text()).toContain("32%"); // savings rate
+  });
+
+  it("still shows the progress when today's figures can't be loaded", async () => {
+    fakeApi({ "/assumptions": [200, SETS], "/goals": [200, [GOAL]], "/simulate": [200, result()] });
+    const today = (await mountApp()).find('[aria-labelledby="today-heading"]');
+    expect(today.text()).toContain("31.25% of the goal");
+    expect(today.find("dl").exists()).toBe(false);
   });
 });

@@ -206,6 +206,7 @@ def facts() -> Facts:
         "reaches_goal": True,
         "shortfall": 0,
         "required_monthly_contribution": 630.81,
+        "goal_progress": {"current_amount": 25000, "remaining": 55000, "fraction": 0.3125},
         "warnings": [],
         "snapshots": [],
     }

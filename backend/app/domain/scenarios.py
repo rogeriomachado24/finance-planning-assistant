@@ -11,6 +11,8 @@ from datetime import date
 from app.domain.cashflow import summarize_position
 from app.domain.errors import InvalidInputError
 from app.domain.goals import (
+    GoalProgress,
+    calculate_goal_progress,
     calculate_required_monthly_contribution,
     find_goal_month,
     months_to_target_date,
@@ -108,6 +110,8 @@ class ScenarioResult:
     """Whether liquid assets reach the target by the target date."""
     shortfall: float
     required_monthly_contribution: float | None
+    goal_progress: GoalProgress
+    """How far today's cash + investments already are towards the target."""
     warnings: tuple[ProjectionWarning, ...]
     snapshots: tuple[MonthSnapshot, ...]
     """Monthly series up to the later of the target date and the goal date."""
@@ -154,6 +158,7 @@ def run_scenario(
             eff_profile.investments,
             eff_assumptions.annual_return,
         ),
+        goal_progress=calculate_goal_progress(eff_profile.liquid_assets, goal.target_amount),
         warnings=warnings,
         snapshots=series,
     )

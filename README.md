@@ -15,9 +15,9 @@ answer shows the assumptions it depends on.
 
 | Page | What you get |
 |---|---|
-| **Projection** | When the goal is reached, the value on the target date, the monthly amount needed to get there on time, and a month-by-month chart with a table view. Switch between conservative, base and optimistic assumptions. |
+| **Projection** | Where you are today (progress towards the goal, net worth, savings rate), when the goal is reached, the value on the target date, the monthly amount needed to get there on time, and a month-by-month chart with a table view. Switch between conservative, base and optimistic assumptions. |
 | **Compare** | Scenarios side by side (invest more, earn more, your own what-ifs), with differences from the current plan. |
-| **Ask** | A chat that answers questions about your plan. Replies show the engine's figures as cards, how the question was understood, and whether rules or the model understood it. Advice requests are declined. |
+| **Ask** | A chat that answers questions about your plan. Replies show the engine's figures as cards, how the question was understood, and whether rules or the model understood it. What-ifs can be saved to Compare. Advice requests are declined. |
 | **Your plan** | Where a new user starts: two guided steps (your finances, your goal) with empty fields and examples, plus three editable assumption sets. |
 
 Everything runs locally: SQLite for storage, and optionally [Ollama](https://ollama.com) for a

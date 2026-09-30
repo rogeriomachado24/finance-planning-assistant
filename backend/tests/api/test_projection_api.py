@@ -36,6 +36,14 @@ class TestSimulate:
             "annual_inflation": 0.02,
         }
 
+    def test_goal_progress_today(self, plan_client: TestClient):
+        body = plan_client.post("/simulate", json={}).json()
+        assert body["goal_progress"] == {
+            "current_amount": 25000,
+            "remaining": 55000,
+            "fraction": 0.3125,
+        }
+
     def test_what_if_is_not_saved(self, plan_client: TestClient):
         body = plan_client.post("/simulate", json={"overrides": MORE_INVESTED}).json()
         assert body["scenario_name"] == "What-if"

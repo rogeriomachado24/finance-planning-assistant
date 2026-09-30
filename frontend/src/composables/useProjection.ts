@@ -4,13 +4,22 @@
  * layout never jumps.
  */
 import { onMounted, ref, watch } from "vue";
-import { api, ApiError, type AssumptionSet, type Goal, type ScenarioResult } from "../api/client";
+import {
+  api,
+  ApiError,
+  type AssumptionSet,
+  type Goal,
+  type ProfileOut,
+  type ScenarioResult,
+} from "../api/client";
 
 export function useProjection() {
   const assumptionSets = ref<AssumptionSet[]>([]);
   const selectedSet = ref("base");
   const goal = ref<Goal | null>(null);
   const result = ref<ScenarioResult | null>(null);
+  /** Today's figures (net worth, savings rate…); they don't depend on the assumptions. */
+  const today = ref<ProfileOut | null>(null);
   const error = ref<ApiError | null>(null);
   const loading = ref(true);
 
@@ -35,8 +44,13 @@ export function useProjection() {
 
   async function load() {
     try {
-      const [sets, goals] = await Promise.all([api.assumptionSets(), api.goals()]);
+      const [sets, goals, profile] = await Promise.all([
+        api.assumptionSets(),
+        api.goals(),
+        api.profile().catch(() => null), // optional extra: the projection works without it
+      ]);
       assumptionSets.value = sets;
+      today.value = profile;
       goal.value = goals.find((g) => g.is_active) ?? null;
     } catch (e) {
       error.value = e instanceof ApiError ? e : new ApiError(0, String(e));
@@ -49,5 +63,5 @@ export function useProjection() {
   watch(selectedSet, loadProjection);
   onMounted(load);
 
-  return { assumptionSets, selectedSet, goal, result, error, loading, reload: load };
+  return { assumptionSets, selectedSet, goal, result, today, error, loading, reload: load };
 }

@@ -89,6 +89,15 @@ class TestRunScenario:
         assert result.projected_value_at_target_date >= 80_000
         assert result.projected_goal_date <= goal.target_date
 
+    def test_goal_progress_is_measured_from_today(self, profile, assumptions, goal, start):
+        """€10,000 cash + €15,000 invested towards €80,000."""
+        progress = run_scenario(
+            Scenario("Current plan"), profile, assumptions, goal, start
+        ).goal_progress
+        assert progress.current_amount == 25_000
+        assert progress.remaining == 55_000
+        assert progress.fraction == 0.3125
+
     def test_value_at_target_date_matches_the_projection(self, profile, assumptions, goal, start):
         result = run_scenario(Scenario("Current plan"), profile, assumptions, goal, start)
         expected = project(profile, assumptions, start, 68).at(68).liquid_assets

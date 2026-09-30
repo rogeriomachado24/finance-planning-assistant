@@ -34,14 +34,24 @@ const REASONS: Record<string, string> = {
   not_understood: "not understood",
 };
 
+/** The changes a what-if makes, in words: ["invest €200 more a month", ...]. */
+export function describeChanges(overrides: Overrides): string[] {
+  return CHANGES.flatMap(([key, describe]) => {
+    const value = overrides[key];
+    return value === null || value === undefined ? [] : [describe(value)];
+  });
+}
+
+/** A default name for saving a what-if: "Invest €200 more a month". */
+export function scenarioName(overrides: Overrides): string {
+  const text = describeChanges(overrides).join(" and ");
+  return (text.charAt(0).toUpperCase() + text.slice(1)).slice(0, 100);
+}
+
 export function describeIntent(intent: ChatIntent): string {
   let text: string;
   if (intent.kind === "what_if") {
-    const changes = CHANGES.flatMap(([key, describe]) => {
-      const value = intent.overrides[key];
-      return value === null || value === undefined ? [] : [describe(value)];
-    });
-    text = `what if: ${changes.join(" and ")}`;
+    text = `what if: ${describeChanges(intent.overrides).join(" and ")}`;
   } else if (intent.kind === "unsupported") {
     text = REASONS[intent.reason];
   } else {

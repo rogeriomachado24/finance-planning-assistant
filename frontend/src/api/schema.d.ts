@@ -447,6 +447,24 @@ export interface components {
             /** Is Active */
             is_active: boolean;
         };
+        /** GoalProgressOut */
+        GoalProgressOut: {
+            /**
+             * Current Amount
+             * @description Cash + investments today.
+             */
+            current_amount: number;
+            /**
+             * Remaining
+             * @description Still to go; 0 once the target is covered.
+             */
+            remaining: number;
+            /**
+             * Fraction
+             * @description Share of the target already there, from 0 to 1.
+             */
+            fraction: number;
+        };
         /**
          * GoalType
          * @enum {string}
@@ -771,6 +789,7 @@ export interface components {
              * @description Monthly amount that reaches the target on the target date at the assumed return. Null when the target date has arrived and the goal isn't reached.
              */
             required_monthly_contribution: number | null;
+            goal_progress: components["schemas"]["GoalProgressOut"];
             /** Warnings */
             warnings: components["schemas"]["WarningOut"][];
             /**

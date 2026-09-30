@@ -8,12 +8,14 @@
 import { computed } from "vue";
 import type { ChatResponse } from "../../api/client";
 import { formatDate, formatEur, formatMonthsEarlier, formatSignedEur } from "../../lib/format";
+import SaveToCompare from "./SaveToCompare.vue";
 
 const props = defineProps<{ response: ChatResponse }>();
 
 const kind = computed(() => props.response.intent.kind);
 const results = computed(() => props.response.results);
 const current = computed(() => results.value[0]?.result ?? null);
+const whatIf = computed(() => (props.response.intent.kind === "what_if" ? props.response.intent : null));
 
 const goalDate = (date: string | null) => (date ? formatDate(date) : "Not within 50 years");
 </script>
@@ -44,6 +46,8 @@ const goalDate = (date: string | null) => (date ? formatDate(date) : "Not within
         </p>
       </div>
     </div>
+
+    <SaveToCompare v-if="whatIf" :overrides="whatIf.overrides" />
 
     <!-- Comparison: one line per scenario -->
     <ul
@@ -100,12 +104,13 @@ const goalDate = (date: string | null) => (date ? formatDate(date) : "Not within
       </div>
     </dl>
 
-    <p class="text-xs text-ink-2">
+    <!-- What-ifs get "Save to Compare" instead: they only appear on Compare once saved -->
+    <p v-if="!whatIf" class="text-xs text-ink-2">
       <RouterLink
-        :to="kind === 'compare_scenarios' || kind === 'what_if' ? '/compare' : '/'"
+        :to="kind === 'compare_scenarios' ? '/compare' : '/'"
         class="font-medium text-ink underline underline-offset-2"
       >
-        {{ kind === "compare_scenarios" || kind === "what_if" ? "Open Compare" : "See the projection" }}
+        {{ kind === "compare_scenarios" ? "Open Compare" : "See the projection" }}
       </RouterLink>
     </p>
   </div>

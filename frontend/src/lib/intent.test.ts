@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ChatIntent } from "../api/client";
-import { describeIntent } from "./intent";
+import { describeIntent, scenarioName } from "./intent";
 
 const whatIf = (overrides: Record<string, number>, assumption_set: string | null = null) =>
   ({ kind: "what_if", overrides, assumption_set }) as ChatIntent;
@@ -26,6 +26,15 @@ describe("describeIntent", () => {
     );
     expect(describeIntent({ kind: "unsupported", reason: "advice" } as ChatIntent)).toBe(
       "a request for advice",
+    );
+  });
+});
+
+describe("scenarioName", () => {
+  it("names a saved what-if after its changes", () => {
+    expect(scenarioName({ monthly_investment_contribution_delta: 200 })).toBe("Invest €200 more a month");
+    expect(scenarioName({ monthly_expenses_delta: -150, annual_return: 0.03 })).toBe(
+      "Spend €150 less a month and a 3% yearly return",
     );
   });
 });

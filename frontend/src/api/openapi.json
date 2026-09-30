@@ -980,6 +980,32 @@
         ],
         "title": "GoalOut"
       },
+      "GoalProgressOut": {
+        "properties": {
+          "current_amount": {
+            "type": "number",
+            "title": "Current Amount",
+            "description": "Cash + investments today."
+          },
+          "remaining": {
+            "type": "number",
+            "title": "Remaining",
+            "description": "Still to go; 0 once the target is covered."
+          },
+          "fraction": {
+            "type": "number",
+            "title": "Fraction",
+            "description": "Share of the target already there, from 0 to 1."
+          }
+        },
+        "type": "object",
+        "required": [
+          "current_amount",
+          "remaining",
+          "fraction"
+        ],
+        "title": "GoalProgressOut"
+      },
       "GoalType": {
         "type": "string",
         "enum": [
@@ -1677,6 +1703,9 @@
             "title": "Required Monthly Contribution",
             "description": "Monthly amount that reaches the target on the target date at the assumed return. Null when the target date has arrived and the goal isn't reached."
           },
+          "goal_progress": {
+            "$ref": "#/components/schemas/GoalProgressOut"
+          },
           "warnings": {
             "items": {
               "$ref": "#/components/schemas/WarningOut"
@@ -1709,6 +1738,7 @@
           "reaches_goal",
           "shortfall",
           "required_monthly_contribution",
+          "goal_progress",
           "warnings",
           "snapshots"
         ],

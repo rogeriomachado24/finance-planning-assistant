@@ -6,11 +6,12 @@ import GoalStatus from "../components/GoalStatus.vue";
 import SetupNeeded from "../components/SetupNeeded.vue";
 import ProjectionCard from "../components/ProjectionCard.vue";
 import StatTile from "../components/StatTile.vue";
+import TodayCard from "../components/TodayCard.vue";
 import WarningList from "../components/WarningList.vue";
 import { useProjection } from "../composables/useProjection";
 import { formatDate, formatEur, formatPercent } from "../lib/format";
 
-const { assumptionSets, selectedSet, goal, result, error, loading, reload } = useProjection();
+const { assumptionSets, selectedSet, goal, result, today, error, loading, reload } = useProjection();
 
 const setNames = computed(() => assumptionSets.value.map((s) => s.name));
 const noPlanYet = computed(() => error.value?.status === 404);
@@ -52,8 +53,9 @@ const noPlanYet = computed(() => error.value?.status === 404);
     >
       <div class="min-w-0 space-y-5">
         <GoalStatus :result="result" :goal="goal" />
+        <TodayCard :result="result" :today="today" />
 
-        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="grid gap-4 sm:grid-cols-3">
           <StatTile
             label="Value on the target date"
             :value="formatEur(result.projected_value_at_target_date)"
@@ -63,11 +65,6 @@ const noPlanYet = computed(() => error.value?.status === 404);
             label="Needed per month"
             :value="result.required_monthly_contribution === null ? '—' : formatEur(result.required_monthly_contribution)"
             :note="`Invested at ${formatPercent(result.assumptions.annual_return)} a year, to reach the target on time`"
-          />
-          <StatTile
-            label="Monthly surplus today"
-            :value="formatEur(result.monthly_surplus)"
-            note="Income minus expenses and debt payments"
           />
           <StatTile
             label="Invested each month"

@@ -24,7 +24,8 @@ function scenario(name: string, goalDate: string, value: number, earlier: number
       assumptions: RATES, monthly_contribution: 400, monthly_surplus: 800, target_amount: 80_000,
       target_date: "2032-06-01", months_to_target_date: 69, projected_goal_date: goalDate,
       months_to_goal: 58 - earlier, projected_value_at_target_date: value, reaches_goal: true,
-      shortfall: 0, required_monthly_contribution: 630.81, warnings: [], snapshots: [],
+      shortfall: 0, required_monthly_contribution: 630.81,
+    goal_progress: { current_amount: 25_000, remaining: 55_000, fraction: 0.3125 }, warnings: [], snapshots: [],
     },
   };
 }
@@ -147,5 +148,34 @@ describe("Ask page", () => {
     await wrapper.findAll("button").find((b) => b.text() === "New conversation")!.trigger("click");
     await ask(wrapper, "Am I on track?");
     expect(lastBody(fetchMock, "POST", "/chat").thread_id).toBeNull();
+  });
+
+  it("saves a what-if to Compare under a suggested name", async () => {
+    const fetchMock = fakeApi({
+      "GET /assumptions": [200, SETS], "GET /health": [200, HEALTH], "POST /chat": [200, WHAT_IF],
+      "POST /scenarios": [201, { id: 5, name: "Invest €200 more a month", description: "", overrides: {} }],
+    });
+    const wrapper = await mountChat();
+    await ask(wrapper, "What if I invest €200 more per month?");
+
+    await wrapper.findAll("button").find((b) => b.text() === "Save to Compare")!.trigger("click");
+    const name = wrapper.find<HTMLInputElement>("article input[type=text]");
+    expect(name.element.value).toBe("Invest €200 more a month");
+    await wrapper.find("article form").trigger("submit");
+    await flushPromises();
+
+    expect(lastBody(fetchMock, "POST", "/scenarios")).toEqual({
+      name: "Invest €200 more a month",
+      description: "Saved from the chat.",
+      overrides: { monthly_investment_contribution_delta: 200 },
+    });
+    expect(wrapper.find("article").text()).toContain("Saved as “Invest €200 more a month”.");
+  });
+
+  it("offers Save to Compare only for what-ifs", async () => {
+    fakeApi({ "GET /assumptions": [200, SETS], "GET /health": [200, HEALTH], "POST /chat": [200, ADVICE] });
+    const wrapper = await mountChat();
+    await ask(wrapper, "Should I buy an ETF?");
+    expect(wrapper.findAll("button").some((b) => b.text() === "Save to Compare")).toBe(false);
   });
 });

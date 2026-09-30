@@ -148,8 +148,8 @@ Scenario **definitions** are stored; **results** are always recomputed.
 
 Each result contains: scenario name, effective assumptions, contribution, target amount and date,
 projected goal date, months to goal, projected value at target date, whether the goal is reached,
-shortfall, required monthly contribution, current surplus, warnings, and the monthly series used
-by the chart.
+shortfall, required monthly contribution, goal progress today, current surplus, warnings, and the
+monthly series used by the chart.
 
 ## 5. Architecture
 
