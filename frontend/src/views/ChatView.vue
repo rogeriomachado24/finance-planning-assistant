@@ -19,6 +19,8 @@ const { ready: planReady, status: planStatus } = usePlanStatus();
 const EXAMPLES = [
   "Am I on track?",
   "What if I invest €200 more per month?",
+  "How likely am I to reach my goal?",
+  "What if the market falls 30% next year?",
   "How much do I need to invest each month?",
   "Compare my options",
   "What are you assuming?",

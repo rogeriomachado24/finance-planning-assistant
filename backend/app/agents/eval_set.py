@@ -78,6 +78,23 @@ CASES: list[Case] = [
         "In the optimistic case, when do I reach it?",
         {"kind": "goal_date", "assumption_set": "optimistic"},
     ),
+    # Phase 2: how likely, and one-off market moves (added before tuning nothing: some
+    # phrasings are deliberately outside the rules)
+    Case("How likely am I to reach my goal?", {"kind": "likelihood"}),
+    Case("What are the odds I make it in time?", {"kind": "likelihood"}),
+    Case("Is my goal realistic?", {"kind": "likelihood"}),
+    Case("What if the market falls 30% next year?", what_if(first_year_return=-0.3)),
+    Case("What if we get a stock market crash of 35%?", what_if(first_year_return=-0.35)),
+    Case("Suppose my ETFs lose 20% in the next twelve months", what_if(first_year_return=-0.2)),
+    Case(
+        "How likely is that?",
+        {"kind": "likelihood", "overrides": {"first_year_return": -0.3}},
+        previous="What if the market falls 30% next year?",
+    ),
+    Case(
+        "What are my chances if I invest €100 more?",
+        {"kind": "likelihood", "overrides": {"monthly_investment_contribution_delta": 100}},
+    ),
     # Not answerable
     Case("Should I buy an ETF?", {"kind": "unsupported", "reason": "advice"}),
     Case("Which fund is best for me?", {"kind": "unsupported", "reason": "advice"}),
@@ -96,7 +113,7 @@ def matches(intent: dict, expected: dict) -> bool:
         return False
     if intent.get("assumption_set") != expected.get("assumption_set"):
         return False
-    if expected["kind"] == "what_if":
+    if expected["kind"] in ("what_if", "likelihood"):
         got = {k: v for k, v in (intent.get("overrides") or {}).items() if v is not None}
-        return got == {k: float(v) for k, v in expected["overrides"].items()}
+        return got == {k: float(v) for k, v in expected.get("overrides", {}).items()}
     return True

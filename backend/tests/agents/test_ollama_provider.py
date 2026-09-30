@@ -14,6 +14,7 @@ from app.agents.eval_set import CASES, matches
 from app.agents.explain import DISCLAIMER, Facts, template_body
 from app.agents.intents import (
     ExplainAssumptions,
+    Likelihood,
     NeedsClarification,
     RunProjection,
     Unsupported,
@@ -72,6 +73,21 @@ class TestToIntent:
     def test_what_if_without_a_change_is_rejected(self):
         with pytest.raises(UntrustedOutput):
             to_intent(ModelRequest(kind="what_if"), "what if things change?")
+
+    def test_a_market_crash_is_a_first_year_return(self):
+        request = ModelRequest(market_change_next_year_percent=-25, kind="what_if")
+        intent = to_intent(request, "what if stocks tank by 25 percent next year")
+        assert isinstance(intent, WhatIf)
+        assert intent.overrides.first_year_return == -0.25
+        with pytest.raises(UntrustedOutput, match="not in the message"):
+            to_intent(request, "what if stocks tank next year")
+
+    def test_likelihood_with_or_without_a_change(self):
+        assert to_intent(ModelRequest(kind="likelihood"), "odds of making it?") == Likelihood()
+        request = ModelRequest(invest_change_eur=100, kind="likelihood")
+        intent = to_intent(request, "odds of making it with 100 more invested?")
+        assert isinstance(intent, Likelihood)
+        assert intent.overrides.monthly_investment_contribution_delta == 100
 
 
 class FakeModel:
@@ -142,6 +158,20 @@ FACTS_TEXT = (
 
 
 class TestCheckExplanation:
+    def test_a_likelihood_rewording_can_copy_shares_points_and_months(self):
+        facts = (
+            "In about 93% of 1,000 simulated futures, the €80,000 goal is reached by 1 Jun 2032 "
+            "(precision ±2 points). In the middle 80% of futures, the goal is reached between "
+            "Dec 2030 and May 2032."
+        )
+        check_explanation(
+            "Across 1,000 simulated futures, about 93% reach €80,000 by 1 Jun 2032 (±2 points); "
+            "the middle 80% get there between Dec 2030 and May 2032.",
+            facts,
+        )
+        with pytest.raises(UntrustedOutput):
+            check_explanation("About 93% get there by June 2032.", facts)
+
     def test_a_faithful_rewording_passes(self):
         check_explanation(
             "Investing €200 more each month gets you to the goal on 1 Jun 2031, 1 month earlier "

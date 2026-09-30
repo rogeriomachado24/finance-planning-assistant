@@ -140,6 +140,7 @@ describe("compare page", () => {
         monthly_expenses: null,
         annual_return: 0.03,
         annual_salary_growth: null,
+        first_year_return: null,
         annual_expense_growth: null,
       },
     });

@@ -693,6 +693,9 @@
                 "$ref": "#/components/schemas/WhatIf"
               },
               {
+                "$ref": "#/components/schemas/Likelihood"
+              },
+              {
                 "$ref": "#/components/schemas/CompareScenarios"
               },
               {
@@ -713,6 +716,7 @@
                 "compare_scenarios": "#/components/schemas/CompareScenarios",
                 "explain_assumptions": "#/components/schemas/ExplainAssumptions",
                 "goal_date": "#/components/schemas/GoalDate",
+                "likelihood": "#/components/schemas/Likelihood",
                 "needs_clarification": "#/components/schemas/NeedsClarification",
                 "required_contribution": "#/components/schemas/RequiredContribution",
                 "run_projection": "#/components/schemas/RunProjection",
@@ -751,6 +755,17 @@
             "title": "Results",
             "description": "The engine's results; the first is the current plan (the baseline)."
           },
+          "futures": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FuturesComparisonOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "For likelihood questions: the same scenarios over simulated futures."
+          },
           "provider": {
             "type": "string",
             "title": "Provider"
@@ -775,6 +790,7 @@
           "assumption_set",
           "assumptions",
           "results",
+          "futures",
           "provider",
           "parsed_by",
           "worded_by"
@@ -1392,6 +1408,46 @@
         ],
         "title": "InvestmentRisk",
         "description": "How widely the portfolio's yearly returns vary (docs/PHASE2_DESIGN.md, 2.3)."
+      },
+      "Likelihood": {
+        "properties": {
+          "assumption_set": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "conservative",
+                  "base",
+                  "optimistic"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assumption Set",
+            "description": "Only when the user names one; otherwise the default set is used."
+          },
+          "kind": {
+            "type": "string",
+            "const": "likelihood",
+            "title": "Kind",
+            "default": "likelihood"
+          },
+          "overrides": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OverridesIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "Likelihood",
+        "description": "'How likely am I to reach my goal?', optionally for a what-if ('...if I invest €200\nmore?'). Answered from simulated futures, never from the model."
       },
       "LlmStatus": {
         "properties": {

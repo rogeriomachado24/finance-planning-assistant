@@ -40,6 +40,14 @@ class WhatIf(_Intent):
     overrides: OverridesIn
 
 
+class Likelihood(_Intent):
+    """'How likely am I to reach my goal?', optionally for a what-if ('...if I invest €200
+    more?'). Answered from simulated futures, never from the model."""
+
+    kind: Literal["likelihood"] = "likelihood"
+    overrides: OverridesIn | None = None
+
+
 class CompareScenarios(_Intent):
     """'Compare my options', 'show the scenarios'."""
 
@@ -71,6 +79,7 @@ Intent = Annotated[
     | GoalDate
     | RequiredContribution
     | WhatIf
+    | Likelihood
     | CompareScenarios
     | ExplainAssumptions
     | NeedsClarification
@@ -85,6 +94,7 @@ ANSWERABLE = (
     GoalDate,
     RequiredContribution,
     WhatIf,
+    Likelihood,
     CompareScenarios,
     ExplainAssumptions,
 )

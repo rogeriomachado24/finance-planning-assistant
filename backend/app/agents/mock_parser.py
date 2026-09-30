@@ -7,11 +7,14 @@ from the message (percentages are only converted to decimals, a change of unit),
 
 import re
 
+from pydantic import ValidationError
+
 from app.agents.intents import (
     CompareScenarios,
     ExplainAssumptions,
     GoalDate,
     Intent,
+    Likelihood,
     NeedsClarification,
     RequiredContribution,
     RunProjection,
@@ -48,8 +51,24 @@ _RATE_FIELDS = [  # most specific first: "salary grows 3%" is not an investment 
     ),
     ("annual_return", r"\b(returns?|yield\w*|grow\w*|performance|market|interest)\b"),
 ]
-_LESS = r"\b(less|fewer|lower|reduc\w*|cut\w*|drop\w*|decreas\w*|minus)\b"
-_MORE = r"\b(more|extra|additional|another|increas\w*|raise|rise|higher|plus|on top)\b"
+# A one-off move of the investments in the first year ("the market falls 30% next year",
+# "a 40% crash"): `first_year_return`, not the yearly return. A fall is always one-off; a
+# rise only when the message says it is for next year ("markets grow 7%" is a yearly return).
+_MARKET = r"\b(markets?|stock ?market|investments?|portfolio|stocks?|shares|equities)\b"
+_FALL = (
+    r"\b(fall\w*|fell|drop\w*|crash\w*|los(?:e|es|ing)|lost|down|declin\w*|plung\w*"
+    r"|tank\w*|slump\w*)\b"
+)
+_RISE = r"\b(ris(?:e|es|ing)|rose|jump\w*|gain\w*|up|grow\w*|soar\w*|boom\w*)\b"
+_NEXT_YEAR = r"\b(next year|this year|first year|coming year|next 12 months)\b"
+# "goes up by 300" is a change of 300, not a new amount of 300.
+_LESS = (
+    r"\b(less|fewer|lower|reduc\w*|cut\w*|drop\w*|decreas\w*|minus|down by|(?:go|goes|went) down)\b"
+)
+_MORE = (
+    r"\b(more|extra|additional|another|increas\w*|raise|rise|higher|plus|on top|up by"
+    r"|(?:go|goes|went) up)\b"
+)
 
 _SETS = [
     ("conservative", r"\b(conservative|pessimistic|cautious|worst)\b"),
@@ -62,15 +81,24 @@ _REQUIRED = (
     r"|required (monthly )?contribution|needed per month|need(ed)? each month"
     r"|how much .* (per|a|each|every) month .* (reach|get|goal|on time|in time)"
 )
-_ADVICE = (
+_ASKS_ADVICE = (
     r"\b(should i|shall i|do you recommend|recommend\w*|advice|advise|what should"
     r"|is it (a )?good (idea|time)|worth it)\b"
-    r"|\b(which|what|best|good)\b.*\b(stocks?|etfs?|funds?|crypto|bitcoin|shares|bonds?|broker)\b"
+)
+_ADVICE = (
+    _ASKS_ADVICE
+    + r"|\b(which|what|best|good)\b.*\b(stocks?|etfs?|funds?|crypto|bitcoin|shares|bonds?|broker)\b"
     r"|\b(buy|sell)\b.*\b(stocks?|etfs?|funds?|crypto|bitcoin|shares|bonds?)\b"
 )
 _OUT_OF_SCOPE = (
     r"\b(tax\w*|mortgage|news|weather|stock market today|interest rates? today|loan offers?)\b"
 )
+_LIKELIHOOD = (
+    r"\bhow (likely|sure|certain|confident|probable|realistic)\b"
+    r"|\b(chances?|probabilit\w*|odds|likelihood)\b|\bsimulat\w*|\bhow risky\b"
+)
+# "How likely is that?" after a what-if: the same changes, now as simulated futures.
+_ABOUT_THAT = r"^(and|so)\b|\b(that|this|then|in that case)\b"
 _COMPARE = r"\b(compar\w*|scenarios?|options|levers|alternatives|side by side)\b"
 _GOAL_DATE = (
     r"\bwhen\b.*\b(reach|hit|get|achieve|afford|there|done|goal)\b|how long|goal date|what date"
@@ -98,16 +126,37 @@ def parse_message(message: str, previous: Intent | None = None) -> Intent:
 
     if re.search(_REQUIRED, text):
         return RequiredContribution(assumption_set=assumption_set)
-    if re.search(_ADVICE, text):
+    # "What if the stock market crashes 30%?" names stocks but asks for a projection.
+    market_what_if = re.search(_WHAT_IF, text) and _market_move(text)
+    if re.search(_ADVICE, text) and not (market_what_if and not re.search(_ASKS_ADVICE, text)):
         return Unsupported(reason="advice")
 
     overrides, clarification = _extract_overrides(text, previous)
+    likelihood = bool(re.search(_LIKELIHOOD, text)) or (
+        isinstance(previous, Likelihood) and bool(overrides) and bool(re.search(_RERUN, text))
+    )
     if overrides:
-        return WhatIf(overrides=OverridesIn(**overrides), assumption_set=assumption_set)
+        try:
+            changes = OverridesIn(**overrides)
+        except ValidationError:
+            return NeedsClarification(question=_OUT_OF_RANGE)
+        if likelihood:
+            return Likelihood(overrides=changes, assumption_set=assumption_set)
+        return WhatIf(overrides=changes, assumption_set=assumption_set)
     if clarification:
         return NeedsClarification(question=clarification)
+    if likelihood:
+        carried = _previous_changes(previous) if re.search(_ABOUT_THAT, text) else None
+        return Likelihood(overrides=carried, assumption_set=assumption_set)
 
-    rerunnable = (RunProjection, GoalDate, RequiredContribution, WhatIf, CompareScenarios)
+    rerunnable = (
+        RunProjection,
+        GoalDate,
+        RequiredContribution,
+        WhatIf,
+        Likelihood,
+        CompareScenarios,
+    )
     if assumption_set and isinstance(previous, rerunnable) and re.search(_RERUN, text):
         return previous.model_copy(update={"assumption_set": assumption_set})
 
@@ -123,6 +172,31 @@ def parse_message(message: str, previous: Intent | None = None) -> Intent:
     if re.search(_OUT_OF_SCOPE, text):
         return Unsupported(reason="out_of_scope")
     return Unsupported(reason="not_understood")
+
+
+_OUT_OF_RANGE = (
+    "That's outside what the simulator accepts: a change can't be more than 100% a year or "
+    "a fall of 100% or more. For example: 'what if the market falls 30% next year?'"
+)
+
+
+def _previous_changes(previous: Intent | None) -> OverridesIn | None:
+    if isinstance(previous, WhatIf | Likelihood):
+        return previous.overrides
+    return None
+
+
+def _market_move(clause: str) -> int | None:
+    """-1 for a one-off fall of the investments, +1 for a one-off rise, None otherwise."""
+    if re.search(r"\bcrash\w*", clause):
+        return -1
+    if not re.search(_MARKET, clause) or re.search(r"\bto \d", clause):  # "fall to 2%" is a level
+        return None
+    if re.search(_FALL, clause):
+        return -1
+    if re.search(_RISE, clause) and re.search(_NEXT_YEAR, clause):
+        return 1
+    return None
 
 
 def _normalise(message: str) -> str:
@@ -144,7 +218,9 @@ def _extract_overrides(text: str, previous: Intent | None) -> tuple[dict[str, fl
             continue
         if percent := _PERCENT.search(clause):
             rate = round(float(percent["num"]) / 100, 6)
-            if field := _match_field(clause, _RATE_FIELDS):
+            if sign := _market_move(clause):
+                overrides["first_year_return"] = sign * rate
+            elif field := _match_field(clause, _RATE_FIELDS):
                 overrides[field] = rate
             elif follow_up := _follow_up(previous, rate=True):
                 overrides[follow_up[0]] = rate
@@ -204,9 +280,10 @@ def _signed(clause: str, amount: float, previous_value: float) -> float:
 def _follow_up(previous: Intent | None, *, rate: bool) -> tuple[str, float] | None:
     """'And with €300 instead?' reuses the one field the previous what-if changed, and
     returns it with its previous value."""
-    if not isinstance(previous, WhatIf):
+    changes = _previous_changes(previous)
+    if changes is None:
         return None
-    changed = [(k, v) for k, v in previous.overrides.model_dump().items() if v is not None]
+    changed = [(k, v) for k, v in changes.model_dump().items() if v is not None]
     if len(changed) != 1:
         return None
     name, value = changed[0]

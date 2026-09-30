@@ -15,12 +15,14 @@ from app.agents.intents import (
     ExplainAssumptions,
     GoalDate,
     Intent,
+    Likelihood,
     RequiredContribution,
     RunProjection,
     WhatIf,
 )
 from app.schemas.plan import Rates
 from app.schemas.scenarios import ComparedScenarioOut, OverridesIn, ScenarioResultOut
+from app.schemas.uncertainty import ComparedFuturesOut, FuturesComparisonOut
 
 DISCLAIMER = "This is a projection, not a guarantee."
 
@@ -36,8 +38,11 @@ SIMPLIFICATIONS = (
 
 EXAMPLES = (
     "“Am I on track?”, “When will I reach my goal?”, “How much do I need to invest each "
-    "month?”, “What if I invest €200 more per month?”, “Compare my options”"
+    "month?”, “What if I invest €200 more per month?”, “How likely am I to reach my goal?”, "
+    "“What if the market falls 30% next year?”, “Compare my options”"
 )
+
+RISK_LABELS = {"low": "low", "medium": "medium", "high": "high"}
 
 _MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
@@ -51,6 +56,8 @@ class Facts:
     assumption_set: str | None
     rates: Rates | None
     question: str = ""
+    futures: FuturesComparisonOut | None = None
+    """Simulated futures of the same scenarios, for likelihood questions."""
 
 
 # ---- formatting (same conventions as the UI: €91,962, 1 Jun 2032, 5%) ------------------------
@@ -74,6 +81,39 @@ def day(value: date | str) -> str:
 
 def percent(rate: float) -> str:
     return f"{Decimal(str(rate)) * 100:.2f}".rstrip("0").rstrip(".") + "%"
+
+
+def month_year(value: date | str) -> str:
+    """ "2030-11-01" -> "Nov 2030"."""
+    d = value if isinstance(value, date) else date.fromisoformat(value)
+    return f"{_MONTHS[d.month - 1]} {d.year}"
+
+
+def share(value: float) -> str:
+    """A share of simulated futures in whole percentages, never claiming certainty:
+    0.948 -> "about 95%", 1 -> "more than 99%", 0 -> "fewer than 1%"."""
+    if value > 0.99:
+        return "more than 99%"
+    if value < 0.01:
+        return "fewer than 1%"
+    whole = Decimal(str(value * 100)).quantize(Decimal(1), rounding=ROUND_HALF_UP)
+    return f"about {whole}%"
+
+
+def points(margin: float) -> str:
+    """Precision of a share: 0.0138 -> "±1 point"."""
+    whole = int(Decimal(str(margin * 100)).quantize(Decimal(1), rounding=ROUND_HALF_UP))
+    return "less than ±1 point" if whole < 1 else f"±{whole} point{'s' if whole != 1 else ''}"
+
+
+def points_difference(difference: float) -> str:
+    """0.052 -> "5 points more", -0.011 -> "1 point fewer", 0 -> "the same share"."""
+    if difference == 0:
+        return "the same share"
+    whole = int(Decimal(str(abs(difference) * 100)).quantize(Decimal(1), rounding=ROUND_HALF_UP))
+    if whole == 0:
+        return "less than 1 point different"
+    return f"{whole} point{'s' if whole != 1 else ''} {'more' if difference > 0 else 'fewer'}"
 
 
 def duration(months: int) -> str:
@@ -117,7 +157,10 @@ def template_body(facts: Facts) -> str:
     """The facts of a projection answer, in plain sentences (without the footer)."""
     intent = facts.intent
     current = facts.results[0].result
-    if isinstance(intent, WhatIf):
+    if isinstance(intent, Likelihood):
+        assert facts.futures is not None
+        body = _likelihood(facts.futures, facts.results, intent.overrides)
+    elif isinstance(intent, WhatIf):
         body = _what_if(facts.results, intent.overrides)
     elif isinstance(intent, CompareScenarios):
         body = _comparison(facts.results)
@@ -214,6 +257,11 @@ def describe_overrides(o: OverridesIn) -> str:
         parts.append(f"salary growth of {percent(o.annual_salary_growth)} a year")
     if o.annual_expense_growth is not None:
         parts.append(f"expense growth of {percent(o.annual_expense_growth)} a year")
+    if o.first_year_return is not None:
+        move = "fall" if o.first_year_return < 0 else "rise"
+        parts.append(
+            f"a {percent(abs(o.first_year_return))} {move} in investments in the first year"
+        )
     return " and ".join(parts) if parts else "no changes"
 
 
@@ -239,7 +287,73 @@ def _what_if(results: list[ComparedScenarioOut], overrides: OverridesIn) -> str:
     cautions = [w.message for w in r.warnings if w.code != "debt_paid_off"]
     if cautions:
         text += f" Note: {cautions[0]}"
+    if overrides.first_year_return is not None:
+        text += (
+            " This uses one fixed return for the first year; ask “How likely is that?” to see "
+            "it over simulated futures, where later years vary too."
+        )
     return text
+
+
+def _likelihood(
+    futures: FuturesComparisonOut, results: list[ComparedScenarioOut], overrides: OverridesIn | None
+) -> str:
+    target = results[0].result
+    goal, target_day = eur(target.target_amount), day(target.target_date)
+    count = f"{futures.paths:,}"
+    current = futures.scenarios[0]
+    if overrides is None:
+        shown = current
+        text = (
+            f"In {share(shown.probability_by_target_date)} of {count} simulated futures, the "
+            f"{goal} goal is reached by {target_day} (precision "
+            f"{points(shown.probability_margin)})."
+        )
+    else:
+        shown = futures.scenarios[1]
+        text = (
+            f"With {describe_overrides(overrides)}, the {goal} goal is reached by {target_day} "
+            f"in {share(shown.probability_by_target_date)} of {count} simulated futures: "
+            f"{points_difference(shown.probability_difference)} than with the current plan "
+            f"({share(current.probability_by_target_date).removeprefix('about ')})."
+        )
+        invests_more = (overrides.monthly_investment_contribution_delta or 0) > 0 or (
+            overrides.monthly_investment_contribution is not None
+            and overrides.monthly_investment_contribution > target.monthly_contribution
+        )
+        if invests_more and shown.probability_difference < 0:
+            text += (
+                " Investing more moves money from cash, which is safe in the model, into "
+                "investments, which vary: typical futures end higher, but some bad ones lower."
+            )
+    text += f" {_goal_date_range(shown)}"
+    if s := shown.shortfall_when_missed:
+        text += (
+            f" In the futures that miss the target date, they are typically {eur(s.p50)} short "
+            f"({eur(s.p90)} or more in the worst tenth of those)."
+        )
+    rates = target.assumptions
+    return text + (
+        f" Investment returns vary from year to year around the assumed "
+        f"{percent(rates.annual_return)} ({RISK_LABELS[futures.investment_risk]} investment "
+        f"risk: about {percent(futures.volatility)} a year); income, expenses and contributions "
+        "follow the plan."
+    )
+
+
+def _goal_date_range(f: ComparedFuturesOut) -> str:
+    d = f.goal_dates
+    if d.p10 and d.p50 and d.p90:
+        return (
+            f"In the middle 80% of futures, the goal is reached between {month_year(d.p10)} "
+            f"and {month_year(d.p90)}."
+        )
+    if d.p10:
+        return (
+            f"In {share(f.not_reached_share).removeprefix('about ')} of futures, it is not "
+            "reached within the simulated period."
+        )
+    return "In most futures, it is not reached within the simulated period."
 
 
 def _comparison(results: list[ComparedScenarioOut]) -> str:

@@ -17,6 +17,7 @@ const CHANGES: [keyof Overrides, Change][] = [
   ["annual_return", (v) => `a ${formatPercent(v)} yearly return`],
   ["annual_salary_growth", (v) => `salary growth of ${formatPercent(v)} a year`],
   ["annual_expense_growth", (v) => `expense growth of ${formatPercent(v)} a year`],
+  ["first_year_return", (v) => `investments ${v < 0 ? "fall" : "rise"} ${formatPercent(Math.abs(v))} in the first year`],
 ];
 
 const QUESTIONS: Record<string, string> = {
@@ -24,6 +25,7 @@ const QUESTIONS: Record<string, string> = {
   goal_date: "when the goal is reached",
   required_contribution: "how much is needed each month",
   compare_scenarios: "compare the scenarios",
+  likelihood: "how likely the goal is reached on time",
   explain_assumptions: "the assumptions used",
   needs_clarification: "something unclear",
 };
@@ -52,6 +54,8 @@ export function describeIntent(intent: ChatIntent): string {
   let text: string;
   if (intent.kind === "what_if") {
     text = `what if: ${describeChanges(intent.overrides).join(" and ")}`;
+  } else if (intent.kind === "likelihood" && intent.overrides) {
+    text = `how likely, if: ${describeChanges(intent.overrides).join(" and ")}`;
   } else if (intent.kind === "unsupported") {
     text = REASONS[intent.reason];
   } else {

@@ -2,7 +2,8 @@
 
 A savings-goal simulator with a conversational interface. Enter your finances and a goal
 ("€80,000 for a house deposit by June 2032"), see when you're projected to reach it, compare
-what-if scenarios, and ask questions in plain English: *"What if I invest €200 more per month?"*
+what-if scenarios, and ask questions in plain English: *"What if I invest €200 more per month?"*,
+*"What if the market falls 30% next year?"*, *"How likely am I to reach my goal?"*
 
 **The core rule:** every number comes from a deterministic, tested Python engine. The language
 model only helps understand questions; it never calculates, rounds or changes a figure. Every
@@ -17,7 +18,7 @@ answer shows the assumptions it depends on.
 |---|---|
 | **Projection** | Where you are today (progress towards the goal, net worth, savings rate), when the goal is reached, the value on the target date, the monthly amount needed to get there on time, and a month-by-month chart with a table view. **How sure is this?** 1,000 simulated futures with varying investment returns: the share that reaches the goal on time (with its precision), the range of goal dates, how the share grows year by year, and how far off the misses are, drawn as a band around the projection. Switch between conservative, base and optimistic assumptions. |
 | **Compare** | Scenarios side by side (invest more, earn more, your own what-ifs), with differences from the current plan. |
-| **Ask** | A chat that answers questions about your plan. Replies show the engine's figures as cards, how the question was understood, and whether rules or the model understood it. What-ifs can be saved to Compare. Advice requests are declined. |
+| **Ask** | A chat that answers questions about your plan. Replies show the engine's figures as cards, how the question was understood, and whether rules or the model understood it. Answers "how likely" from simulated futures and one-off market drops as what-ifs. What-ifs can be saved to Compare. Advice requests are declined. |
 | **Your plan** | Where a new user starts: two guided steps (your finances, your goal) with empty fields and examples, an investment risk level (low, medium, high), plus three editable assumption sets. |
 
 Everything runs locally: SQLite for storage, and optionally [Ollama](https://ollama.com) for a
@@ -85,15 +86,16 @@ The model's output is checked before it's used, and anything that fails falls ba
   months, an invented date, two scenarios merged). Rewording is available behind a setting,
   under a stricter check that requires every figure to be copied exactly.
 
-**Measured, not assumed.** A labelled set of 35 messages (`python -m app.agents.evaluate`), some
-phrased deliberately outside the rules' patterns:
+**Measured, not assumed.** A labelled set of messages (`python -m app.agents.evaluate`), some
+phrased deliberately outside the rules' patterns. It had 35 messages in Phase 1 and 43 since
+Phase 2 added likelihood and market-drop questions:
 
-| Strategy | phi3 (3.8B) | qwen2.5:3b |
-|---|---|---|
-| Rules only | 86% | 86% |
-| Model alone | ~65% | 80% |
-| Model first, rules as fallback | 74% | – |
-| **Rules first, model when the rules are unsure** (used) | 89% | **91%** |
+| Strategy | phi3 (3.8B), 35 messages | qwen2.5:3b, 35 | qwen2.5:3b, 43 |
+|---|---|---|---|
+| Rules only | 86% | 86% | 84% |
+| Model alone | ~65% | 80% | 81% |
+| Model first, rules as fallback | 74% | – | – |
+| **Rules first, model when the rules are unsure** (used) | 89% | 91% | **95%** |
 
 Letting the small model go first made results *worse*: its plausible-but-wrong answers pass
 number checks. So the rules parse first, and the model handles only what they can't place. The

@@ -13,17 +13,26 @@ from app.agents.intents import (
     CompareScenarios,
     ExplainAssumptions,
     GoalDate,
+    Likelihood,
     RequiredContribution,
     RunProjection,
     WhatIf,
 )
 from app.domain.models import Assumptions
 from app.domain.scenarios import Scenario
+from app.services import uncertainty
 from app.services.assumptions import get_assumption_set
 from app.services.scenarios import CURRENT_PLAN, WHAT_IF, ComparedScenario, compare
+from app.services.uncertainty import FuturesComparison
 
 Answerable = (
-    RunProjection | GoalDate | RequiredContribution | WhatIf | CompareScenarios | ExplainAssumptions
+    RunProjection
+    | GoalDate
+    | RequiredContribution
+    | WhatIf
+    | Likelihood
+    | CompareScenarios
+    | ExplainAssumptions
 )
 
 
@@ -32,6 +41,8 @@ class IntentOutcome:
     assumption_set: str
     assumptions: Assumptions
     results: list[ComparedScenario]
+    futures: FuturesComparison | None = None
+    """Simulated futures of the same scenarios, for likelihood questions."""
 
 
 def run_intent(
@@ -40,9 +51,16 @@ def run_intent(
     assumption_set = intent.assumption_set or default_set
     assumptions = get_assumption_set(session, assumption_set).assumptions
 
+    futures = None
     match intent:
         case ExplainAssumptions():
             results = []
+        case Likelihood(overrides=overrides):
+            scenarios = [Scenario(CURRENT_PLAN)]
+            if overrides is not None:
+                scenarios.append(Scenario(WHAT_IF, overrides.to_domain()))
+            results = compare(session, today, assumption_set, scenarios)
+            futures = uncertainty.compare(session, today, assumption_set, scenarios)
         case WhatIf(overrides=overrides):
             scenarios = [Scenario(CURRENT_PLAN), Scenario(WHAT_IF, overrides.to_domain())]
             results = compare(session, today, assumption_set, scenarios)
@@ -51,4 +69,4 @@ def run_intent(
         case _:
             results = compare(session, today, assumption_set, [Scenario(CURRENT_PLAN)])
 
-    return IntentOutcome(assumption_set, assumptions, results)
+    return IntentOutcome(assumption_set, assumptions, results, futures)

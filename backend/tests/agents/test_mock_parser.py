@@ -6,6 +6,7 @@ from app.agents.intents import (
     CompareScenarios,
     ExplainAssumptions,
     GoalDate,
+    Likelihood,
     NeedsClarification,
     RequiredContribution,
     RunProjection,
@@ -125,3 +126,83 @@ def test_advice_and_out_of_scope_are_not_answered(message: str, reason: str):
     intent = parse_message(message)
     assert isinstance(intent, Unsupported)
     assert intent.reason == reason
+
+
+@pytest.mark.parametrize(
+    ("message", "expected"),
+    [
+        ("What if the market falls 30% next year?", {"first_year_return": -0.3}),
+        ("what if markets crash 40%", {"first_year_return": -0.4}),
+        ("What if there is a 25% crash?", {"first_year_return": -0.25}),
+        ("What if my investments drop by 20%?", {"first_year_return": -0.2}),
+        ("What if my portfolio grows 15% next year?", {"first_year_return": 0.15}),
+        # Not one-off moves: a level, or a yearly rate
+        ("What if returns fall to 2%?", {"annual_return": 0.02}),
+        ("What if the market gives me 7% a year?", {"annual_return": 0.07}),
+        # A change, not a new amount
+        ("What if my income goes up by 300?", {"monthly_net_income_delta": 300}),
+        ("What if my expenses go down by 100?", {"monthly_expenses_delta": -100}),
+    ],
+)
+def test_market_moves_and_changes(message: str, expected: dict):
+    """Regression: "the market falls 30%" used to become a +30% yearly return."""
+    assert overrides_of(message) == expected
+
+
+@pytest.mark.parametrize(
+    "message",
+    ["What if returns are 150%?", "What if the market falls 100%?"],
+)
+def test_rates_out_of_range_get_a_question_instead_of_an_error(message: str):
+    intent = parse_message(message)
+    assert isinstance(intent, NeedsClarification)
+    assert "outside what the simulator accepts" in intent.question
+
+
+class TestLikelihood:
+    @pytest.mark.parametrize(
+        "message",
+        [
+            "How likely am I to reach my goal?",
+            "What are my chances?",
+            "What's the probability of making it on time?",
+            "How sure is this projection?",
+        ],
+    )
+    def test_questions(self, message: str):
+        intent = parse_message(message)
+        assert isinstance(intent, Likelihood)
+        assert intent.overrides is None
+
+    def test_with_a_change(self):
+        intent = parse_message("How likely am I to reach it if I invest €200 more?")
+        assert isinstance(intent, Likelihood)
+        assert intent.overrides.monthly_investment_contribution_delta == 200
+
+    def test_how_likely_is_that_uses_the_previous_what_if(self):
+        drop = parse_message("What if the market falls 30% next year?")
+        intent = parse_message("How likely is that?", drop)
+        assert isinstance(intent, Likelihood)
+        assert intent.overrides == drop.overrides
+
+    def test_a_new_amount_keeps_asking_how_likely(self):
+        first = parse_message("How likely am I to get there if I invest €200 more?")
+        intent = parse_message("And with €300?", first)
+        assert isinstance(intent, Likelihood)
+        assert intent.overrides.monthly_investment_contribution_delta == 300
+
+    def test_under_another_assumption_set(self):
+        intent = parse_message("And under optimistic assumptions?", parse_message("My chances?"))
+        assert isinstance(intent, Likelihood)
+        assert intent.assumption_set == "optimistic"
+
+    def test_advice_is_still_declined(self):
+        intent = parse_message("Should I sell my shares if the market falls 30%?")
+        assert isinstance(intent, Unsupported)
+        assert intent.reason == "advice"
+
+
+def test_a_stock_market_what_if_is_not_advice():
+    """Regression: "what ... stock" matched the advice rule, so a crash question was declined."""
+    assert overrides_of("What if the stock market crashes 30%?") == {"first_year_return": -0.3}
+    assert parse_message("What stocks should I buy before a crash of 30%?").kind == "unsupported"

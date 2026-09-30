@@ -338,7 +338,7 @@ export interface components {
              * Intent
              * @description How the message was understood (structured).
              */
-            intent: components["schemas"]["RunProjection"] | components["schemas"]["GoalDate"] | components["schemas"]["RequiredContribution"] | components["schemas"]["WhatIf"] | components["schemas"]["CompareScenarios"] | components["schemas"]["ExplainAssumptions"] | components["schemas"]["NeedsClarification"] | components["schemas"]["Unsupported"];
+            intent: components["schemas"]["RunProjection"] | components["schemas"]["GoalDate"] | components["schemas"]["RequiredContribution"] | components["schemas"]["WhatIf"] | components["schemas"]["Likelihood"] | components["schemas"]["CompareScenarios"] | components["schemas"]["ExplainAssumptions"] | components["schemas"]["NeedsClarification"] | components["schemas"]["Unsupported"];
             /** Assumption Set */
             assumption_set: string | null;
             /** @description The rates behind `results`. */
@@ -348,6 +348,8 @@ export interface components {
              * @description The engine's results; the first is the current plan (the baseline).
              */
             results: components["schemas"]["ComparedScenarioOut"][];
+            /** @description For likelihood questions: the same scenarios over simulated futures. */
+            futures: components["schemas"]["FuturesComparisonOut"] | null;
             /** Provider */
             provider: string;
             /**
@@ -643,6 +645,24 @@ export interface components {
          * @enum {string}
          */
         InvestmentRisk: "low" | "medium" | "high";
+        /**
+         * Likelihood
+         * @description 'How likely am I to reach my goal?', optionally for a what-if ('...if I invest €200
+         *     more?'). Answered from simulated futures, never from the model.
+         */
+        Likelihood: {
+            /**
+             * Assumption Set
+             * @description Only when the user names one; otherwise the default set is used.
+             */
+            assumption_set?: ("conservative" | "base" | "optimistic") | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "likelihood";
+            overrides?: components["schemas"]["OverridesIn"] | null;
+        };
         /** LlmStatus */
         LlmStatus: {
             /**

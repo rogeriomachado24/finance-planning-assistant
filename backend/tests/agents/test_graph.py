@@ -8,7 +8,7 @@ import pytest
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
-from app.agents.explain import DISCLAIMER, NEEDS_PLAN, eur
+from app.agents.explain import DISCLAIMER, NEEDS_PLAN, eur, percent, share
 from app.agents.graph import build_chat_graph
 from app.agents.providers import MockProvider
 from app.db.session import create_session_factory
@@ -67,15 +67,39 @@ def engine_amounts(state: dict) -> set[str]:
         ]
         if res["required_monthly_contribution"] is not None:
             values.append(res["required_monthly_contribution"])
+    for f in (state.get("futures") or {}).get("scenarios", []):
+        values += [f["value_at_target_date"][p] for p in ("p10", "p50", "p90")]
+        if f["shortfall_when_missed"]:
+            values += [f["shortfall_when_missed"][p] for p in ("p10", "p50", "p90")]
     overrides = state["intent"].get("overrides") or {}
     values += [abs(v) for v in overrides.values() if v is not None]
     return {eur(v) for v in values}
 
 
+def engine_percentages(state: dict) -> set[str]:
+    """Every percentage the engine returned or the user asked about, as written in replies."""
+    values = list((state.get("assumptions") or {}).values())
+    futures = state.get("futures") or {}
+    if futures:
+        values.append(futures["volatility"])
+    overrides = state["intent"].get("overrides") or {}
+    values += [abs(v) for k, v in overrides.items() if v is not None and k.startswith("annual_")]
+    if overrides.get("first_year_return") is not None:
+        values.append(abs(overrides["first_year_return"]))
+    found = {percent(v) for v in values if v is not None}
+    for f in futures.get("scenarios", []):
+        for p in (f["probability_by_target_date"], f["not_reached_share"]):
+            found.add(share(p).split()[-1])
+    return found | {"80%"}  # "the middle 80% of futures" is a fixed definition
+
+
 def assert_grounded(state: dict) -> None:
-    """The reply contains no euro amount that the engine (or the user) didn't provide."""
+    """The reply contains no euro amount or percentage that the engine (or the user)
+    didn't provide."""
     invented = euro_amounts(state["reply"]) - engine_amounts(state)
     assert not invented, f"reply mentions amounts not in the results: {invented}"
+    invented = set(re.findall(r"\d+(?:\.\d+)?%", state["reply"])) - engine_percentages(state)
+    assert not invented, f"reply mentions percentages not in the results: {invented}"
 
 
 class TestAnswers:
@@ -138,6 +162,55 @@ class TestAnswers:
         assert "2% investment return" in state["reply"]
 
 
+class TestLikelihood:
+    def test_answers_from_simulated_futures(self, chat: Chat):
+        state = chat.say("How likely am I to reach my goal?")
+
+        assert state["status"] == "answered"
+        (plan,) = state["futures"]["scenarios"]
+        assert plan["name"] == "Current plan"
+        assert (
+            f"In {share(plan['probability_by_target_date'])} of 1,000 simulated futures"
+            in (state["reply"])
+        )
+        assert "precision ±" in state["reply"]
+        assert "medium investment risk" in state["reply"]
+        assert DISCLAIMER in state["reply"]
+        assert_grounded(state)
+
+    def test_likelihood_of_a_what_if_is_compared_with_the_plan(self, chat: Chat):
+        state = chat.say("How likely am I to reach it if my income goes up by 300 a month?")
+
+        plan, what_if = state["futures"]["scenarios"]
+        assert what_if["probability_difference"] >= 0  # the same futures, more money
+        assert "€300 more take-home pay a month" in state["reply"]
+        assert "than with the current plan" in state["reply"]
+        assert_grounded(state)
+
+    def test_market_drop_then_how_likely(self, chat: Chat):
+        drop = chat.say("What if the market falls 30% next year?")
+        assert drop["intent"]["overrides"]["first_year_return"] == -0.3
+        assert "a 30% fall in investments in the first year" in drop["reply"]
+        assert "How likely is that?" in drop["reply"]
+        assert_grounded(drop)
+
+        state = chat.say("How likely is that?")
+        assert state["intent"]["kind"] == "likelihood"
+        assert state["intent"]["overrides"]["first_year_return"] == -0.3
+        plan, what_if = state["futures"]["scenarios"]
+        assert what_if["probability_difference"] < 0
+        assert "fewer than with the current plan" in state["reply"]
+        assert_grounded(state)
+
+    def test_under_another_assumption_set(self, chat: Chat, plan: Session):
+        ensure_assumption_presets(plan)
+        chat.say("What are my chances?")
+        state = chat.say("And under conservative assumptions?")
+        assert state["intent"]["kind"] == "likelihood"
+        assert state["futures"]["assumption_set"] == "conservative"
+        assert_grounded(state)
+
+
 class TestNotAnswered:
     def test_advice_is_declined_without_running_anything(self, chat: Chat):
         state = chat.say("Should I buy an ETF?")
@@ -149,6 +222,11 @@ class TestNotAnswered:
         state = chat.say("What if I spend €5,000 less?")
         assert state["status"] == "clarification"
         assert "couldn't run that scenario" in state["reply"]
+
+    def test_a_rate_out_of_range_gets_a_question(self, chat: Chat):
+        state = chat.say("What if returns are 150%?")
+        assert state["status"] == "clarification"
+        assert "outside what the simulator accepts" in state["reply"]
 
     def test_unclear_amount_gets_a_question(self, chat: Chat):
         state = chat.say("What if 200 more?")
@@ -173,3 +251,13 @@ def test_comparison_lines_read_naturally(chat: Chat):
     assert "(same time)" in reply or "earlier)" in reply
     assert "as)" not in reply
     assert "than)" not in reply
+
+
+def test_a_lower_share_from_investing_more_is_explained(chat: Chat):
+    """Moving cash into investments can lower the share on the same futures (see the
+    Phase 2 design); a reply saying so without a reason would read like an error."""
+    state = chat.say("How likely am I to reach it if I invest 200 more?")
+    what_if = state["futures"]["scenarios"][1]
+    assert what_if["probability_difference"] < 0
+    assert "moves money from cash" in state["reply"]
+    assert_grounded(state)

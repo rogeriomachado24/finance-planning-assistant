@@ -30,6 +30,7 @@ def chat(body: ChatRequest, request: Request, today: TodayDep) -> ChatResponse:
         assumption_set=state.get("assumption_set"),
         assumptions=state.get("assumptions"),
         results=state.get("results", []),
+        futures=state.get("futures"),
         provider=request.app.state.chat_provider.name,
         parsed_by=state["parsed_by"],
         worded_by=state["worded_by"],

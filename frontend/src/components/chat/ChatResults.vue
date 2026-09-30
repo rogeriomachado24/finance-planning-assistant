@@ -7,7 +7,16 @@
  */
 import { computed } from "vue";
 import type { ChatResponse } from "../../api/client";
-import { formatDate, formatEur, formatMonthsEarlier, formatSignedEur } from "../../lib/format";
+import {
+  formatDate,
+  formatEur,
+  formatMonthYear,
+  formatMonthsEarlier,
+  formatPoints,
+  formatPointsDifference,
+  formatShare,
+  formatSignedEur,
+} from "../../lib/format";
 import SaveToCompare from "./SaveToCompare.vue";
 
 const props = defineProps<{ response: ChatResponse }>();
@@ -15,7 +24,14 @@ const props = defineProps<{ response: ChatResponse }>();
 const kind = computed(() => props.response.intent.kind);
 const results = computed(() => props.response.results);
 const current = computed(() => results.value[0]?.result ?? null);
-const whatIf = computed(() => (props.response.intent.kind === "what_if" ? props.response.intent : null));
+const futures = computed(() => props.response.futures?.scenarios ?? []);
+/** Changes that can be saved to Compare: a what-if, or a "how likely if…" question. */
+const changes = computed(() => {
+  const intent = props.response.intent;
+  if (intent.kind === "what_if") return intent.overrides;
+  if (intent.kind === "likelihood") return intent.overrides ?? null;
+  return null;
+});
 
 const goalDate = (date: string | null) => (date ? formatDate(date) : "Not within 50 years");
 </script>
@@ -47,7 +63,32 @@ const goalDate = (date: string | null) => (date ? formatDate(date) : "Not within
       </div>
     </div>
 
-    <SaveToCompare v-if="whatIf" :overrides="whatIf.overrides" />
+    <!-- How likely: the share of simulated futures on time, per scenario -->
+    <div
+      v-if="kind === 'likelihood' && futures.length"
+      class="grid gap-2"
+      :class="{ 'sm:grid-cols-2': futures.length > 1 }"
+    >
+      <div
+        v-for="(f, i) in futures"
+        :key="f.name"
+        class="rounded-md border border-hairline bg-page p-3"
+      >
+        <p class="text-xs font-medium text-ink-2">
+          {{ futures.length === 1 ? "On time in simulated futures" : i === 0 ? "Current plan" : "With the change" }}
+        </p>
+        <p class="mt-1 text-lg font-semibold">{{ formatShare(f.probability_by_target_date) }}</p>
+        <p class="text-xs text-ink-2">
+          {{ i === 0 ? formatPoints(f.probability_margin) : formatPointsDifference(f.probability_difference) }}
+          <template v-if="f.goal_dates.p10 && f.goal_dates.p90">
+            · goal reached {{ formatMonthYear(f.goal_dates.p10) }} – {{ formatMonthYear(f.goal_dates.p90) }}
+            in the middle 80%
+          </template>
+        </p>
+      </div>
+    </div>
+
+    <SaveToCompare v-if="changes" :overrides="changes" />
 
     <!-- Comparison: one line per scenario -->
     <ul
@@ -105,7 +146,7 @@ const goalDate = (date: string | null) => (date ? formatDate(date) : "Not within
     </dl>
 
     <!-- What-ifs get "Save to Compare" instead: they only appear on Compare once saved -->
-    <p v-if="!whatIf" class="text-xs text-ink-2">
+    <p v-if="!changes" class="text-xs text-ink-2">
       <RouterLink
         :to="kind === 'compare_scenarios' ? '/compare' : '/'"
         class="font-medium text-ink underline underline-offset-2"

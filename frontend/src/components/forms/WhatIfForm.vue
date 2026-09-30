@@ -24,6 +24,7 @@ const form = reactive({
   returnPercent: null as number | null,
   salaryGrowthPercent: null as number | null,
   expenseGrowthPercent: null as number | null,
+  marketChangePercent: null as number | null,
 });
 
 /** Today's values: formatted for the hints, bare numbers for the placeholders. */
@@ -52,6 +53,7 @@ const { status, error, fieldErrors, submit, markEdited } = useSubmit(
       annual_return: rate(form.returnPercent),
       annual_salary_growth: rate(form.salaryGrowthPercent),
       annual_expense_growth: rate(form.expenseGrowthPercent),
+      first_year_return: rate(form.marketChangePercent),
     };
     if (Object.values(overrides).every((v) => v === null)) {
       throw new ApiError(0, "Change at least one value; otherwise it's the current plan.");
@@ -161,6 +163,17 @@ watch(form, markEdited);
           :min="-99.99"
           :max="100"
           :error="fieldErrors.annual_expense_growth"
+        />
+        <NumberField
+          id="whatif-market-change"
+          v-model="form.marketChangePercent"
+          unit="percent"
+          label="Market change in the first year"
+          hint="One year only: -30 for a 30% fall. Later years use the return above."
+          placeholder="-30"
+          :min="-99.99"
+          :max="100"
+          :error="fieldErrors.first_year_return"
         />
       </div>
     </fieldset>

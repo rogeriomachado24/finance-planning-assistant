@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 from app.agents.intents import Intent
 from app.schemas.plan import Rates
 from app.schemas.scenarios import ComparedScenarioOut
+from app.schemas.uncertainty import FuturesComparisonOut
 from app.services.assumptions import DEFAULT_ASSUMPTION_SET
 
 
@@ -29,6 +30,9 @@ class ChatResponse(BaseModel):
     assumptions: Rates | None = Field(description="The rates behind `results`.")
     results: list[ComparedScenarioOut] = Field(
         description="The engine's results; the first is the current plan (the baseline)."
+    )
+    futures: FuturesComparisonOut | None = Field(
+        description="For likelihood questions: the same scenarios over simulated futures."
     )
     provider: str
     parsed_by: str = Field(description='Who understood the message: a model name, or "rules".')

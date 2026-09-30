@@ -44,6 +44,7 @@ const WHAT_IF: ChatResponse = {
     scenario("Current plan", "2031-07-01", 91_961.6, 0, 0),
     scenario("What-if", "2031-06-01", 94_059.4, 1, 2_097.8),
   ],
+  futures: null,
   provider: "phi3",
   parsed_by: "rules",
   worded_by: "template",
@@ -170,6 +171,39 @@ describe("Ask page", () => {
       overrides: { monthly_investment_contribution_delta: 200 },
     });
     expect(wrapper.find("article").text()).toContain("Saved as “Invest €200 more a month”.");
+  });
+
+  it("shows how likely, from simulated futures, with the difference the API computed", async () => {
+    const summary = {
+      goal_dates: { p10: "2031-08-01", p50: "2032-01-01", p90: "2032-12-01" },
+      not_reached_share: 0, value_at_target_date: { p10: 70_000, p50: 83_000, p90: 97_000 },
+      shortfall_when_missed: null,
+    };
+    const likely: ChatResponse = {
+      ...WHAT_IF,
+      reply: "With a 30% fall in investments in the first year, the goal is reached by 1 Jun 2032 in about 70% of 1,000 simulated futures.",
+      intent: { kind: "likelihood", assumption_set: null, overrides: { first_year_return: -0.3 } },
+      futures: {
+        assumption_set: "base", investment_risk: "medium", volatility: 0.1, paths: 1000, seed: 2026,
+        baseline: "Current plan",
+        scenarios: [
+          { ...summary, name: "Current plan", saved_id: null, probability_by_target_date: 0.926, probability_margin: 0.0162, probability_difference: 0 },
+          { ...summary, name: "What-if", saved_id: null, probability_by_target_date: 0.699, probability_margin: 0.0284, probability_difference: -0.227 },
+        ],
+      },
+    };
+    fakeApi({ "GET /assumptions": [200, SETS], "GET /health": [200, HEALTH], "POST /chat": [200, likely] });
+    const wrapper = await mountChat();
+    await ask(wrapper, "How likely is that?");
+
+    const reply = wrapper.find("article").text().replace(/\s+/g, " ");
+    expect(reply).toContain("Understood as: how likely, if: investments fall 30% in the first year");
+    expect(reply).toContain("93%");
+    expect(reply).toContain("±2 points");
+    expect(reply).toContain("70%");
+    expect(reply).toContain("−23 points");
+    expect(reply).toContain("goal reached Aug 2031 – Dec 2032 in the middle 80%");
+    expect(wrapper.findAll("button").some((b) => b.text() === "Save to Compare")).toBe(true);
   });
 
   it("offers Save to Compare only for what-ifs", async () => {

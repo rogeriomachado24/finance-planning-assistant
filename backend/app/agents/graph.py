@@ -29,6 +29,7 @@ from app.agents.providers import TEMPLATE, ChatProvider
 from app.domain.errors import InvalidInputError
 from app.schemas.plan import Rates
 from app.schemas.scenarios import ComparedScenarioOut
+from app.schemas.uncertainty import FuturesComparisonOut
 from app.services.errors import NotFoundError
 from app.services.goals import get_active_goal
 from app.services.profile import get_profile
@@ -53,6 +54,8 @@ class ChatState(TypedDict, total=False):
     assumption_set: str | None
     assumptions: dict | None
     results: list[dict]
+    futures: dict | None
+    """Simulated futures (FuturesComparisonOut), for likelihood questions."""
     reply: str
     parsed_by: str
     """Who understood the message: the model's name, or "rules"."""
@@ -78,6 +81,7 @@ def build_chat_graph(
             "assumption_set": None,
             "assumptions": None,
             "results": [],
+            "futures": None,
         }
 
     def validate(state: ChatState) -> ChatState:
@@ -110,6 +114,11 @@ def build_chat_graph(
             "results": [
                 ComparedScenarioOut.from_domain(c).model_dump(mode="json") for c in outcome.results
             ],
+            "futures": (
+                None
+                if outcome.futures is None
+                else FuturesComparisonOut.from_service(outcome.futures).model_dump(mode="json")
+            ),
         }
 
     def explain(state: ChatState) -> ChatState:
@@ -119,6 +128,11 @@ def build_chat_graph(
             assumption_set=state["assumption_set"],
             rates=Rates.model_validate(state["assumptions"]),
             question=state["message"],
+            futures=(
+                FuturesComparisonOut.model_validate(state["futures"])
+                if state.get("futures")
+                else None
+            ),
         )
         worded = provider.explain(facts)
         # Remember what was answered, so "and with €300 instead?" can build on it.

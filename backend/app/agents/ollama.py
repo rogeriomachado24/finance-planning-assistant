@@ -24,6 +24,7 @@ from app.agents.intents import (
     ExplainAssumptions,
     GoalDate,
     Intent,
+    Likelihood,
     NeedsClarification,
     RequiredContribution,
     RunProjection,
@@ -64,6 +65,11 @@ class ModelRequest(BaseModel):
     spending_growth_percent: float | None = Field(
         None, description="Yearly growth of spending in percent."
     )
+    market_change_next_year_percent: float | None = Field(
+        None,
+        description="Investments fall (negative) or rise (positive) by this percent in the "
+        "next year only: -30 for a 30% crash.",
+    )
     assumptions: Literal["conservative", "base", "optimistic"] | None = Field(
         None, description="Only if the user names a case: pessimistic = conservative."
     )
@@ -73,6 +79,7 @@ class ModelRequest(BaseModel):
         "goal_date",
         "needed_per_month",
         "compare",
+        "likelihood",
         "assumptions",
         "advice",
         "other",
@@ -87,12 +94,15 @@ kind:
 - goal_date: asks WHEN the goal is reached.
 - needed_per_month: asks how much per month is NEEDED to reach the goal on time.
 - compare: asks to compare scenarios or options.
+- likelihood: asks how likely or how sure it is to reach the goal (chances, probability).
 - assumptions: asks which assumptions or rates are used.
 - advice: asks what to buy, choose or do (e.g. "should I...", "which fund").
 - other: anything else.
 
 Copy amounts exactly from the message. "less" or "cut" makes a change negative.
-Percentages go in the *_percent fields as written (3% -> 3). Leave everything else null."""
+Percentages go in the *_percent fields as written (3% -> 3). A one-off fall or crash of
+the market or investments goes in market_change_next_year_percent, negative (falls 30% -> -30).
+Leave everything else null."""
 
 EXAMPLES: list[tuple[str, dict]] = [
     ("What if I invest €200 more per month?", {"invest_change_eur": 200, "kind": "what_if"}),
@@ -102,6 +112,11 @@ EXAMPLES: list[tuple[str, dict]] = [
     ("Am I on track in the pessimistic case?", {"assumptions": "conservative", "kind": "on_track"}),
     ("When will I have enough?", {"kind": "goal_date"}),
     ("How much should I save monthly to get there in time?", {"kind": "needed_per_month"}),
+    ("What are my chances of getting there?", {"kind": "likelihood"}),
+    (
+        "What if the stock market drops 25% next year?",
+        {"market_change_next_year_percent": -25, "kind": "what_if"},
+    ),
     ("Should I buy an ETF?", {"kind": "advice"}),
 ]
 
@@ -110,6 +125,7 @@ _KINDS = {
     "goal_date": GoalDate,
     "needed_per_month": RequiredContribution,
     "compare": CompareScenarios,
+    "likelihood": Likelihood,
     "assumptions": ExplainAssumptions,
 }
 _MONEY = {
@@ -124,6 +140,7 @@ _RATES = {
     "return_percent": "annual_return",
     "salary_growth_percent": "annual_salary_growth",
     "spending_growth_percent": "annual_expense_growth",
+    "market_change_next_year_percent": "first_year_return",
 }
 
 EXPLAIN_SYSTEM = (
@@ -138,10 +155,12 @@ _ADVICE_WORDS = re.compile(
     r"\b(should|recommend\w*|advis\w*|suggest\w*|guarantee\w*|keep up)\b", re.I
 )
 _MONTH = r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"
-# The figures the templates write: amounts, dates, percentages and durations.
+# The figures the templates write: amounts, dates, percentages, durations, points and the
+# number of simulated futures.
 _FIGURE = re.compile(
-    rf"[−+]?€\d{{1,3}}(?:,\d{{3}})*|\d{{1,2}} {_MONTH} \d{{4}}|\d+(?:\.\d+)?%"
-    r"|\d+ years?(?: \d+ months?)?|\d+ months?"
+    rf"[−+]?€\d{{1,3}}(?:,\d{{3}})*|\d{{1,2}} {_MONTH} \d{{4}}|{_MONTH} \d{{4}}"
+    r"|\d+(?:\.\d+)?%|\d+ years?(?: \d+ months?)?|\d+ months?|±?\d+ points?"
+    r"|\d{1,3}(?:,\d{3})* simulated futures"
 )
 _WORD_DURATION = re.compile(
     r"\b(a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|a few|several)"
@@ -287,6 +306,9 @@ def to_intent(request: ModelRequest, message: str) -> Intent:
     if request.kind in ("advice", "other"):
         reason = "advice" if request.kind == "advice" else "out_of_scope"
         return Unsupported(reason=reason)
+    if request.kind == "likelihood":
+        changes = OverridesIn(**overrides) if overrides else None
+        return Likelihood(overrides=changes, assumption_set=request.assumptions)
     if overrides:  # a change was described, whatever kind the model picked
         return WhatIf(overrides=OverridesIn(**overrides), assumption_set=request.assumptions)
     if request.kind == "what_if":
