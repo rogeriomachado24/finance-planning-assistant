@@ -11,6 +11,7 @@ import {
   formatPoints,
   formatPointsDifference,
   formatShare,
+  formatShareLevel,
   formatSignedEur,
 } from "./format";
 
@@ -117,5 +118,14 @@ describe("formatPointsDifference", () => {
     expect(formatPointsDifference(-0.011)).toBe("−1 point");
     expect(formatPointsDifference(0)).toBe("Same");
     expect(formatPointsDifference(0.003)).toBe("Less than 1 point");
+  });
+});
+
+describe("formatShareLevel", () => {
+  it("names the usual levels in words", () => {
+    expect(formatShareLevel(0.5)).toBe("Half");
+    expect(formatShareLevel(0.8)).toBe("8 in 10");
+    expect(formatShareLevel(0.9)).toBe("9 in 10");
+    expect(formatShareLevel(0.95)).toBe("95%");
   });
 });

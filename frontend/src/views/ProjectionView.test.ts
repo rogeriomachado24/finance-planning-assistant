@@ -203,6 +203,17 @@ describe("how sure is this", () => {
     expect(card.text()).not.toMatch(/\byou should\b|\byou will\b|\byour chance\b/i);
   });
 
+  it("shows what it would take in half, 8 in 10 and 9 in 10 of futures", async () => {
+    fakeApi(routes);
+    const card = (await mountApp()).find('[aria-labelledby="uncertainty-heading"]');
+    const levels = card.find('[aria-labelledby="what-it-takes-heading"]').text().replace(/\s+/g, " ");
+
+    expect(levels).toContain("Half of futures€638");
+    expect(levels).toContain("8 in 10 of futures€766");
+    expect(levels).toContain("9 in 10 of futures€837");
+    expect(card.text()).toContain("not the leftover surplus");
+  });
+
   it("draws the band with a legend, and adds it to the table view", async () => {
     fakeApi(routes);
     const wrapper = await mountApp();

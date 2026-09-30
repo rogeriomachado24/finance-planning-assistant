@@ -22,6 +22,11 @@ export function uncertainty(overrides: Partial<Uncertainty> = {}): Uncertainty {
     not_reached_share: 0,
     value_at_target_date: { p10: 81_725.32, p50: 92_121.74, p90: 105_378.11 },
     shortfall_when_missed: { p10: 641.35, p50: 2_408.58, p90: 5_964.24 },
+    required_monthly_investment: [
+      { share: 0.5, monthly_amount: 638.23 },
+      { share: 0.8, monthly_amount: 766.2 },
+      { share: 0.9, monthly_amount: 836.54 },
+    ],
     reached_by: [
       { date: "2027-01-01", share: 0 },
       { date: "2028-01-01", share: 0 },

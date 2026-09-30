@@ -177,7 +177,7 @@ describe("Ask page", () => {
     const summary = {
       goal_dates: { p10: "2031-08-01", p50: "2032-01-01", p90: "2032-12-01" },
       not_reached_share: 0, value_at_target_date: { p10: 70_000, p50: 83_000, p90: 97_000 },
-      shortfall_when_missed: null,
+      shortfall_when_missed: null, required_monthly_investment: [],
     };
     const likely: ChatResponse = {
       ...WHAT_IF,
@@ -204,6 +204,36 @@ describe("Ask page", () => {
     expect(reply).toContain("−23 points");
     expect(reply).toContain("goal reached Aug 2031 – Dec 2032 in the middle 80%");
     expect(wrapper.findAll("button").some((b) => b.text() === "Save to Compare")).toBe(true);
+  });
+
+  it("shows the amount for the chosen share next to the one at the assumed return", async () => {
+    const plan = WHAT_IF.results[0];
+    const needed: ChatResponse = {
+      ...WHAT_IF,
+      reply: "To reach €80,000 by 1 Jun 2032 in at least 90% of 1,000 simulated futures, about €837 a month would need to be invested from next month.",
+      intent: { kind: "required_contribution", assumption_set: null, share: 0.9 },
+      results: [plan],
+      futures: {
+        assumption_set: "base", investment_risk: "medium", volatility: 0.1, paths: 1000, seed: 2026,
+        baseline: "Current plan",
+        scenarios: [{
+          name: "Current plan", saved_id: null, probability_by_target_date: 0.948,
+          probability_margin: 0.0138, probability_difference: 0,
+          goal_dates: { p10: "2030-11-01", p50: "2031-07-01", p90: "2032-04-01" },
+          not_reached_share: 0, value_at_target_date: { p10: 81_725, p50: 92_122, p90: 105_378 },
+          shortfall_when_missed: null,
+          required_monthly_investment: [{ share: 0.9, monthly_amount: 836.54 }],
+        }],
+      },
+    };
+    fakeApi({ "GET /assumptions": [200, SETS], "GET /health": [200, HEALTH], "POST /chat": [200, needed] });
+    const wrapper = await mountChat();
+    await ask(wrapper, "How much would I need to invest to be 90% sure?");
+
+    const reply = wrapper.find("article").text().replace(/\s+/g, " ");
+    expect(reply).toContain("9 in 10 of futures€837");
+    expect(reply).toContain("At the assumed return€631");
+    expect(reply).toContain("Understood as: how much is needed each month to reach it in 90% of simulated futures");
   });
 
   it("offers Save to Compare only for what-ifs", async () => {

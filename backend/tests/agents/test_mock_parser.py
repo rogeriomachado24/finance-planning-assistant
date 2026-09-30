@@ -206,3 +206,36 @@ def test_a_stock_market_what_if_is_not_advice():
     """Regression: "what ... stock" matched the advice rule, so a crash question was declined."""
     assert overrides_of("What if the stock market crashes 30%?") == {"first_year_return": -0.3}
     assert parse_message("What stocks should I buy before a crash of 30%?").kind == "unsupported"
+
+
+class TestHowSureForTheMonthlyAmount:
+    @pytest.mark.parametrize(
+        ("message", "share"),
+        [
+            ("How much would I need to invest to be 90% sure?", 0.9),
+            ("How much do I need to invest each month to reach it in 8 out of 10 futures?", 0.8),
+            ("How much do I need to save each month to be sure?", 0.9),  # the reply names it
+            ("How much do I need to invest each month?", None),  # at the assumed return
+        ],
+    )
+    def test_share_from_the_question(self, message: str, share: float | None):
+        intent = parse_message(message)
+        assert isinstance(intent, RequiredContribution)
+        assert intent.share == share
+
+    @pytest.mark.parametrize(
+        ("message", "share"), [("And 95%?", 0.95), ("what about 8 in 10?", 0.8)]
+    )
+    def test_another_share_as_a_follow_up(self, message: str, share: float):
+        first = parse_message("How much would I need to invest to be 90% sure?")
+        intent = parse_message(message, first)
+        assert isinstance(intent, RequiredContribution)
+        assert intent.share == share
+
+    def test_certainty_gets_a_question(self):
+        intent = parse_message("How much would I need to invest to be 100% sure?")
+        assert isinstance(intent, NeedsClarification)
+        assert "can't show certainty" in intent.question
+
+    def test_a_percentage_alone_is_not_a_share_without_the_question(self):
+        assert parse_message("And 95%?").kind == "needs_clarification"

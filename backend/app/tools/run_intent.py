@@ -61,6 +61,12 @@ def run_intent(
                 scenarios.append(Scenario(WHAT_IF, overrides.to_domain()))
             results = compare(session, today, assumption_set, scenarios)
             futures = uncertainty.compare(session, today, assumption_set, scenarios)
+        case RequiredContribution(share=float(share)):
+            scenarios = [Scenario(CURRENT_PLAN)]
+            results = compare(session, today, assumption_set, scenarios)
+            futures = uncertainty.compare(
+                session, today, assumption_set, scenarios, required_shares=(share,)
+            )
         case WhatIf(overrides=overrides):
             scenarios = [Scenario(CURRENT_PLAN), Scenario(WHAT_IF, overrides.to_domain())]
             results = compare(session, today, assumption_set, scenarios)

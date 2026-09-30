@@ -168,6 +168,7 @@ describe("simulated futures per scenario", () => {
     not_reached_share: 0,
     value_at_target_date: { p10: 81_725, p50: 92_122, p90: 105_378 },
     shortfall_when_missed: null,
+    required_monthly_investment: [],
   });
   const FUTURES: FuturesComparison = {
     assumption_set: "base",

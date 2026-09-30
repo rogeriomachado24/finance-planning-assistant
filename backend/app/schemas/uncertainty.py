@@ -12,6 +12,7 @@ from app.domain.uncertainty import (
     BandPoint,
     GoalDates,
     Percentiles,
+    RequiredInvestment,
     UncertaintyResult,
 )
 from app.schemas.common import cents
@@ -86,6 +87,20 @@ class BandPointOut(BaseModel):
         return cls(month=b.month, date=b.date, p10=cents(b.p10), p50=cents(b.p50), p90=cents(b.p90))
 
 
+class RequiredInvestmentOut(BaseModel):
+    share: float = Field(description="Share of futures, e.g. 0.8 for 8 in 10.")
+    monthly_amount: float | None = Field(
+        description="Invested each month from next month, counted like the required "
+        "contribution: today's cash and investments plus this amount, without the leftover "
+        "surplus. Null when the target date has arrived and the goal isn't reached."
+    )
+
+    @classmethod
+    def from_domain(cls, r: RequiredInvestment) -> Self:
+        amount = r.monthly_amount
+        return cls(share=r.share, monthly_amount=None if amount is None else cents(amount))
+
+
 class FuturesSummaryOut(BaseModel):
     """What the simulated futures say about the goal (without the monthly bands)."""
 
@@ -106,11 +121,18 @@ class FuturesSummaryOut(BaseModel):
     shortfall_when_missed: PercentilesOut | None = Field(
         description="How far below the target the futures that miss it are. Null when none do."
     )
+    required_monthly_investment: list[RequiredInvestmentOut] = Field(
+        description="What it would take: the monthly investment that reaches the target by the "
+        "target date in half, 8 in 10 and 9 in 10 of the futures."
+    )
 
     @staticmethod
     def summary(r: UncertaintyResult) -> dict[str, Any]:
         shortfall = r.shortfall_when_missed
         return {
+            "required_monthly_investment": [
+                RequiredInvestmentOut.from_domain(x) for x in r.required_monthly_investment
+            ],
             "probability_by_target_date": share(r.probability_by_target_date),
             "probability_margin": share(r.probability_margin),
             "goal_dates": GoalDatesOut.from_domain(r.goal_dates),

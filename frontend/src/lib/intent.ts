@@ -54,6 +54,8 @@ export function describeIntent(intent: ChatIntent): string {
   let text: string;
   if (intent.kind === "what_if") {
     text = `what if: ${describeChanges(intent.overrides).join(" and ")}`;
+  } else if (intent.kind === "required_contribution" && intent.share) {
+    text = `how much is needed each month to reach it in ${formatPercent(intent.share)} of simulated futures`;
   } else if (intent.kind === "likelihood" && intent.overrides) {
     text = `how likely, if: ${describeChanges(intent.overrides).join(" and ")}`;
   } else if (intent.kind === "unsupported") {

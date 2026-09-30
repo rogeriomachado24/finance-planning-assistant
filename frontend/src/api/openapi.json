@@ -963,6 +963,14 @@
             ],
             "description": "How far below the target the futures that miss it are. Null when none do."
           },
+          "required_monthly_investment": {
+            "items": {
+              "$ref": "#/components/schemas/RequiredInvestmentOut"
+            },
+            "type": "array",
+            "title": "Required Monthly Investment",
+            "description": "What it would take: the monthly investment that reaches the target by the target date in half, 8 in 10 and 9 in 10 of the futures."
+          },
           "name": {
             "type": "string",
             "title": "Name"
@@ -993,6 +1001,7 @@
           "not_reached_share",
           "value_at_target_date",
           "shortfall_when_missed",
+          "required_monthly_investment",
           "name",
           "saved_id",
           "probability_difference"
@@ -1988,11 +1997,52 @@
             "const": "required_contribution",
             "title": "Kind",
             "default": "required_contribution"
+          },
+          "share": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMaximum": 1.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share",
+            "description": "E.g. 0.9 for 9 in 10 futures."
           }
         },
         "type": "object",
         "title": "RequiredContribution",
-        "description": "'How much do I need to invest each month to get there on time?'"
+        "description": "'How much do I need to invest each month to get there on time?' With `share`: in that\nshare of simulated futures ('...to be 90% sure?'), otherwise at the assumed return."
+      },
+      "RequiredInvestmentOut": {
+        "properties": {
+          "share": {
+            "type": "number",
+            "title": "Share",
+            "description": "Share of futures, e.g. 0.8 for 8 in 10."
+          },
+          "monthly_amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Amount",
+            "description": "Invested each month from next month, counted like the required contribution: today's cash and investments plus this amount, without the leftover surplus. Null when the target date has arrived and the goal isn't reached."
+          }
+        },
+        "type": "object",
+        "required": [
+          "share",
+          "monthly_amount"
+        ],
+        "title": "RequiredInvestmentOut"
       },
       "RunProjection": {
         "properties": {
@@ -2346,6 +2396,14 @@
             ],
             "description": "How far below the target the futures that miss it are. Null when none do."
           },
+          "required_monthly_investment": {
+            "items": {
+              "$ref": "#/components/schemas/RequiredInvestmentOut"
+            },
+            "type": "array",
+            "title": "Required Monthly Investment",
+            "description": "What it would take: the monthly investment that reaches the target by the target date in half, 8 in 10 and 9 in 10 of the futures."
+          },
           "scenario_name": {
             "type": "string",
             "title": "Scenario Name"
@@ -2417,6 +2475,7 @@
           "not_reached_share",
           "value_at_target_date",
           "shortfall_when_missed",
+          "required_monthly_investment",
           "scenario_name",
           "assumption_set",
           "assumptions",

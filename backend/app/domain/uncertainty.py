@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from datetime import date
 
 from app.domain.errors import InvalidInputError
-from app.domain.goals import months_to_target_date
+from app.domain.goals import calculate_required_monthly_contribution, months_to_target_date
 from app.domain.models import Assumptions, FinancialProfile, Goal, InvestmentRisk
 from app.domain.periods import add_months
 from app.domain.projection import MAX_PROJECTION_MONTHS, project
@@ -26,6 +26,8 @@ VOLATILITY = {InvestmentRisk.LOW: 0.05, InvestmentRisk.MEDIUM: 0.10, InvestmentR
 
 DEFAULT_PATHS = 1000
 DEFAULT_SEED = 2026
+REQUIRED_SHARES = (0.5, 0.8, 0.9)
+"""Shares of futures for "what would it take": half of them, 8 in 10, 9 in 10."""
 MONTHS_AFTER_TARGET = 120
 """Futures run to the target date plus 10 years (capped at 50 years) to date late goals."""
 
@@ -85,6 +87,18 @@ class ReachedBy:
 
 
 @dataclass(frozen=True)
+class RequiredInvestment:
+    """What it would take: the monthly investment that reaches the target by the target date
+    in at least `share` of the futures, counted like Phase 1's required contribution (today's
+    cash, today's investments growing, and the monthly amount from next month; the leftover
+    surplus is not counted, so compare the amount with the monthly surplus)."""
+
+    share: float
+    monthly_amount: float | None
+    """None when the target date has arrived and the goal isn't reached in enough futures."""
+
+
+@dataclass(frozen=True)
 class UncertaintyResult:
     paths: int
     seed: int
@@ -108,6 +122,7 @@ class UncertaintyResult:
     """Each 1 January within the horizon, and the target date."""
     bands: tuple[BandPoint, ...]
     """Cash + investments percentiles for every month, 0..horizon."""
+    required_monthly_investment: tuple[RequiredInvestment, ...]
 
 
 def simulate_uncertainty(
@@ -119,11 +134,18 @@ def simulate_uncertainty(
     volatility: float,
     paths: int = DEFAULT_PATHS,
     seed: int = DEFAULT_SEED,
+    required_shares: tuple[float, ...] = REQUIRED_SHARES,
 ) -> UncertaintyResult:
+    """Run `paths` futures of the scenario. Besides the outcomes, each future gives the exact
+    monthly investment it would need (its returns are fixed, so the value on the target date
+    grows in a straight line with that amount); the amount that works in 8 of 10 futures is
+    the 80th percentile of those."""
     if not 0 <= volatility <= 1:
         raise InvalidInputError(f"volatility must be between 0 and 1; got {volatility}")
     if not 1 <= paths <= 10_000:
         raise InvalidInputError(f"paths must be between 1 and 10,000; got {paths}")
+    if not all(0 < share < 1 for share in required_shares):
+        raise InvalidInputError(f"shares must be between 0 and 1; got {required_shares}")
 
     months_to_target = months_to_target_date(goal.target_date, start)
     horizon = min(MAX_PROJECTION_MONTHS, months_to_target + MONTHS_AFTER_TARGET)
@@ -136,6 +158,7 @@ def simulate_uncertainty(
     rng = random.Random(seed)
     series: list[list[float]] = []
     goal_months: list[int | None] = []
+    needed: list[float] = []
     for _ in range(paths):
         returns = sample_yearly_returns(rng, eff_assumptions.annual_return, volatility, years)
         if first_year is not None:
@@ -146,6 +169,15 @@ def simulate_uncertainty(
         ]
         series.append(liquid)
         goal_months.append(next((m for m, v in enumerate(liquid) if v >= target), None))
+        amount = calculate_required_monthly_contribution(
+            target,
+            months_to_target,
+            eff_profile.cash,
+            eff_profile.investments,
+            eff_assumptions.annual_return,
+            returns,
+        )
+        needed.append(math.inf if amount is None else amount)
 
     at_target = [liquid[months_to_target] for liquid in series]
     probability = sum(v >= target for v in at_target) / paths
@@ -156,6 +188,12 @@ def simulate_uncertainty(
     def goal_date(p: float) -> date | None:
         month = percentile(reached_months, p)
         return None if month == math.inf else add_months(start, int(month))
+
+    needed.sort()
+
+    def required(share: float) -> RequiredInvestment:
+        amount = percentile(needed, share * 100)
+        return RequiredInvestment(share, None if amount == math.inf else amount)
 
     checkpoints = sorted(
         {m for m in range(1, horizon + 1) if add_months(start, m).month == 1} | {months_to_target}
@@ -185,6 +223,7 @@ def simulate_uncertainty(
             _band(start, month, list(column))
             for month, column in enumerate(zip(*series, strict=True))
         ),
+        required_monthly_investment=tuple(required(share) for share in required_shares),
     )
 
 
@@ -202,11 +241,14 @@ def compare_uncertainty(
     volatility: float,
     paths: int = DEFAULT_PATHS,
     seed: int = DEFAULT_SEED,
+    required_shares: tuple[float, ...] = REQUIRED_SHARES,
 ) -> list[UncertaintyResult]:
     """Simulate each scenario on the same seed, so every scenario meets the same sequences
     of good and bad years (common random numbers): differences come from the plan, not luck."""
     return [
-        simulate_uncertainty(s, profile, assumptions, goal, start, volatility, paths, seed)
+        simulate_uncertainty(
+            s, profile, assumptions, goal, start, volatility, paths, seed, required_shares
+        )
         for s in scenarios
     ]
 

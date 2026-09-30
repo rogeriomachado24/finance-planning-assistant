@@ -451,6 +451,11 @@ export interface components {
             value_at_target_date: components["schemas"]["PercentilesOut"];
             /** @description How far below the target the futures that miss it are. Null when none do. */
             shortfall_when_missed: components["schemas"]["PercentilesOut"] | null;
+            /**
+             * Required Monthly Investment
+             * @description What it would take: the monthly investment that reaches the target by the target date in half, 8 in 10 and 9 in 10 of the futures.
+             */
+            required_monthly_investment: components["schemas"]["RequiredInvestmentOut"][];
             /** Name */
             name: string;
             /**
@@ -904,7 +909,8 @@ export interface components {
         };
         /**
          * RequiredContribution
-         * @description 'How much do I need to invest each month to get there on time?'
+         * @description 'How much do I need to invest each month to get there on time?' With `share`: in that
+         *     share of simulated futures ('...to be 90% sure?'), otherwise at the assumed return.
          */
         RequiredContribution: {
             /**
@@ -917,6 +923,24 @@ export interface components {
              * @enum {string}
              */
             kind: "required_contribution";
+            /**
+             * Share
+             * @description E.g. 0.9 for 9 in 10 futures.
+             */
+            share?: number | null;
+        };
+        /** RequiredInvestmentOut */
+        RequiredInvestmentOut: {
+            /**
+             * Share
+             * @description Share of futures, e.g. 0.8 for 8 in 10.
+             */
+            share: number;
+            /**
+             * Monthly Amount
+             * @description Invested each month from next month, counted like the required contribution: today's cash and investments plus this amount, without the leftover surplus. Null when the target date has arrived and the goal isn't reached.
+             */
+            monthly_amount: number | null;
         };
         /**
          * RunProjection
@@ -1083,6 +1107,11 @@ export interface components {
             value_at_target_date: components["schemas"]["PercentilesOut"];
             /** @description How far below the target the futures that miss it are. Null when none do. */
             shortfall_when_missed: components["schemas"]["PercentilesOut"] | null;
+            /**
+             * Required Monthly Investment
+             * @description What it would take: the monthly investment that reaches the target by the target date in half, 8 in 10 and 9 in 10 of the futures.
+             */
+            required_monthly_investment: components["schemas"]["RequiredInvestmentOut"][];
             /** Scenario Name */
             scenario_name: string;
             /** Assumption Set */

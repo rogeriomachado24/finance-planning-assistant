@@ -109,9 +109,29 @@ first year in every future, and later years stay random.
 | Precision | Half-width of the 95% interval of the probability, 1.96 × √(p(1 − p) / n), in whole percentage points (at most about ±3 for 1,000 futures) |
 | Reached by each year | Share of futures that have reached the target by each 1 January, and by the target date |
 | Shortfall when missed | In the futures that miss the target date: the median and 90th-percentile shortfall; none when every future reaches it |
+| What it would take | The monthly investment that reaches the target by the target date in half, 8 in 10 and 9 in 10 of the futures (see 2.7) |
 | Inputs echoed | Number of futures, seed, risk level, volatility, assumption set |
 
 Percentiles use one fixed method (nearest rank on the sorted values), tested directly.
+
+### 2.7 What it would take
+
+Counted exactly like Phase 1's required contribution: today's cash (which earns nothing), today's
+investments growing at each future's returns, and a monthly amount invested from next month.
+The leftover surplus is not counted, so the figure sits next to "Needed per month" and is
+compared with the monthly surplus in the same way.
+
+No search is needed. Within one future the returns are fixed, so the value on the target date
+grows in a straight line with the monthly amount, and each future has an exact required amount
+(the Phase 1 formula with that future's yearly returns). The amount that works in at least 8 of
+10 futures is the 80th percentile of those 1,000 amounts, computed in the same pass as the
+simulation. With no volatility every level equals the Phase 1 amount; a test feeds the 8-in-10
+amount back into the simulation and checks that at least 80% of the same futures reach the
+target, and fewer with a cent less.
+
+Why not "the contribution in the plan that reaches 80%"? In the plan, a higher contribution
+moves money out of cash, which is safe in the model, so it can *lower* the share in bad
+futures (see 5, "Sensible direction"). That question has no clean answer; the one above does.
 
 ## 3. Presentation and wording
 
@@ -176,8 +196,8 @@ in `/simulate`) returns the outputs above. `/simulate` is unchanged. The profile
 4. **Compare:** probability per scenario, on common random numbers.
 5. **Chat:** "How likely am I to reach my goal?" and "What if the market falls 30%?", answered
    from the same results, with grounding.
-6. **What would it take:** the monthly investment for a chosen share of futures (a search over
-   simulations on common random numbers).
+6. **What would it take:** the monthly investment for a chosen share of futures (2.7), on the
+   Projection page and in the chat ("how much to be 90% sure?").
 7. *Optional:* example futures on the chart.
 
 ## 7. Decision log
@@ -196,4 +216,5 @@ in `/simulate`) returns the outputs above. `/simulate` is unchanged. The profile
 | Report how large the misses are, not only how often | 70% with small misses and 70% with large ones call for different reactions |
 | Market drop as a deterministic override (`first_year_return`) | Relatable and explainable, works in every view and in the chat, and needs no randomness |
 | Risk and return stay separate; risk levels are never compared side by side | Pairing them would hide an assumption; comparing them on one return would make low risk always look better |
-| "What would it take" last | The most practical output, but it needs many simulations per answer and careful wording |
+| "What would it take" last | The most practical output, and it needs careful wording |
+| "What would it take" counted like the required contribution, as a percentile of per-future amounts | Exact, no search, comparable with "Needed per month"; changing the plan's contribution instead has no monotone answer because the money comes out of cash |

@@ -71,6 +71,8 @@ def engine_amounts(state: dict) -> set[str]:
         values += [f["value_at_target_date"][p] for p in ("p10", "p50", "p90")]
         if f["shortfall_when_missed"]:
             values += [f["shortfall_when_missed"][p] for p in ("p10", "p50", "p90")]
+        values += [r["monthly_amount"] for r in f["required_monthly_investment"]]
+        values = [v for v in values if v is not None]
     overrides = state["intent"].get("overrides") or {}
     values += [abs(v) for v in overrides.values() if v is not None]
     return {eur(v) for v in values}
@@ -86,6 +88,8 @@ def engine_percentages(state: dict) -> set[str]:
     values += [abs(v) for k, v in overrides.items() if v is not None and k.startswith("annual_")]
     if overrides.get("first_year_return") is not None:
         values.append(abs(overrides["first_year_return"]))
+    if state["intent"].get("share") is not None:
+        values.append(state["intent"]["share"])
     found = {percent(v) for v in values if v is not None}
     for f in futures.get("scenarios", []):
         for p in (f["probability_by_target_date"], f["not_reached_share"]):
@@ -209,6 +213,40 @@ class TestLikelihood:
         assert state["intent"]["kind"] == "likelihood"
         assert state["futures"]["assumption_set"] == "conservative"
         assert_grounded(state)
+
+
+class TestWhatWouldItTake:
+    def test_amount_for_a_chosen_share_next_to_the_assumed_return(self, chat: Chat):
+        state = chat.say("How much would I need to invest to be 90% sure?")
+
+        assert state["intent"] == {
+            "kind": "required_contribution",
+            "assumption_set": None,
+            "share": 0.9,
+        }
+        (level,) = state["futures"]["scenarios"][0]["required_monthly_investment"]
+        plain = state["results"][0]["result"]["required_monthly_contribution"]
+        assert level["share"] == 0.9
+        assert level["monthly_amount"] > plain  # more certainty needs more
+        assert (
+            f"about {eur(level['monthly_amount'])} a month would need to be invested"
+            in (state["reply"])
+        )
+        assert f"in every year it is {eur(plain)}" in state["reply"]
+        assert "not the leftover surplus" in state["reply"]
+        assert_grounded(state)
+
+    def test_another_share_as_a_follow_up(self, chat: Chat):
+        chat.say("How much do I need to invest each month to be 90% sure?")
+        state = chat.say("And 8 in 10?")
+        assert state["intent"]["share"] == 0.8
+        assert "at least 80% of 1,000 simulated futures" in state["reply"]
+        assert_grounded(state)
+
+    def test_certainty_gets_a_question(self, chat: Chat):
+        state = chat.say("How much would I need to invest to be 100% sure?")
+        assert state["status"] == "clarification"
+        assert "can't show certainty" in state["reply"]
 
 
 class TestNotAnswered:

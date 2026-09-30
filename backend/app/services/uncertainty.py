@@ -11,6 +11,7 @@ from app.domain.scenarios import Scenario, ScenarioOverrides
 from app.domain.uncertainty import (
     DEFAULT_PATHS,
     DEFAULT_SEED,
+    REQUIRED_SHARES,
     VOLATILITY,
     UncertaintyResult,
     compare_uncertainty,
@@ -41,6 +42,7 @@ def simulate(
     name: str | None = None,
     paths: int = DEFAULT_PATHS,
     seed: int = DEFAULT_SEED,
+    required_shares: tuple[float, ...] = REQUIRED_SHARES,
 ) -> Uncertainty:
     """Simulate the stored plan (optionally with what-if overrides) with random yearly returns
     at the profile's investment risk. The same seed gives the same futures for every plan."""
@@ -57,6 +59,7 @@ def simulate(
         VOLATILITY[risk],
         paths,
         seed,
+        required_shares,
     )
     return Uncertainty(
         scenario_name=scenario.name,
@@ -90,6 +93,7 @@ def compare(
     scenarios: list[Scenario] | None = None,
     paths: int = DEFAULT_PATHS,
     seed: int = DEFAULT_SEED,
+    required_shares: tuple[float, ...] = REQUIRED_SHARES,
 ) -> FuturesComparison:
     """Simulate the same scenarios as the comparison (by default the built-in ones, then the
     saved ones), all on the same futures. The first scenario is the baseline."""
@@ -106,6 +110,7 @@ def compare(
         VOLATILITY[risk],
         paths,
         seed,
+        required_shares,
     )
     return FuturesComparison(
         assumption_set=assumption_set,

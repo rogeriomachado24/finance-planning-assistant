@@ -16,6 +16,7 @@ from app.agents.intents import (
     ExplainAssumptions,
     Likelihood,
     NeedsClarification,
+    RequiredContribution,
     RunProjection,
     Unsupported,
     WhatIf,
@@ -81,6 +82,16 @@ class TestToIntent:
         assert intent.overrides.first_year_return == -0.25
         with pytest.raises(UntrustedOutput, match="not in the message"):
             to_intent(request, "what if stocks tank next year")
+
+    def test_how_sure_for_the_monthly_amount(self):
+        request = ModelRequest(sure_percent=85, kind="needed_per_month")
+        intent = to_intent(request, "what must I put away monthly to be 85 percent safe")
+        assert isinstance(intent, RequiredContribution)
+        assert intent.share == 0.85
+        with pytest.raises(UntrustedOutput):
+            to_intent(request, "what must I put away monthly to be safe")
+        with pytest.raises(UntrustedOutput):
+            to_intent(ModelRequest(sure_percent=100, kind="needed_per_month"), "100% sure?")
 
     def test_likelihood_with_or_without_a_change(self):
         assert to_intent(ModelRequest(kind="likelihood"), "odds of making it?") == Likelihood()

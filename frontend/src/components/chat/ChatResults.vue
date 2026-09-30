@@ -15,6 +15,7 @@ import {
   formatPoints,
   formatPointsDifference,
   formatShare,
+  formatShareLevel,
   formatSignedEur,
 } from "../../lib/format";
 import SaveToCompare from "./SaveToCompare.vue";
@@ -25,6 +26,8 @@ const kind = computed(() => props.response.intent.kind);
 const results = computed(() => props.response.results);
 const current = computed(() => results.value[0]?.result ?? null);
 const futures = computed(() => props.response.futures?.scenarios ?? []);
+/** "How much to be 90% sure?": the amount for the chosen share, from the simulated futures. */
+const required = computed(() => futures.value[0]?.required_monthly_investment[0] ?? null);
 /** Changes that can be saved to Compare: a what-if, or a "how likely if…" question. */
 const changes = computed(() => {
   const intent = props.response.intent;
@@ -110,10 +113,17 @@ const goalDate = (date: string | null) => (date ? formatDate(date) : "Not within
     <!-- Needed per month -->
     <dl
       v-else-if="kind === 'required_contribution' && current"
-      class="grid grid-cols-3 gap-2 text-sm"
+      class="grid gap-2 text-sm"
+      :class="required ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'"
     >
+      <div v-if="required" class="rounded-md border border-hairline bg-page p-3">
+        <dt class="text-xs text-ink-2">{{ formatShareLevel(required.share) }} of futures</dt>
+        <dd class="text-lg font-semibold">
+          {{ required.monthly_amount === null ? "—" : formatEur(required.monthly_amount) }}
+        </dd>
+      </div>
       <div class="rounded-md border border-hairline bg-page p-3">
-        <dt class="text-xs text-ink-2">Needed per month</dt>
+        <dt class="text-xs text-ink-2">{{ required ? "At the assumed return" : "Needed per month" }}</dt>
         <dd class="text-lg font-semibold">
           {{ current.required_monthly_contribution === null ? "—" : formatEur(current.required_monthly_contribution) }}
         </dd>

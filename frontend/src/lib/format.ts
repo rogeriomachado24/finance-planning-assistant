@@ -106,3 +106,11 @@ export function formatPointsDifference(difference: number): string {
   const size = Math.abs(points);
   return `${points > 0 ? "+" : "−"}${size} ${size === 1 ? "point" : "points"}`;
 }
+
+/** A share of futures as a level: 0.5 -> "Half", 0.8 -> "8 in 10", 0.95 -> "95%". */
+export function formatShareLevel(share: number): string {
+  if (share === 0.5) return "Half";
+  const tenths = share * 10;
+  if (Number.isInteger(Math.round(tenths * 1e9) / 1e9)) return `${Math.round(tenths)} in 10`;
+  return wholePercent.format(share);
+}

@@ -164,6 +164,9 @@ def template_body(facts: Facts) -> str:
         body = _what_if(facts.results, intent.overrides)
     elif isinstance(intent, CompareScenarios):
         body = _comparison(facts.results)
+    elif isinstance(intent, RequiredContribution) and intent.share is not None:
+        assert facts.futures is not None
+        body = _required_in_futures(current, facts.futures)
     elif isinstance(intent, RequiredContribution):
         body = _required(current)
     elif isinstance(intent, GoalDate | RunProjection):
@@ -227,6 +230,40 @@ def _required(r: ScenarioResultOut) -> str:
         f"month would need to be invested from next month, at the assumed "
         f"{percent(r.assumptions.annual_return)} return. Today {eur(r.monthly_contribution)} "
         f"is invested each month, and the monthly surplus is {eur(r.monthly_surplus)}."
+    )
+
+
+def _required_in_futures(r: ScenarioResultOut, futures: FuturesComparisonOut) -> str:
+    """What it would take in a chosen share of simulated futures, next to the amount at the
+    assumed return and today's figures."""
+    target, target_day = eur(r.target_amount), day(r.target_date)
+    (level,) = futures.scenarios[0].required_monthly_investment
+    how_sure = f"at least {percent(level.share)} of {futures.paths:,} simulated futures"
+    if level.monthly_amount is None:
+        return (
+            f"The target date ({target_day}) has arrived and the {target} goal isn't reached in "
+            f"{how_sure}, so no monthly amount can close the gap in time."
+        )
+    if level.monthly_amount == 0:
+        text = (
+            f"Your current cash and investments already grow to {target} by {target_day} in "
+            f"{how_sure}, without further monthly investment."
+        )
+    else:
+        text = f"To reach {target} by {target_day} in {how_sure}, about " + (
+            f"{eur(level.monthly_amount)} a month would need to be invested from next month."
+        )
+    if r.required_monthly_contribution is not None:
+        text += (
+            f" At the assumed {percent(r.assumptions.annual_return)} return in every year it is "
+            f"{eur(r.required_monthly_contribution)}."
+        )
+    return text + (
+        f" Today {eur(r.monthly_contribution)} is invested each month, and the monthly surplus is "
+        f"{eur(r.monthly_surplus)}. Like the assumed-return figure, this counts today's cash and "
+        "investments plus the monthly amount, not the leftover surplus. Investment returns vary "
+        f"around the assumed return ({RISK_LABELS[futures.investment_risk]} investment risk: "
+        f"about {percent(futures.volatility)} a year)."
     )
 
 

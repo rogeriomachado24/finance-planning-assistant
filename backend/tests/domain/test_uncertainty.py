@@ -286,3 +286,58 @@ class TestCompareUncertainty:
         assert difference == better.probability_by_target_date - base.probability_by_target_date
         assert difference >= 0
         assert probability_difference(base, base) == 0
+
+
+class TestWhatWouldItTake:
+    def test_without_volatility_every_share_needs_the_phase1_amount(
+        self, profile, assumptions, goal, start
+    ):
+        expected = run_scenario(PLAN, profile, assumptions, goal, start)
+        result = simulate(profile, assumptions, goal, start, volatility=0, paths=5)
+        for level in result.required_monthly_investment:
+            assert level.monthly_amount == pytest.approx(expected.required_monthly_contribution)
+
+    def test_more_certainty_needs_more(self, profile, assumptions, goal, start):
+        result = simulate(profile, assumptions, goal, start, paths=300)
+        amounts = [r.monthly_amount for r in result.required_monthly_investment]
+        assert [r.share for r in result.required_monthly_investment] == [0.5, 0.8, 0.9]
+        assert amounts == sorted(amounts)
+        assert amounts[0] < amounts[-1]
+
+    def test_investing_the_amount_reaches_the_target_in_that_share(self, goal, start):
+        """Fed back into the simulation (all income invested, so cash stays as it is today),
+        the 8-in-10 amount reaches the target in at least 80% of the same futures, and a cent
+        less in fewer."""
+        assumptions = Assumptions(annual_return=0.05)
+        today = FinancialProfile(
+            monthly_net_income=0, monthly_expenses=0, cash=10_000, investments=15_000
+        )
+        (level,) = simulate(
+            today, assumptions, goal, start, paths=400, required_shares=(0.8,)
+        ).required_monthly_investment
+
+        def share_reaching(amount: float) -> float:
+            plan = replace(today, monthly_net_income=amount, monthly_investment_contribution=amount)
+            return simulate(plan, assumptions, goal, start, paths=400).probability_by_target_date
+
+        assert share_reaching(level.monthly_amount + 0.01) >= 0.8
+        assert share_reaching(level.monthly_amount - 0.01) < 0.8
+
+    def test_a_market_drop_needs_more(self, profile, assumptions, goal, start):
+        drop = Scenario("Drop", ScenarioOverrides(first_year_return=-0.30))
+        plan = simulate(profile, assumptions, goal, start, paths=200)
+        worse = simulate(profile, assumptions, goal, start, scenario=drop, paths=200)
+        for a, b in zip(
+            plan.required_monthly_investment, worse.required_monthly_investment, strict=True
+        ):
+            assert b.monthly_amount > a.monthly_amount
+
+    def test_no_amount_when_the_target_date_has_arrived(self, profile, assumptions, goal, start):
+        today = replace(goal, target_date=start)
+        result = simulate(profile, assumptions, today, start, paths=20)
+        assert all(r.monthly_amount is None for r in result.required_monthly_investment)
+
+    @pytest.mark.parametrize("share", [0, 1, 1.5])
+    def test_rejects_shares_outside_0_to_1(self, profile, assumptions, goal, start, share):
+        with pytest.raises(InvalidInputError):
+            simulate(profile, assumptions, goal, start, paths=5, required_shares=(share,))

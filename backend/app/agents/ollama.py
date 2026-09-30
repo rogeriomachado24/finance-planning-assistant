@@ -70,6 +70,11 @@ class ModelRequest(BaseModel):
         description="Investments fall (negative) or rise (positive) by this percent in the "
         "next year only: -30 for a 30% crash.",
     )
+    sure_percent: float | None = Field(
+        None,
+        description="For needed_per_month only: how sure, in percent of simulated futures "
+        "(90 for '90% sure').",
+    )
     assumptions: Literal["conservative", "base", "optimistic"] | None = Field(
         None, description="Only if the user names a case: pessimistic = conservative."
     )
@@ -313,6 +318,12 @@ def to_intent(request: ModelRequest, message: str) -> Intent:
         return WhatIf(overrides=OverridesIn(**overrides), assumption_set=request.assumptions)
     if request.kind == "what_if":
         raise UntrustedOutput("what_if without any change")
+    if request.kind == "needed_per_month" and request.sure_percent is not None:
+        if as_number(request.sure_percent) not in written or not 0 < request.sure_percent < 100:
+            raise UntrustedOutput(f"sure_percent={request.sure_percent} is not a usable share")
+        return RequiredContribution(
+            share=round(request.sure_percent / 100, 4), assumption_set=request.assumptions
+        )
     return _KINDS[request.kind](assumption_set=request.assumptions)
 
 

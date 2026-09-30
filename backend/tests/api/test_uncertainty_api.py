@@ -102,3 +102,14 @@ class TestCompare:
     def test_an_empty_list_is_422(self, plan_client: TestClient):
         response = plan_client.post("/scenarios/compare/uncertainty", json={"scenarios": []})
         assert response.status_code == 422
+
+
+def test_what_would_it_take_for_half_8_and_9_in_10(plan_client: TestClient):
+    body = plan_client.post("/simulate/uncertainty", json=FEW).json()
+    levels = body["required_monthly_investment"]
+    assert [x["share"] for x in levels] == [0.5, 0.8, 0.9]
+    amounts = [x["monthly_amount"] for x in levels]
+    assert amounts == sorted(amounts)
+    assert all(round(a, 2) == a for a in amounts)
+    compared = plan_client.post("/scenarios/compare/uncertainty", json=FEW).json()
+    assert compared["scenarios"][0]["required_monthly_investment"] == levels

@@ -28,9 +28,11 @@ class GoalDate(_Intent):
 
 
 class RequiredContribution(_Intent):
-    """'How much do I need to invest each month to get there on time?'"""
+    """'How much do I need to invest each month to get there on time?' With `share`: in that
+    share of simulated futures ('...to be 90% sure?'), otherwise at the assumed return."""
 
     kind: Literal["required_contribution"] = "required_contribution"
+    share: float | None = Field(None, gt=0, lt=1, description="E.g. 0.9 for 9 in 10 futures.")
 
 
 class WhatIf(_Intent):

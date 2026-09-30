@@ -6,7 +6,14 @@
  */
 import { computed } from "vue";
 import type { ApiError, Uncertainty } from "../api/client";
-import { formatCount, formatPercent, formatPoints, formatShare } from "../lib/format";
+import {
+  formatCount,
+  formatEur,
+  formatPercent,
+  formatPoints,
+  formatShare,
+  formatShareLevel,
+} from "../lib/format";
 import {
   goalDateRange,
   probabilitySentence,
@@ -94,6 +101,29 @@ const shortfall = computed(() => (u.value ? shortfallSentence(u.value) : null));
             </li>
           </ul>
         </div>
+      </div>
+
+      <!-- What it would take: the monthly investment for half, 8 in 10 and 9 in 10 of futures -->
+      <div class="mt-5">
+        <h3 id="what-it-takes-heading" class="text-xs font-medium text-ink-2">
+          What it would take: invested each month from next month, to reach the goal on time in…
+        </h3>
+        <dl class="mt-2 grid grid-cols-3 gap-2" aria-labelledby="what-it-takes-heading">
+          <div
+            v-for="level in u.required_monthly_investment"
+            :key="level.share"
+            class="rounded-md border border-hairline bg-page p-3"
+          >
+            <dt class="text-xs text-ink-2">{{ formatShareLevel(level.share) }} of futures</dt>
+            <dd class="text-lg font-semibold tabular-nums">
+              {{ level.monthly_amount === null ? "—" : formatEur(level.monthly_amount) }}
+            </dd>
+          </div>
+        </dl>
+        <p class="mt-1.5 text-xs text-ink-2">
+          Counted like “Needed per month”: today's cash and investments plus the monthly amount,
+          not the leftover surplus.
+        </p>
       </div>
 
       <p class="mt-4 border-t border-grid pt-3 text-xs text-ink-2">

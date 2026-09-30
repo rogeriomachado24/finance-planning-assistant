@@ -124,8 +124,16 @@ def parse_message(message: str, previous: Intent | None = None) -> Intent:
     text = _normalise(message)
     assumption_set = next((name for name, pattern in _SETS if re.search(pattern, text)), None)
 
-    if re.search(_REQUIRED, text):
-        return RequiredContribution(assumption_set=assumption_set)
+    # "And 95%?" after "how much to be 90% sure?" asks the same with another share.
+    asked_share = isinstance(previous, RequiredContribution) and previous.share is not None
+    follow_up = asked_share and re.search(_RERUN, text) and _wanted_share(text) is not None
+    if re.search(_REQUIRED, text) or follow_up:
+        share = _wanted_share(text)
+        if share == "out of range":
+            return NeedsClarification(question=_SHARE_OUT_OF_RANGE)
+        if follow_up and not assumption_set:
+            assumption_set = previous.assumption_set  # type: ignore[union-attr]
+        return RequiredContribution(share=share, assumption_set=assumption_set)
     # "What if the stock market crashes 30%?" names stocks but asks for a projection.
     market_what_if = re.search(_WHAT_IF, text) and _market_move(text)
     if re.search(_ADVICE, text) and not (market_what_if and not re.search(_ASKS_ADVICE, text)):
@@ -178,6 +186,29 @@ _OUT_OF_RANGE = (
     "That's outside what the simulator accepts: a change can't be more than 100% a year or "
     "a fall of 100% or more. For example: 'what if the market falls 30% next year?'"
 )
+
+
+_SHARE_OUT_OF_RANGE = (
+    "Simulated futures can't show certainty: choose a share between 1% and 99%, for example "
+    "'how much would I need to invest to be 90% sure?'"
+)
+_SURE = r"\b(sure|certain|confident|safe|likely|chances?|probabilit\w*)\b"
+
+
+def _wanted_share(text: str) -> float | str | None:
+    """How sure the user wants to be: "90% sure" -> 0.9, "8 in 10" -> 0.8, "sure" alone ->
+    0.9 (the reply names it); None when the question isn't about simulated futures."""
+    if fraction := re.search(r"\b(\d{1,2}) (?:in|out of) 10\b", text):
+        share = int(fraction[1]) / 10
+    elif (percent := _PERCENT.search(text)) and re.search(_SURE, text):
+        share = round(float(percent["num"]) / 100, 4)
+    elif re.search(_SURE, text) and re.search(_REQUIRED, text):
+        return 0.9
+    elif percent and re.fullmatch(r"(and |what about |how about )?\d+(\.\d+)?%\??", text):
+        share = round(float(percent["num"]) / 100, 4)  # "And 95%?" as a follow-up
+    else:
+        return None
+    return share if 0 < share < 1 else "out of range"
 
 
 def _previous_changes(previous: Intent | None) -> OverridesIn | None:
