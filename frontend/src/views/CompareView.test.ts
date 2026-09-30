@@ -1,7 +1,13 @@
 /** The compare page with a fake API. */
 import { flushPromises, mount, RouterLinkStub } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { AssumptionSet, ComparedScenario, Comparison, ScenarioResult } from "../api/client";
+import type {
+  AssumptionSet,
+  ComparedScenario,
+  Comparison,
+  FuturesComparison,
+  ScenarioResult,
+} from "../api/client";
 import { fakeApi, lastBody } from "../test/fakeApi";
 import CompareView from "./CompareView.vue";
 
@@ -150,5 +156,73 @@ describe("compare page", () => {
 
     expect(wrapper.text()).toContain("Change at least one value");
     expect(fetchMock.mock.calls.some(([url, init]) => url === "/api/scenarios" && init?.method === "POST")).toBe(false);
+  });
+});
+
+describe("simulated futures per scenario", () => {
+  const summary = (p: number, margin: number) => ({
+    probability_by_target_date: p,
+    probability_margin: margin,
+    goal_dates: { p10: "2030-11-01", p50: "2031-07-01", p90: "2032-04-01" },
+    not_reached_share: 0,
+    value_at_target_date: { p10: 81_725, p50: 92_122, p90: 105_378 },
+    shortfall_when_missed: null,
+  });
+  const FUTURES: FuturesComparison = {
+    assumption_set: "base",
+    investment_risk: "medium",
+    volatility: 0.1,
+    paths: 1000,
+    seed: 2026,
+    baseline: "Current plan",
+    scenarios: [
+      { ...summary(0.948, 0.0138), name: "Current plan", saved_id: null, probability_difference: 0 },
+      { ...summary(1, 0), name: "Higher income", saved_id: null, probability_difference: 0.052 },
+      { ...summary(0.937, 0.0151), name: "Spend €200 less", saved_id: 7, probability_difference: -0.011 },
+    ],
+  };
+
+  it("adds the share of futures on time, with precision and differences from the API", async () => {
+    fakeApi({
+      "GET /assumptions": [200, SETS],
+      "POST /scenarios/compare": [200, COMPARISON],
+      "POST /scenarios/compare/uncertainty": [200, FUTURES],
+    });
+    const wrapper = await mountCompare();
+    const rows = wrapper.findAll("tbody tr").map((r) => r.text());
+
+    expect(rows[0]).toContain("95%");
+    expect(rows[0]).toContain("±1 point");
+    expect(rows[1]).toContain("more than 99%");
+    expect(rows[1]).toContain("+5 points");
+    expect(rows[2]).toContain("−1 point");
+    expect(wrapper.text()).toContain("Every scenario runs on the same futures");
+    expect(wrapper.text()).toContain("medium investment risk: about 10% a year");
+  });
+
+  it("shows the table first and says the futures are still simulating", async () => {
+    fakeApi({
+      "GET /assumptions": [200, SETS],
+      "POST /scenarios/compare": [200, COMPARISON],
+      "POST /scenarios/compare/uncertainty": [200, { ...FUTURES, assumption_set: "optimistic" }],
+    });
+    const wrapper = await mountCompare();
+
+    // Futures for another assumption set are never shown next to this comparison
+    expect(wrapper.findAll("tbody tr")[0].text()).toContain("Simulating…");
+    expect(wrapper.text()).not.toContain("±1 point");
+  });
+
+  it("keeps the comparison when the simulation fails, with a way to retry", async () => {
+    fakeApi({
+      "GET /assumptions": [200, SETS],
+      "POST /scenarios/compare": [200, COMPARISON],
+      "POST /scenarios/compare/uncertainty": [500, { detail: "simulation failed" }],
+    });
+    const wrapper = await mountCompare();
+
+    expect(wrapper.findAll("tbody tr")).toHaveLength(3);
+    expect(wrapper.text()).toContain("Couldn't simulate the futures: simulation failed");
+    expect(wrapper.find("button.underline").text()).toBe("Try again");
   });
 });

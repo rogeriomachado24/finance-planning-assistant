@@ -9,6 +9,7 @@ import {
   formatMonthYear,
   formatPercent,
   formatPoints,
+  formatPointsDifference,
   formatShare,
   formatSignedEur,
 } from "./format";
@@ -107,5 +108,14 @@ describe("formatMonthYear and formatCount", () => {
   it("formats without time zones or locale surprises", () => {
     expect(formatMonthYear("2030-11-01")).toBe("Nov 2030");
     expect(formatCount(1000)).toBe("1,000");
+  });
+});
+
+describe("formatPointsDifference", () => {
+  it("shows differences between shares in whole points", () => {
+    expect(formatPointsDifference(0.032)).toBe("+3 points");
+    expect(formatPointsDifference(-0.011)).toBe("−1 point");
+    expect(formatPointsDifference(0)).toBe("Same");
+    expect(formatPointsDifference(0.003)).toBe("Less than 1 point");
   });
 });

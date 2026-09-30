@@ -114,6 +114,21 @@ class ComparedScenario:
     """Set for saved scenarios, None for built-in or ad-hoc ones."""
 
 
+def scenarios_to_compare(
+    session: Session, assumptions: Assumptions, scenarios: list[Scenario] | None
+) -> tuple[list[Scenario], dict[str, int]]:
+    """The given scenarios, or by default the built-in ones followed by the saved ones; and
+    the ids of the saved ones by name."""
+    saved_ids: dict[str, int] = {}
+    if scenarios is None:
+        saved = list_scenarios(session)
+        saved_ids = {s.scenario.name: s.id for s in saved}
+        scenarios = default_scenarios(assumptions) + [s.scenario for s in saved]
+    if not scenarios:
+        raise InvalidInputError("at least one scenario is needed to compare")
+    return scenarios, saved_ids
+
+
 def compare(
     session: Session,
     today: date,
@@ -123,14 +138,7 @@ def compare(
     """Run several scenarios on the stored plan; the first one is the baseline. By default:
     the built-in scenarios (current plan first), followed by the saved ones."""
     assumptions = get_assumption_set(session, assumption_set).assumptions
-    saved_ids: dict[str, int] = {}
-    if scenarios is None:
-        saved = list_scenarios(session)
-        saved_ids = {s.scenario.name: s.id for s in saved}
-        scenarios = default_scenarios(assumptions) + [s.scenario for s in saved]
-    if not scenarios:
-        raise InvalidInputError("at least one scenario is needed to compare")
-
+    scenarios, saved_ids = scenarios_to_compare(session, assumptions, scenarios)
     results = compare_scenarios(
         scenarios,
         get_profile(session),

@@ -23,6 +23,8 @@ export type InvestmentRisk = Schemas["InvestmentRisk"];
 export type Uncertainty = Schemas["UncertaintyOut"];
 export type UncertaintyRequest = Schemas["UncertaintyRequest"];
 export type BandPoint = Schemas["BandPointOut"];
+export type FuturesComparison = Schemas["FuturesComparisonOut"];
+export type ComparedFutures = Schemas["ComparedFuturesOut"];
 export type Comparison = Schemas["CompareOut"];
 export type ComparedScenario = Schemas["ComparedScenarioOut"];
 export type Overrides = Schemas["OverridesIn"];
@@ -102,6 +104,11 @@ export const api = {
     request<AssumptionSet>(`/assumptions/${encodeURIComponent(name)}`, send("PUT", rates)),
   compare: (assumptionSet: string) =>
     request<Comparison>("/scenarios/compare", send("POST", { assumption_set: assumptionSet })),
+  compareUncertainty: (assumptionSet: string) =>
+    request<FuturesComparison>(
+      "/scenarios/compare/uncertainty",
+      send("POST", { assumption_set: assumptionSet }),
+    ),
   saveScenario: (body: ScenarioIn) => request<SavedScenario>("/scenarios", send("POST", body)),
   deleteScenario: (id: number) => request<void>(`/scenarios/${id}`, { method: "DELETE" }),
   chat: (body: ChatRequest) => request<ChatResponse>("/chat", send("POST", body)),

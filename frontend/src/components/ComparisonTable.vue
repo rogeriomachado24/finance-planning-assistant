@@ -4,14 +4,25 @@
  * comes from the API; this table only formats them. It is also the chart's accessible
  * twin: identity never depends on the line colours alone.
  */
-import type { ComparedScenario } from "../api/client";
-import { formatDate, formatEur, formatMonthsEarlier, formatSignedEur } from "../lib/format";
+import type { ComparedFutures, ComparedScenario } from "../api/client";
+import {
+  formatDate,
+  formatEur,
+  formatMonthsEarlier,
+  formatPoints,
+  formatPointsDifference,
+  formatShare,
+  formatSignedEur,
+} from "../lib/format";
 
 defineProps<{
   scenarios: ComparedScenario[];
   colors: Map<string, string>;
   baseline: string;
   deleting: number | null;
+  /** Simulated futures by scenario name; null while loading or unavailable. */
+  futures?: Map<string, ComparedFutures> | null;
+  futuresError?: string | null;
 }>();
 const emit = defineEmits<{ delete: [id: number, name: string] }>();
 </script>
@@ -28,6 +39,7 @@ const emit = defineEmits<{ delete: [id: number, name: string] }>();
           <th scope="col" class="py-2 pr-4 font-medium">Scenario</th>
           <th scope="col" class="py-2 pr-4 font-medium">Goal reached</th>
           <th scope="col" class="py-2 pr-4 text-right font-medium">On the target date</th>
+          <th scope="col" class="py-2 pr-4 text-right font-medium">On time in simulated futures</th>
           <th scope="col" class="py-2 pr-4 text-right font-medium">Needed per month</th>
           <th scope="col" class="py-2 font-medium"><span class="sr-only">Actions</span></th>
         </tr>
@@ -71,7 +83,24 @@ const emit = defineEmits<{ delete: [id: number, name: string] }>();
               {{ formatSignedEur(s.vs_baseline.value_at_target_difference) }}
             </div>
           </td>
-          <td class="py-2.5 pr-4 text-right tabular-nums max-sm:p-0 max-sm:pl-6 max-sm:text-left" data-label="Needed per month">
+          <td
+            class="py-2.5 pr-4 text-right tabular-nums max-sm:p-0 max-sm:pl-6 max-sm:text-left"
+            data-label="On time in simulated futures"
+          >
+            <template v-if="futures?.get(s.name)">
+              <div>{{ formatShare(futures.get(s.name)!.probability_by_target_date) }}</div>
+              <div class="text-xs text-ink-2">
+                {{
+                  index === 0
+                    ? formatPoints(futures.get(s.name)!.probability_margin)
+                    : formatPointsDifference(futures.get(s.name)!.probability_difference)
+                }}
+              </div>
+            </template>
+            <span v-else-if="futuresError" class="text-ink-2">—</span>
+            <span v-else class="text-xs text-ink-2">Simulating…</span>
+          </td>
+          <td class="py-2.5 pr-4 text-right tabular-nums max-sm:p-0 max-sm:text-left" data-label="Needed per month">
             {{
               s.result.required_monthly_contribution === null
                 ? "—"

@@ -191,3 +191,26 @@ def simulate_uncertainty(
 def _band(start: date, month: int, values: list[float]) -> BandPoint:
     p = Percentiles.of(values)
     return BandPoint(month, add_months(start, month), p.p10, p.p50, p.p90)
+
+
+def compare_uncertainty(
+    scenarios: list[Scenario],
+    profile: FinancialProfile,
+    assumptions: Assumptions,
+    goal: Goal,
+    start: date,
+    volatility: float,
+    paths: int = DEFAULT_PATHS,
+    seed: int = DEFAULT_SEED,
+) -> list[UncertaintyResult]:
+    """Simulate each scenario on the same seed, so every scenario meets the same sequences
+    of good and bad years (common random numbers): differences come from the plan, not luck."""
+    return [
+        simulate_uncertainty(s, profile, assumptions, goal, start, volatility, paths, seed)
+        for s in scenarios
+    ]
+
+
+def probability_difference(result: UncertaintyResult, baseline: UncertaintyResult) -> float:
+    """Share of futures reaching the goal on time, minus the baseline's (0.03 = 3 points)."""
+    return result.probability_by_target_date - baseline.probability_by_target_date

@@ -384,6 +384,48 @@
         }
       }
     },
+    "/scenarios/compare/uncertainty": {
+      "post": {
+        "tags": [
+          "projections"
+        ],
+        "summary": "Compare Uncertainty",
+        "description": "Simulate the scenarios of the comparison, all on the same futures, so differences come\nfrom the scenarios rather than from luck. The first scenario is the baseline.",
+        "operationId": "compare_uncertainty_scenarios_compare_uncertainty_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompareUncertaintyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FuturesComparisonOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/scenarios": {
       "get": {
         "tags": [
@@ -825,6 +867,122 @@
         "title": "CompareScenarios",
         "description": "'Compare my options', 'show the scenarios'."
       },
+      "CompareUncertaintyRequest": {
+        "properties": {
+          "assumption_set": {
+            "type": "string",
+            "title": "Assumption Set",
+            "default": "base"
+          },
+          "scenarios": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ScenarioIn"
+                },
+                "type": "array",
+                "maxItems": 10,
+                "minItems": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenarios",
+            "description": "Scenarios to run; the first is the baseline. Omit to run the built-in scenarios (current plan first), then the saved ones."
+          },
+          "paths": {
+            "type": "integer",
+            "maximum": 10000.0,
+            "minimum": 1.0,
+            "title": "Paths",
+            "description": "Number of simulated futures.",
+            "default": 1000
+          },
+          "seed": {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0,
+            "title": "Seed",
+            "description": "Fixes the random returns: the same seed always gives the same futures.",
+            "default": 2026
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "CompareUncertaintyRequest"
+      },
+      "ComparedFuturesOut": {
+        "properties": {
+          "probability_by_target_date": {
+            "type": "number",
+            "title": "Probability By Target Date",
+            "description": "Share of futures with cash + investments at or above the target on the target date."
+          },
+          "probability_margin": {
+            "type": "number",
+            "title": "Probability Margin",
+            "description": "Half-width of the 95% interval of that share: 1.96 * sqrt(p(1 - p) / n)."
+          },
+          "goal_dates": {
+            "$ref": "#/components/schemas/GoalDatesOut"
+          },
+          "not_reached_share": {
+            "type": "number",
+            "title": "Not Reached Share",
+            "description": "Share of futures that don't reach the target within the horizon."
+          },
+          "value_at_target_date": {
+            "$ref": "#/components/schemas/PercentilesOut",
+            "description": "Cash + investments on the target date: 10th, 50th and 90th percentile."
+          },
+          "shortfall_when_missed": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PercentilesOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How far below the target the futures that miss it are. Null when none do."
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "saved_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Saved Id",
+            "description": "Id of a saved scenario; null for built-in ones."
+          },
+          "probability_difference": {
+            "type": "number",
+            "title": "Probability Difference",
+            "description": "Share reaching the goal on time, minus the baseline's (0.03 = 3 points)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "probability_by_target_date",
+          "probability_margin",
+          "goal_dates",
+          "not_reached_share",
+          "value_at_target_date",
+          "shortfall_when_missed",
+          "name",
+          "saved_id",
+          "probability_difference"
+        ],
+        "title": "ComparedFuturesOut"
+      },
       "ComparedScenarioOut": {
         "properties": {
           "name": {
@@ -921,6 +1079,53 @@
         "type": "object",
         "title": "ExplainAssumptions",
         "description": "'What are you assuming?'"
+      },
+      "FuturesComparisonOut": {
+        "properties": {
+          "assumption_set": {
+            "type": "string",
+            "title": "Assumption Set"
+          },
+          "investment_risk": {
+            "$ref": "#/components/schemas/InvestmentRisk"
+          },
+          "volatility": {
+            "type": "number",
+            "title": "Volatility"
+          },
+          "paths": {
+            "type": "integer",
+            "title": "Paths"
+          },
+          "seed": {
+            "type": "integer",
+            "title": "Seed"
+          },
+          "baseline": {
+            "type": "string",
+            "title": "Baseline",
+            "description": "Name of the scenario the differences are measured from."
+          },
+          "scenarios": {
+            "items": {
+              "$ref": "#/components/schemas/ComparedFuturesOut"
+            },
+            "type": "array",
+            "title": "Scenarios",
+            "description": "Every scenario runs on the same simulated futures (the same seed)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "assumption_set",
+          "investment_risk",
+          "volatility",
+          "paths",
+          "seed",
+          "baseline",
+          "scenarios"
+        ],
+        "title": "FuturesComparisonOut"
       },
       "GoalDate": {
         "properties": {
@@ -2052,6 +2257,39 @@
       },
       "UncertaintyOut": {
         "properties": {
+          "probability_by_target_date": {
+            "type": "number",
+            "title": "Probability By Target Date",
+            "description": "Share of futures with cash + investments at or above the target on the target date."
+          },
+          "probability_margin": {
+            "type": "number",
+            "title": "Probability Margin",
+            "description": "Half-width of the 95% interval of that share: 1.96 * sqrt(p(1 - p) / n)."
+          },
+          "goal_dates": {
+            "$ref": "#/components/schemas/GoalDatesOut"
+          },
+          "not_reached_share": {
+            "type": "number",
+            "title": "Not Reached Share",
+            "description": "Share of futures that don't reach the target within the horizon."
+          },
+          "value_at_target_date": {
+            "$ref": "#/components/schemas/PercentilesOut",
+            "description": "Cash + investments on the target date: 10th, 50th and 90th percentile."
+          },
+          "shortfall_when_missed": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PercentilesOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How far below the target the futures that miss it are. Null when none do."
+          },
           "scenario_name": {
             "type": "string",
             "title": "Scenario Name"
@@ -2098,39 +2336,6 @@
             "type": "integer",
             "title": "Months To Target Date"
           },
-          "probability_by_target_date": {
-            "type": "number",
-            "title": "Probability By Target Date",
-            "description": "Share of futures with cash + investments at or above the target on the target date."
-          },
-          "probability_margin": {
-            "type": "number",
-            "title": "Probability Margin",
-            "description": "Half-width of the 95% interval of that share: 1.96 * sqrt(p(1 - p) / n)."
-          },
-          "goal_dates": {
-            "$ref": "#/components/schemas/GoalDatesOut"
-          },
-          "not_reached_share": {
-            "type": "number",
-            "title": "Not Reached Share",
-            "description": "Share of futures that don't reach the target within the horizon."
-          },
-          "value_at_target_date": {
-            "$ref": "#/components/schemas/PercentilesOut",
-            "description": "Cash + investments on the target date: 10th, 50th and 90th percentile."
-          },
-          "shortfall_when_missed": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/PercentilesOut"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "How far below the target the futures that miss it are. Null when none do."
-          },
           "reached_by": {
             "items": {
               "$ref": "#/components/schemas/ReachedByOut"
@@ -2150,6 +2355,12 @@
         },
         "type": "object",
         "required": [
+          "probability_by_target_date",
+          "probability_margin",
+          "goal_dates",
+          "not_reached_share",
+          "value_at_target_date",
+          "shortfall_when_missed",
           "scenario_name",
           "assumption_set",
           "assumptions",
@@ -2161,12 +2372,6 @@
           "target_amount",
           "target_date",
           "months_to_target_date",
-          "probability_by_target_date",
-          "probability_margin",
-          "goal_dates",
-          "not_reached_share",
-          "value_at_target_date",
-          "shortfall_when_missed",
           "reached_by",
           "bands"
         ],

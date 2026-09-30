@@ -70,3 +70,35 @@ def test_invalid_request_is_422(plan_client: TestClient, body: dict):
 
 def test_missing_plan_is_404(client: TestClient):
     assert client.post("/simulate/uncertainty", json=FEW).status_code == 404
+
+
+class TestCompare:
+    def test_every_scenario_with_its_difference_from_the_baseline(self, plan_client: TestClient):
+        body = plan_client.post("/scenarios/compare/uncertainty", json=FEW).json()
+        assert body["baseline"] == "Current plan"
+        assert (body["investment_risk"], body["volatility"], body["paths"]) == ("medium", 0.1, 200)
+        names = [s["name"] for s in body["scenarios"]]
+        assert names == ["Current plan", "Higher contribution", "Higher income"]
+        base = body["scenarios"][0]
+        assert base["probability_difference"] == 0
+        income = body["scenarios"][2]
+        assert income["probability_difference"] == pytest.approx(
+            income["probability_by_target_date"] - base["probability_by_target_date"]
+        )
+        assert income["probability_difference"] >= 0  # more money never hurts on the same futures
+        assert "bands" not in base
+
+    def test_matches_a_single_simulation_of_the_same_scenario(self, plan_client: TestClient):
+        whatif = {"name": "Drop", "overrides": {"first_year_return": -0.3}}
+        compared = plan_client.post(
+            "/scenarios/compare/uncertainty", json=FEW | {"scenarios": [whatif]}
+        ).json()["scenarios"][0]
+        alone = plan_client.post(
+            "/simulate/uncertainty", json=FEW | {"overrides": whatif["overrides"]}
+        ).json()
+        for key in ("probability_by_target_date", "goal_dates", "value_at_target_date"):
+            assert compared[key] == alone[key]
+
+    def test_an_empty_list_is_422(self, plan_client: TestClient):
+        response = plan_client.post("/scenarios/compare/uncertainty", json={"scenarios": []})
+        assert response.status_code == 422

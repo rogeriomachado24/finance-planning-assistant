@@ -1,16 +1,23 @@
 """Monte Carlo results: how sure a projection is (docs/PHASE2_DESIGN.md, section 2.6)."""
 
 from datetime import date
-from typing import Self
+from typing import Annotated, Any, Self
 
 from pydantic import BaseModel, Field
 
 from app.domain.models import InvestmentRisk
-from app.domain.uncertainty import DEFAULT_PATHS, DEFAULT_SEED, BandPoint, GoalDates, Percentiles
+from app.domain.uncertainty import (
+    DEFAULT_PATHS,
+    DEFAULT_SEED,
+    BandPoint,
+    GoalDates,
+    Percentiles,
+    UncertaintyResult,
+)
 from app.schemas.common import cents
 from app.schemas.plan import Rates
-from app.schemas.scenarios import SimulateRequest
-from app.services.uncertainty import Uncertainty
+from app.schemas.scenarios import CompareRequest, SimulateRequest
+from app.services.uncertainty import FuturesComparison, Uncertainty
 
 
 def share(value: float) -> float:
@@ -18,14 +25,25 @@ def share(value: float) -> float:
     return round(value, 4)
 
 
-class UncertaintyRequest(SimulateRequest):
-    paths: int = Field(DEFAULT_PATHS, ge=1, le=10_000, description="Number of simulated futures.")
-    seed: int = Field(
-        DEFAULT_SEED,
+Paths = Annotated[int, Field(ge=1, le=10_000, description="Number of simulated futures.")]
+Seed = Annotated[
+    int,
+    Field(
         ge=0,
         le=2**31 - 1,
         description="Fixes the random returns: the same seed always gives the same futures.",
-    )
+    ),
+]
+
+
+class UncertaintyRequest(SimulateRequest):
+    paths: Paths = DEFAULT_PATHS
+    seed: Seed = DEFAULT_SEED
+
+
+class CompareUncertaintyRequest(CompareRequest):
+    paths: Paths = DEFAULT_PATHS
+    seed: Seed = DEFAULT_SEED
 
 
 class PercentilesOut(BaseModel):
@@ -68,18 +86,9 @@ class BandPointOut(BaseModel):
         return cls(month=b.month, date=b.date, p10=cents(b.p10), p50=cents(b.p50), p90=cents(b.p90))
 
 
-class UncertaintyOut(BaseModel):
-    scenario_name: str
-    assumption_set: str
-    assumptions: Rates = Field(description="Effective assumptions, after overrides.")
-    investment_risk: InvestmentRisk
-    volatility: float = Field(description="Yearly volatility of returns for the risk level.")
-    paths: int
-    seed: int
-    horizon_months: int = Field(description="Target date plus 10 years, at most 50 years.")
-    target_amount: float
-    target_date: date
-    months_to_target_date: int
+class FuturesSummaryOut(BaseModel):
+    """What the simulated futures say about the goal (without the monthly bands)."""
+
     probability_by_target_date: float = Field(
         description="Share of futures with cash + investments at or above the target on the "
         "target date."
@@ -97,6 +106,34 @@ class UncertaintyOut(BaseModel):
     shortfall_when_missed: PercentilesOut | None = Field(
         description="How far below the target the futures that miss it are. Null when none do."
     )
+
+    @staticmethod
+    def summary(r: UncertaintyResult) -> dict[str, Any]:
+        shortfall = r.shortfall_when_missed
+        return {
+            "probability_by_target_date": share(r.probability_by_target_date),
+            "probability_margin": share(r.probability_margin),
+            "goal_dates": GoalDatesOut.from_domain(r.goal_dates),
+            "not_reached_share": share(r.not_reached_share),
+            "value_at_target_date": PercentilesOut.from_domain(r.value_at_target_date),
+            "shortfall_when_missed": (
+                None if shortfall is None else PercentilesOut.from_domain(shortfall)
+            ),
+        }
+
+
+class UncertaintyOut(FuturesSummaryOut):
+    scenario_name: str
+    assumption_set: str
+    assumptions: Rates = Field(description="Effective assumptions, after overrides.")
+    investment_risk: InvestmentRisk
+    volatility: float = Field(description="Yearly volatility of returns for the risk level.")
+    paths: int
+    seed: int
+    horizon_months: int = Field(description="Target date plus 10 years, at most 50 years.")
+    target_amount: float
+    target_date: date
+    months_to_target_date: int
     reached_by: list[ReachedByOut] = Field(
         description="Each 1 January within the horizon, and the target date."
     )
@@ -107,8 +144,8 @@ class UncertaintyOut(BaseModel):
     @classmethod
     def from_service(cls, u: Uncertainty) -> Self:
         r = u.result
-        shortfall = r.shortfall_when_missed
         return cls(
+            **cls.summary(r),
             scenario_name=u.scenario_name,
             assumption_set=u.assumption_set,
             assumptions=Rates.from_domain(u.assumptions),
@@ -120,14 +157,47 @@ class UncertaintyOut(BaseModel):
             target_amount=cents(r.target_amount),
             target_date=r.target_date,
             months_to_target_date=r.months_to_target_date,
-            probability_by_target_date=share(r.probability_by_target_date),
-            probability_margin=share(r.probability_margin),
-            goal_dates=GoalDatesOut.from_domain(r.goal_dates),
-            not_reached_share=share(r.not_reached_share),
-            value_at_target_date=PercentilesOut.from_domain(r.value_at_target_date),
-            shortfall_when_missed=(
-                None if shortfall is None else PercentilesOut.from_domain(shortfall)
-            ),
             reached_by=[ReachedByOut(date=x.date, share=share(x.share)) for x in r.reached_by],
             bands=[BandPointOut.from_domain(b) for b in r.bands],
+        )
+
+
+class ComparedFuturesOut(FuturesSummaryOut):
+    name: str
+    saved_id: int | None = Field(description="Id of a saved scenario; null for built-in ones.")
+    probability_difference: float = Field(
+        description="Share reaching the goal on time, minus the baseline's (0.03 = 3 points)."
+    )
+
+
+class FuturesComparisonOut(BaseModel):
+    assumption_set: str
+    investment_risk: InvestmentRisk
+    volatility: float
+    paths: int
+    seed: int
+    baseline: str = Field(description="Name of the scenario the differences are measured from.")
+    scenarios: list[ComparedFuturesOut] = Field(
+        description="Every scenario runs on the same simulated futures (the same seed)."
+    )
+
+    @classmethod
+    def from_service(cls, c: FuturesComparison) -> Self:
+        first = c.scenarios[0].result
+        return cls(
+            assumption_set=c.assumption_set,
+            investment_risk=c.investment_risk,
+            volatility=first.volatility,
+            paths=first.paths,
+            seed=first.seed,
+            baseline=c.scenarios[0].scenario.name,
+            scenarios=[
+                ComparedFuturesOut(
+                    **FuturesSummaryOut.summary(s.result),
+                    name=s.scenario.name,
+                    saved_id=s.saved_id,
+                    probability_difference=share(s.probability_difference),
+                )
+                for s in c.scenarios
+            ],
         )

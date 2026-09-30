@@ -94,3 +94,15 @@ export function formatMonthYear(iso: string): string {
 export function formatCount(value: number): string {
   return count.format(value);
 }
+
+/**
+ * API difference in shares -> "+3 points", "−1 point" (true minus sign), "Same" when there is
+ * no difference, "Less than 1 point" when it rounds away.
+ */
+export function formatPointsDifference(difference: number): string {
+  if (difference === 0) return "Same";
+  const points = Math.round(difference * 100);
+  if (points === 0) return "Less than 1 point";
+  const size = Math.abs(points);
+  return `${points > 0 ? "+" : "−"}${size} ${size === 1 ? "point" : "points"}`;
+}

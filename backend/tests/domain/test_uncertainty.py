@@ -17,7 +17,9 @@ from app.domain.uncertainty import (
     DEFAULT_SEED,
     MONTHS_AFTER_TARGET,
     Percentiles,
+    compare_uncertainty,
     percentile,
+    probability_difference,
     sample_yearly_returns,
     simulate_uncertainty,
 )
@@ -260,3 +262,27 @@ class TestInputs:
         result = simulate(profile, Assumptions(annual_return=0.05), far, start)
         assert result.horizon_months == 600
         assert time.perf_counter() - began < 15
+
+
+class TestCompareUncertainty:
+    def test_each_scenario_equals_its_own_simulation_on_the_same_seed(
+        self, profile, assumptions, goal, start
+    ):
+        scenarios = [PLAN, Scenario("Drop", ScenarioOverrides(first_year_return=-0.30))]
+        results = compare_uncertainty(
+            scenarios, profile, assumptions, goal, start, 0.10, paths=100, seed=5
+        )
+        assert results == [
+            simulate(profile, assumptions, goal, start, scenario=s, paths=100, seed=5)
+            for s in scenarios
+        ]
+
+    def test_probability_difference_from_the_baseline(self, profile, assumptions, goal, start):
+        more = Scenario("More income", ScenarioOverrides(monthly_net_income_delta=300))
+        base, better = compare_uncertainty(
+            [PLAN, more], profile, assumptions, goal, start, 0.10, paths=200
+        )
+        difference = probability_difference(better, base)
+        assert difference == better.probability_by_target_date - base.probability_by_target_date
+        assert difference >= 0
+        assert probability_difference(base, base) == 0

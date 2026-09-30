@@ -12,7 +12,12 @@ from app.schemas.scenarios import (
     ScenarioResultOut,
     SimulateRequest,
 )
-from app.schemas.uncertainty import UncertaintyOut, UncertaintyRequest
+from app.schemas.uncertainty import (
+    CompareUncertaintyRequest,
+    FuturesComparisonOut,
+    UncertaintyOut,
+    UncertaintyRequest,
+)
 from app.services import scenarios, uncertainty
 
 router = APIRouter(tags=["projections"])
@@ -58,6 +63,19 @@ def compare(body: CompareRequest, session: SessionDep, today: TodayDep) -> Compa
         baseline=compared[0].scenario.name,
         scenarios=[ComparedScenarioOut.from_domain(c) for c in compared],
     )
+
+
+@router.post("/scenarios/compare/uncertainty")
+def compare_uncertainty(
+    body: CompareUncertaintyRequest, session: SessionDep, today: TodayDep
+) -> FuturesComparisonOut:
+    """Simulate the scenarios of the comparison, all on the same futures, so differences come
+    from the scenarios rather than from luck. The first scenario is the baseline."""
+    given = None if body.scenarios is None else [s.to_domain() for s in body.scenarios]
+    compared = uncertainty.compare(
+        session, today, body.assumption_set, given, body.paths, body.seed
+    )
+    return FuturesComparisonOut.from_service(compared)
 
 
 @router.get("/scenarios")

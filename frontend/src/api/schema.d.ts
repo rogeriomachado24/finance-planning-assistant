@@ -194,6 +194,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/scenarios/compare/uncertainty": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Compare Uncertainty
+         * @description Simulate the scenarios of the comparison, all on the same futures, so differences come
+         *     from the scenarios rather than from luck. The first scenario is the baseline.
+         */
+        post: operations["compare_uncertainty_scenarios_compare_uncertainty_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/scenarios": {
         parameters: {
             query?: never;
@@ -381,6 +402,66 @@ export interface components {
              */
             kind: "compare_scenarios";
         };
+        /** CompareUncertaintyRequest */
+        CompareUncertaintyRequest: {
+            /**
+             * Assumption Set
+             * @default base
+             */
+            assumption_set: string;
+            /**
+             * Scenarios
+             * @description Scenarios to run; the first is the baseline. Omit to run the built-in scenarios (current plan first), then the saved ones.
+             */
+            scenarios?: components["schemas"]["ScenarioIn"][] | null;
+            /**
+             * Paths
+             * @description Number of simulated futures.
+             * @default 1000
+             */
+            paths: number;
+            /**
+             * Seed
+             * @description Fixes the random returns: the same seed always gives the same futures.
+             * @default 2026
+             */
+            seed: number;
+        };
+        /** ComparedFuturesOut */
+        ComparedFuturesOut: {
+            /**
+             * Probability By Target Date
+             * @description Share of futures with cash + investments at or above the target on the target date.
+             */
+            probability_by_target_date: number;
+            /**
+             * Probability Margin
+             * @description Half-width of the 95% interval of that share: 1.96 * sqrt(p(1 - p) / n).
+             */
+            probability_margin: number;
+            goal_dates: components["schemas"]["GoalDatesOut"];
+            /**
+             * Not Reached Share
+             * @description Share of futures that don't reach the target within the horizon.
+             */
+            not_reached_share: number;
+            /** @description Cash + investments on the target date: 10th, 50th and 90th percentile. */
+            value_at_target_date: components["schemas"]["PercentilesOut"];
+            /** @description How far below the target the futures that miss it are. Null when none do. */
+            shortfall_when_missed: components["schemas"]["PercentilesOut"] | null;
+            /** Name */
+            name: string;
+            /**
+             * Saved Id
+             * @description Id of a saved scenario; null for built-in ones.
+             */
+            saved_id: number | null;
+            /**
+             * Probability Difference
+             * @description Share reaching the goal on time, minus the baseline's (0.03 = 3 points).
+             */
+            probability_difference: number;
+        };
         /** ComparedScenarioOut */
         ComparedScenarioOut: {
             /** Name */
@@ -426,6 +507,28 @@ export interface components {
              * @enum {string}
              */
             kind: "explain_assumptions";
+        };
+        /** FuturesComparisonOut */
+        FuturesComparisonOut: {
+            /** Assumption Set */
+            assumption_set: string;
+            investment_risk: components["schemas"]["InvestmentRisk"];
+            /** Volatility */
+            volatility: number;
+            /** Paths */
+            paths: number;
+            /** Seed */
+            seed: number;
+            /**
+             * Baseline
+             * @description Name of the scenario the differences are measured from.
+             */
+            baseline: string;
+            /**
+             * Scenarios
+             * @description Every scenario runs on the same simulated futures (the same seed).
+             */
+            scenarios: components["schemas"]["ComparedFuturesOut"][];
         };
         /**
          * GoalDate
@@ -940,6 +1043,26 @@ export interface components {
         };
         /** UncertaintyOut */
         UncertaintyOut: {
+            /**
+             * Probability By Target Date
+             * @description Share of futures with cash + investments at or above the target on the target date.
+             */
+            probability_by_target_date: number;
+            /**
+             * Probability Margin
+             * @description Half-width of the 95% interval of that share: 1.96 * sqrt(p(1 - p) / n).
+             */
+            probability_margin: number;
+            goal_dates: components["schemas"]["GoalDatesOut"];
+            /**
+             * Not Reached Share
+             * @description Share of futures that don't reach the target within the horizon.
+             */
+            not_reached_share: number;
+            /** @description Cash + investments on the target date: 10th, 50th and 90th percentile. */
+            value_at_target_date: components["schemas"]["PercentilesOut"];
+            /** @description How far below the target the futures that miss it are. Null when none do. */
+            shortfall_when_missed: components["schemas"]["PercentilesOut"] | null;
             /** Scenario Name */
             scenario_name: string;
             /** Assumption Set */
@@ -970,26 +1093,6 @@ export interface components {
             target_date: string;
             /** Months To Target Date */
             months_to_target_date: number;
-            /**
-             * Probability By Target Date
-             * @description Share of futures with cash + investments at or above the target on the target date.
-             */
-            probability_by_target_date: number;
-            /**
-             * Probability Margin
-             * @description Half-width of the 95% interval of that share: 1.96 * sqrt(p(1 - p) / n).
-             */
-            probability_margin: number;
-            goal_dates: components["schemas"]["GoalDatesOut"];
-            /**
-             * Not Reached Share
-             * @description Share of futures that don't reach the target within the horizon.
-             */
-            not_reached_share: number;
-            /** @description Cash + investments on the target date: 10th, 50th and 90th percentile. */
-            value_at_target_date: components["schemas"]["PercentilesOut"];
-            /** @description How far below the target the futures that miss it are. Null when none do. */
-            shortfall_when_missed: components["schemas"]["PercentilesOut"] | null;
             /**
              * Reached By
              * @description Each 1 January within the horizon, and the target date.
@@ -1391,6 +1494,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CompareOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    compare_uncertainty_scenarios_compare_uncertainty_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompareUncertaintyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FuturesComparisonOut"];
                 };
             };
             /** @description Validation Error */

@@ -9,7 +9,8 @@ from app.domain.models import InvestmentRisk
 from app.domain.scenarios import Scenario, ScenarioOverrides
 from app.domain.uncertainty import simulate_uncertainty
 from app.services.profile import get_profile, save_profile
-from app.services.uncertainty import simulate
+from app.services.scenarios import save_scenario
+from app.services.uncertainty import compare, simulate
 from tests.sample_plan import BASE, GOAL, PROFILE, TODAY
 
 
@@ -42,3 +43,25 @@ def test_what_if_is_named_and_not_saved(plan: Session):
 def test_the_seed_is_passed_through(plan: Session):
     assert simulate(plan, TODAY, paths=100, seed=7).result.seed == 7
     assert simulate(plan, TODAY, paths=100, seed=7) == simulate(plan, TODAY, paths=100, seed=7)
+
+
+class TestCompare:
+    def test_runs_the_same_scenarios_as_the_comparison_on_the_same_futures(self, plan: Session):
+        save_scenario(plan, Scenario("Spend less", ScenarioOverrides(monthly_expenses_delta=-200)))
+        compared = compare(plan, TODAY, paths=100)
+        names = [c.scenario.name for c in compared.scenarios]
+        assert names == ["Current plan", "Higher contribution", "Higher income", "Spend less"]
+        assert compared.scenarios[3].saved_id is not None
+        for c in compared.scenarios:
+            alone = simulate_uncertainty(
+                c.scenario, PROFILE, BASE, GOAL, date(2026, 10, 1), 0.10, paths=100
+            )
+            assert c.result == alone
+
+    def test_differences_are_measured_from_the_first_scenario(self, plan: Session):
+        compared = compare(plan, TODAY, paths=100)
+        baseline = compared.scenarios[0].result.probability_by_target_date
+        assert compared.scenarios[0].probability_difference == 0
+        for c in compared.scenarios:
+            expected = c.result.probability_by_target_date - baseline
+            assert c.probability_difference == expected

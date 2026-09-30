@@ -4,15 +4,24 @@
  * against the current plan under one assumption set.
  */
 import { computed, onMounted, ref, watch } from "vue";
-import { api, ApiError, type AssumptionSet, type Comparison } from "../api/client";
+import {
+  api,
+  ApiError,
+  type AssumptionSet,
+  type ComparedFutures,
+  type Comparison,
+  type FuturesComparison,
+} from "../api/client";
 import AssumptionSetPicker from "../components/AssumptionSetPicker.vue";
 import AssumptionsPanel from "../components/AssumptionsPanel.vue";
 import ComparisonTable from "../components/ComparisonTable.vue";
 import SetupNeeded from "../components/SetupNeeded.vue";
 import WhatIfForm from "../components/forms/WhatIfForm.vue";
 import GoalChart, { type ChartSeries } from "../components/GoalChart.vue";
-import { formatDate, formatEur } from "../lib/format";
+import { formatCount, formatDate, formatEur, formatPercent } from "../lib/format";
 import { scenarioColors } from "../lib/scenarioColors";
+
+const RISK_LABELS = { low: "Low", medium: "Medium", high: "High" } as const;
 
 const sets = ref<AssumptionSet[]>([]);
 const selectedSet = ref("base");
@@ -23,6 +32,30 @@ const deleting = ref<number | null>(null);
 const deleteError = ref<string | null>(null);
 
 let latestRequest = 0;
+
+// Simulated futures per scenario: slower (about half a second per scenario), so they load
+// after the table and fill in its last column.
+const futures = ref<FuturesComparison | null>(null);
+const futuresError = ref<ApiError | null>(null);
+let latestFutures = 0;
+
+async function loadFutures() {
+  const request = ++latestFutures;
+  futuresError.value = null;
+  try {
+    const result = await api.compareUncertainty(selectedSet.value);
+    if (request === latestFutures) futures.value = result;
+  } catch (e) {
+    if (request !== latestFutures) return;
+    futures.value = null;
+    futuresError.value = e instanceof ApiError ? e : new ApiError(0, String(e));
+  }
+}
+
+function reloadAll() {
+  void loadFutures();
+  return loadComparison();
+}
 
 async function loadComparison() {
   const request = ++latestRequest;
@@ -49,7 +82,7 @@ async function load() {
     loading.value = false;
     return;
   }
-  await loadComparison();
+  await reloadAll();
 }
 
 async function deleteScenario(id: number, name: string) {
@@ -57,7 +90,7 @@ async function deleteScenario(id: number, name: string) {
   deleteError.value = null;
   try {
     await api.deleteScenario(id);
-    await loadComparison();
+    await reloadAll();
   } catch (e) {
     deleteError.value = `Couldn't delete "${name}": ${e instanceof Error ? e.message : String(e)}`;
   } finally {
@@ -65,7 +98,7 @@ async function deleteScenario(id: number, name: string) {
   }
 }
 
-watch(selectedSet, loadComparison);
+watch(selectedSet, reloadAll);
 onMounted(load);
 
 const scenarios = computed(() => comparison.value?.scenarios ?? []);
@@ -82,6 +115,14 @@ const series = computed<ChartSeries[]>(() =>
       monthsToGoal: s.result.months_to_goal,
     })),
 );
+/** Futures by scenario name, only when they match the comparison on screen. */
+const futuresByName = computed(() => {
+  const f = futures.value;
+  const c = comparison.value;
+  if (!f || !c || f.assumption_set !== c.assumption_set) return null;
+  const byName = new Map<string, ComparedFutures>(f.scenarios.map((s) => [s.name, s]));
+  return c.scenarios.every((s) => byName.has(s.name)) ? byName : null;
+});
 const hiddenCount = computed(() => scenarios.value.length - series.value.length);
 const selectedRates = computed(() => sets.value.find((s) => s.name === selectedSet.value)?.assumptions);
 const noPlanYet = computed(() => error.value?.status === 404);
@@ -152,8 +193,25 @@ const noPlanYet = computed(() => error.value?.status === 404);
             :colors="colors"
             :baseline="comparison.baseline.toLowerCase()"
             :deleting="deleting"
+            :futures="futuresByName"
+            :futures-error="futuresError?.message ?? null"
             @delete="deleteScenario"
           />
+          <p v-if="futures && futuresByName" class="mt-3 text-xs text-ink-2">
+            On time in simulated futures: the share of {{ formatCount(futures.paths) }} futures that
+            reach the goal by the target date, with investment returns varying around the assumed
+            return ({{ RISK_LABELS[futures.investment_risk].toLowerCase() }} investment risk: about
+            {{ formatPercent(futures.volatility) }} a year). Every scenario runs on the same
+            futures, so the differences come from the scenario, not from luck. Cash is safe in the
+            model and investments vary, so investing more of the surplus can lower this share even
+            when the typical outcome improves. A projection, not a guarantee.
+          </p>
+          <p v-else-if="futuresError" class="mt-3 text-xs text-ink-2" role="alert">
+            Couldn't simulate the futures: {{ futuresError.message }}
+            <button type="button" class="ml-1 underline hover:text-ink" @click="loadFutures">
+              Try again
+            </button>
+          </p>
         </section>
 
         <section class="rounded-lg border border-hairline bg-surface p-4 sm:p-5" aria-labelledby="whatif-heading">
@@ -161,7 +219,7 @@ const noPlanYet = computed(() => error.value?.status === 404);
           <p class="mb-4 text-sm text-ink-2">
             Saved scenarios are compared with the plan above. They never change your plan.
           </p>
-          <WhatIfForm :current-plan="baseline" @saved="loadComparison" />
+          <WhatIfForm :current-plan="baseline" @saved="reloadAll" />
         </section>
       </div>
 
