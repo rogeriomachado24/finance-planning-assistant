@@ -6,10 +6,11 @@
  * light area wash and a direct "goal reached" label; with several, identity comes from
  * the legend (drawn by the parent), the tooltip and the table view, because end labels of
  * converging lines would collide. Hover or arrow keys move a crosshair that reads out the
- * month for every series.
+ * month for every series. An optional band (single series only) shades the middle 80% of
+ * simulated futures behind the line, cut to the months the line covers.
  */
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import type { Snapshot } from "../api/client";
+import type { BandPoint, Snapshot } from "../api/client";
 import { linearScale, nearestIndex, valueDomain, yearTicks } from "../lib/chart";
 import { formatDate, formatEur, formatEurCompact } from "../lib/format";
 
@@ -27,6 +28,8 @@ const props = defineProps<{
   targetAmount: number;
   targetDate: string;
   monthsToTarget: number;
+  /** 10th and 90th percentile of simulated futures by month, from the API. */
+  band?: BandPoint[];
 }>();
 
 const HEIGHT = 300; // includes the x-axis band, so the card never needs to scroll
@@ -51,8 +54,15 @@ const single = computed(() => props.series.length === 1);
 const months = computed(() =>
   props.series.reduce((a, b) => (b.snapshots.length > a.length ? b.snapshots : a), [] as Snapshot[]),
 );
+const bandPoints = computed(() =>
+  single.value && props.band ? props.band.slice(0, months.value.length) : [],
+);
 const yAxis = computed(() =>
-  valueDomain([...props.series.flatMap((s) => s.snapshots.map((p) => p.liquid_assets)), props.targetAmount]),
+  valueDomain([
+    ...props.series.flatMap((s) => s.snapshots.map((p) => p.liquid_assets)),
+    ...bandPoints.value.flatMap((b) => [b.p10, b.p90]),
+    props.targetAmount,
+  ]),
 );
 const x = computed(() => linearScale([0, months.value.length - 1], [M.left, width.value - M.right]));
 const y = computed(() => linearScale(yAxis.value.domain, [HEIGHT - M.bottom, M.top]));
@@ -71,8 +81,16 @@ const lines = computed(() =>
   }),
 );
 
+const bandPath = computed(() => {
+  const points = bandPoints.value;
+  if (!points.length) return null;
+  const upper = points.map((b) => `${x.value(b.month).toFixed(1)},${y.value(b.p90).toFixed(1)}`);
+  const lower = points.map((b) => `${x.value(b.month).toFixed(1)},${y.value(b.p10).toFixed(1)}`).reverse();
+  return `M${upper.join("L")}L${lower.join("L")}Z`;
+});
+
 const areaPath = computed(() => {
-  if (!single.value) return null;
+  if (!single.value || bandPath.value) return null;
   const base = y.value(0).toFixed(1);
   const last = x.value(props.series[0].snapshots.length - 1).toFixed(1);
   return `${lines.value[0].path}L${last},${base}L${x.value(0).toFixed(1)},${base}Z`;
@@ -100,6 +118,9 @@ const readings = computed(() => {
   if (month === null) return [];
   return props.series.map((s) => ({ ...s, point: s.snapshots[month] ?? null }));
 });
+const activeBand = computed(() =>
+  active.value === null ? null : (bandPoints.value[active.value] ?? null),
+);
 const activeDate = computed(() => (active.value === null ? null : months.value[active.value].date));
 const tooltipLeft = computed(() => {
   if (active.value === null) return 0;
@@ -111,7 +132,10 @@ const readout = computed(() => {
   const values = readings.value
     .filter((r) => r.point)
     .map((r) => `${single.value ? "" : `${r.name} `}${formatEur(r.point!.liquid_assets)}`);
-  return `${formatDate(activeDate.value)}: ${values.join(", ")}`;
+  const band = activeBand.value
+    ? `; middle 80% of simulated futures ${formatEur(activeBand.value.p10)} to ${formatEur(activeBand.value.p90)}`
+    : "";
+  return `${formatDate(activeDate.value)}: ${values.join(", ")}${band}`;
 });
 
 function onPointerMove(event: PointerEvent) {
@@ -213,7 +237,14 @@ function onKeydown(event: KeyboardEvent) {
         Target date · {{ formatDate(targetDate) }}
       </text>
 
-      <!-- Series: 2px lines (plus a light area wash when there is only one) -->
+      <!-- Band: middle 80% of simulated futures, under the line it surrounds -->
+      <path
+        v-if="bandPath"
+        :d="bandPath"
+        :style="{ fill: series[0].color, fillOpacity: 'var(--band-opacity)' }"
+      />
+
+      <!-- Series: 2px lines (plus a light area wash when there is only one and no band) -->
       <path v-if="areaPath" :d="areaPath" :style="{ fill: series[0].color }" fill-opacity="0.1" />
       <path
         v-for="line in lines"
@@ -308,6 +339,12 @@ function onKeydown(event: KeyboardEvent) {
           <dt>Investments</dt>
           <dd class="text-right">{{ formatEur(readings[0].point.investments) }}</dd>
         </dl>
+        <div v-if="activeBand" class="mt-1.5 border-t border-grid pt-1.5 text-ink-2">
+          <div>Middle 80% of simulated futures</div>
+          <div class="font-medium text-ink tabular-nums">
+            {{ formatEur(activeBand.p10) }} – {{ formatEur(activeBand.p90) }}
+          </div>
+        </div>
       </template>
       <ul v-else class="mt-1 space-y-0.5">
         <li v-for="r in readings" :key="r.key" class="flex items-center gap-2">

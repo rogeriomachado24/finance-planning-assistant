@@ -3,6 +3,7 @@ import { flushPromises, mount, RouterLinkStub } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AssumptionSet, Goal, ScenarioResult, Snapshot } from "../api/client";
 import { fakeApi, lastBody } from "../test/fakeApi";
+import { uncertainty } from "../test/uncertaintyFixture";
 import ProjectionView from "./ProjectionView.vue";
 
 const RATES = { annual_return: 0.05, annual_salary_growth: 0.02, annual_expense_growth: 0.02, annual_inflation: 0.02 };
@@ -176,5 +177,63 @@ describe("where you are today", () => {
     const today = (await mountApp()).find('[aria-labelledby="today-heading"]');
     expect(today.text()).toContain("31.25% of the goal");
     expect(today.find("dl").exists()).toBe(false);
+  });
+});
+
+describe("how sure is this", () => {
+  const routes = {
+    "/assumptions": [200, SETS],
+    "/goals": [200, [GOAL]],
+    "/simulate": [200, result()],
+    "/simulate/uncertainty": [200, uncertainty()],
+  } as const;
+
+  it("shows the share of simulated futures, its precision and what varies", async () => {
+    fakeApi(routes);
+    const card = (await mountApp()).find('[aria-labelledby="uncertainty-heading"]');
+
+    expect(card.text()).toContain("95% of 1,000 simulated futures reach €80,000 by 1 Jun 2032.");
+    expect(card.text()).toContain("Precision ±1 point");
+    expect(card.text()).toContain("between Nov 2030 and Apr 2032");
+    expect(card.text()).toContain("typically €2,409 short");
+    expect(card.text()).toContain("By 1 Jun 2032 (target date)");
+    expect(card.text()).toContain("Medium investment risk: returns vary by about 10% a year");
+    expect(card.text()).toContain("the typical return comes from your assumptions");
+    expect(card.text()).toContain("not a guarantee");
+    expect(card.text()).not.toMatch(/\byou should\b|\byou will\b|\byour chance\b/i);
+  });
+
+  it("draws the band with a legend, and adds it to the table view", async () => {
+    fakeApi(routes);
+    const wrapper = await mountApp();
+
+    expect(wrapper.text()).toContain("Middle 80% of 1,000 simulated futures");
+    await wrapper.find("figure button").trigger("click");
+    const table = wrapper.find("figure table");
+    expect(table.text()).toContain("Middle 80% of futures");
+    expect(table.text()).toContain("€25,000 – €25,000"); // today: every future starts here
+  });
+
+  it("asks for the futures of the chosen assumption set", async () => {
+    const fetchMock = fakeApi(routes);
+    const wrapper = await mountApp();
+
+    await wrapper.find('input[value="conservative"]').setValue();
+    await flushPromises();
+
+    expect(lastBody(fetchMock, "POST", "/simulate/uncertainty")).toEqual({
+      assumption_set: "conservative",
+    });
+    // The fake answers with the base set's futures, so they must not be drawn
+    expect(wrapper.text()).not.toContain("Middle 80% of 1,000 simulated futures");
+  });
+
+  it("keeps the projection when the simulation fails", async () => {
+    fakeApi({ ...routes, "/simulate/uncertainty": [500, { detail: "simulation failed" }] });
+    const wrapper = await mountApp();
+
+    expect(wrapper.text()).toContain("1 Jul 2031");
+    expect(wrapper.text()).toContain("Couldn't simulate the range of outcomes: simulation failed");
+    expect(wrapper.text()).not.toContain("Middle 80%");
   });
 });

@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatCount,
   formatDate,
   formatDuration,
   formatEur,
   formatEurCompact,
   formatMonthsEarlier,
+  formatMonthYear,
   formatPercent,
+  formatPoints,
+  formatShare,
   formatSignedEur,
 } from "./format";
 
@@ -71,5 +75,37 @@ describe("differences from the baseline", () => {
     [0.3, "€0"],
   ])("%f -> %s", (value, expected) => {
     expect(formatSignedEur(value)).toBe(expected);
+  });
+});
+
+describe("formatShare", () => {
+  it("rounds a share of futures to whole percentages", () => {
+    expect(formatShare(0.948)).toBe("95%");
+    expect(formatShare(0.5)).toBe("50%");
+    expect(formatShare(0.99)).toBe("99%");
+    expect(formatShare(0.01)).toBe("1%");
+  });
+
+  it("never claims certainty at the ends", () => {
+    expect(formatShare(1)).toBe("more than 99%");
+    expect(formatShare(0.994)).toBe("more than 99%");
+    expect(formatShare(0)).toBe("fewer than 1%");
+    expect(formatShare(0.004)).toBe("fewer than 1%");
+  });
+});
+
+describe("formatPoints", () => {
+  it("shows the precision in whole percentage points", () => {
+    expect(formatPoints(0.0138)).toBe("±1 point");
+    expect(formatPoints(0.0231)).toBe("±2 points");
+    expect(formatPoints(0.003)).toBe("less than ±1 point");
+    expect(formatPoints(0)).toBe("less than ±1 point");
+  });
+});
+
+describe("formatMonthYear and formatCount", () => {
+  it("formats without time zones or locale surprises", () => {
+    expect(formatMonthYear("2030-11-01")).toBe("Nov 2030");
+    expect(formatCount(1000)).toBe("1,000");
   });
 });

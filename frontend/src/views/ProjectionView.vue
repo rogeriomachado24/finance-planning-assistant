@@ -7,11 +7,25 @@ import SetupNeeded from "../components/SetupNeeded.vue";
 import ProjectionCard from "../components/ProjectionCard.vue";
 import StatTile from "../components/StatTile.vue";
 import TodayCard from "../components/TodayCard.vue";
+import UncertaintyCard from "../components/UncertaintyCard.vue";
 import WarningList from "../components/WarningList.vue";
 import { useProjection } from "../composables/useProjection";
+import { useUncertainty } from "../composables/useUncertainty";
 import { formatDate, formatEur, formatPercent } from "../lib/format";
 
 const { assumptionSets, selectedSet, goal, result, today, error, loading, reload } = useProjection();
+
+const futures = useUncertainty(selectedSet);
+/** The band is drawn only when it belongs to the assumption set on screen. */
+const band = computed(() => {
+  const u = futures.uncertainty.value;
+  return u && u.assumption_set === selectedSet.value ? u.bands : undefined;
+});
+
+function retry() {
+  reload();
+  futures.reload();
+}
 
 const setNames = computed(() => assumptionSets.value.map((s) => s.name));
 const noPlanYet = computed(() => error.value?.status === 404);
@@ -39,7 +53,7 @@ const noPlanYet = computed(() => error.value?.status === 404);
       <button
         type="button"
         class="mt-3 rounded-md border border-hairline px-3 py-1.5 text-sm hover:bg-page"
-        @click="reload"
+        @click="retry"
       >
         Try again
       </button>
@@ -53,6 +67,12 @@ const noPlanYet = computed(() => error.value?.status === 404);
     >
       <div class="min-w-0 space-y-5">
         <GoalStatus :result="result" :goal="goal" />
+        <UncertaintyCard
+          :uncertainty="futures.uncertainty.value"
+          :loading="futures.loading.value"
+          :error="futures.error.value"
+          @retry="futures.reload"
+        />
         <TodayCard :result="result" :today="today" />
 
         <div class="grid gap-4 sm:grid-cols-3">
@@ -73,7 +93,12 @@ const noPlanYet = computed(() => error.value?.status === 404);
           />
         </div>
 
-        <ProjectionCard :result="result" :assumption-set-name="selectedSet" />
+        <ProjectionCard
+          :result="result"
+          :assumption-set-name="selectedSet"
+          :band="band"
+          :paths="futures.uncertainty.value?.paths"
+        />
         <WarningList :warnings="result.warnings" />
       </div>
 

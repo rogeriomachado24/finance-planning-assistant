@@ -22,6 +22,7 @@ export type SimulateRequest = Schemas["SimulateRequest"];
 export type InvestmentRisk = Schemas["InvestmentRisk"];
 export type Uncertainty = Schemas["UncertaintyOut"];
 export type UncertaintyRequest = Schemas["UncertaintyRequest"];
+export type BandPoint = Schemas["BandPointOut"];
 export type Comparison = Schemas["CompareOut"];
 export type ComparedScenario = Schemas["ComparedScenarioOut"];
 export type Overrides = Schemas["OverridesIn"];

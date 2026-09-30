@@ -63,3 +63,34 @@ export function formatSignedEur(value: number): string {
   if (text === "€0") return text;
   return `${value > 0 ? "+" : "−"}${text}`;
 }
+
+const wholePercent = new Intl.NumberFormat("en-IE", { style: "percent", maximumFractionDigits: 0 });
+const count = new Intl.NumberFormat("en-IE");
+
+/**
+ * A share of simulated futures, as whole percentages: 0.948 -> "95%". The ends read "more
+ * than 99%" and "fewer than 1%", because 1,000 futures can't show certainty.
+ */
+export function formatShare(share: number): string {
+  if (share > 0.99) return "more than 99%";
+  if (share < 0.01) return "fewer than 1%";
+  return wholePercent.format(share);
+}
+
+/** Precision of a share, in whole percentage points: 0.0138 -> "±1 point". */
+export function formatPoints(margin: number): string {
+  const points = Math.round(margin * 100);
+  if (points < 1) return "less than ±1 point";
+  return `±${points} ${points === 1 ? "point" : "points"}`;
+}
+
+/** "2030-11-01" -> "Nov 2030". */
+export function formatMonthYear(iso: string): string {
+  const [year, month] = iso.split("-").map(Number);
+  return `${MONTHS[month - 1]} ${year}`;
+}
+
+/** 1000 -> "1,000". */
+export function formatCount(value: number): string {
+  return count.format(value);
+}

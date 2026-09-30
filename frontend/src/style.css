@@ -38,6 +38,8 @@
 @layer base {
   :root {
     color-scheme: light;
+    /* Opacity of the band of simulated futures, over the surface: stronger in dark mode. */
+    --band-opacity: 0.16;
   }
 
   body {
@@ -67,5 +69,6 @@
     --color-series-8: #e66767;
     --color-good-text: #0ca30c;
     --color-error: #ff8a80;
+    --band-opacity: 0.3;
   }
 }

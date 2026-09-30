@@ -15,10 +15,10 @@ answer shows the assumptions it depends on.
 
 | Page | What you get |
 |---|---|
-| **Projection** | Where you are today (progress towards the goal, net worth, savings rate), when the goal is reached, the value on the target date, the monthly amount needed to get there on time, and a month-by-month chart with a table view. Switch between conservative, base and optimistic assumptions. |
+| **Projection** | Where you are today (progress towards the goal, net worth, savings rate), when the goal is reached, the value on the target date, the monthly amount needed to get there on time, and a month-by-month chart with a table view. **How sure is this?** 1,000 simulated futures with varying investment returns: the share that reaches the goal on time (with its precision), the range of goal dates, how the share grows year by year, and how far off the misses are, drawn as a band around the projection. Switch between conservative, base and optimistic assumptions. |
 | **Compare** | Scenarios side by side (invest more, earn more, your own what-ifs), with differences from the current plan. |
 | **Ask** | A chat that answers questions about your plan. Replies show the engine's figures as cards, how the question was understood, and whether rules or the model understood it. What-ifs can be saved to Compare. Advice requests are declined. |
-| **Your plan** | Where a new user starts: two guided steps (your finances, your goal) with empty fields and examples, plus three editable assumption sets. |
+| **Your plan** | Where a new user starts: two guided steps (your finances, your goal) with empty fields and examples, an investment risk level (low, medium, high), plus three editable assumption sets. |
 
 Everything runs locally: SQLite for storage, and optionally [Ollama](https://ollama.com) for a
 small local language model. Without a model, the chat still works with rules and templates.
@@ -108,6 +108,12 @@ set is small and written by the author, so treat these numbers as a sanity check
 - **Property-based tests** (Hypothesis) check invariants over thousands of random plans. For
   example, investing the "required" amount really reaches the target on the target date. They
   caught a precision bug for returns close to zero.
+- **Monte Carlo without giving up determinism:** yearly returns are lognormal around the
+  assumed return, so the median future follows the projection line exactly; a fixed seed makes
+  every result reproducible, and all scenarios share the same random draws, so differences come
+  from the plan, not from luck. Standard library only. The tests caught a real subtlety: moving
+  money from cash to investments raises the typical outcome but can lower the worst ones. See
+  [docs/PHASE2_DESIGN.md](docs/PHASE2_DESIGN.md).
 - **Grounding tests:** every euro amount in a chat reply must come from the engine's results.
 - **One contract, generated types:** the frontend's TypeScript types are generated from the
   API's OpenAPI description, and a test fails if they drift apart.
@@ -201,13 +207,15 @@ frontend/
     views/       Projection, Compare, Ask, Your plan
     components/  chart, cards, forms, chat results
     api/         typed client + generated OpenAPI types
-    lib/         formatting, chart geometry, unit conversion
+    lib/         formatting, chart geometry, unit conversion, wording
 docs/PHASE1_DESIGN.md   financial model, architecture, decision log
+docs/PHASE2_DESIGN.md   uncertainty: simulated futures (Monte Carlo)
 ```
 
 ## Scope
 
-Phase 1 is a single-user, local simulator. Deliberately out of scope: bank connections, market
+A single-user, local simulator. Phase 2 adds uncertainty for investment returns only (income,
+expenses and inflation stay as planned). Deliberately out of scope: bank connections, market
 data, investment recommendations, taxes, fees, debt interest, inflation-adjusted figures,
-Monte Carlo simulation, accounts and authentication. Chat context is kept in memory and resets
+accounts and authentication. Chat context is kept in memory and resets
 when the server restarts.
