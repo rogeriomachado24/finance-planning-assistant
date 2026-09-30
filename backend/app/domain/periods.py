@@ -5,6 +5,7 @@ The engine counts whole months from a start date. Month k ends at `add_months(st
 
 import calendar
 from datetime import date
+from functools import lru_cache
 
 
 def add_months(start: date, months: int) -> date:
@@ -15,6 +16,13 @@ def add_months(start: date, months: int) -> date:
     month = month_index % 12 + 1
     day = min(start.day, calendar.monthrange(year, month)[1])
     return date(year, month, day)
+
+
+@lru_cache(maxsize=32)
+def month_dates(start: date, months: int) -> tuple[date, ...]:
+    """End dates of months 0..months. Cached: a Monte Carlo run asks for the same calendar
+    once per simulated future."""
+    return tuple(add_months(start, m) for m in range(months + 1))
 
 
 def months_between(start: date, end: date) -> int:

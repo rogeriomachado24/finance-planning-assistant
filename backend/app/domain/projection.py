@@ -25,7 +25,7 @@ from enum import StrEnum
 
 from app.domain.errors import InvalidInputError
 from app.domain.models import Assumptions, FinancialProfile
-from app.domain.periods import add_months
+from app.domain.periods import month_dates
 from app.domain.rates import annual_step_factor, yearly_to_monthly_rate
 
 MAX_PROJECTION_MONTHS = 50 * 12
@@ -132,6 +132,12 @@ def project(
     elif len(annual_returns) < years:
         raise InvalidInputError(f"{years} yearly returns needed; got {len(annual_returns)}")
     monthly_returns = [yearly_to_monthly_rate(r) for r in annual_returns[:years]]
+    # Salary and expenses change once a year, so their growth factors are per year too.
+    salary_factors = [annual_step_factor(assumptions.annual_salary_growth, y) for y in range(years)]
+    expense_factors = [
+        annual_step_factor(assumptions.annual_expense_growth, y) for y in range(years)
+    ]
+    dates = month_dates(start, months)
     cash = profile.cash
     investments = profile.investments
     debt = profile.debt_balance
@@ -155,19 +161,16 @@ def project(
 
     def warn(code: WarningCode, month: int) -> None:
         if code not in warnings:
-            warnings[code] = ProjectionWarning(code, month, add_months(start, month))
+            warnings[code] = ProjectionWarning(code, month, dates[month])
 
     for month in range(1, months + 1):
         completed_years = (month - 1) // 12
         monthly_return = monthly_returns[completed_years]
         income = (
-            profile.monthly_net_income
-            * annual_step_factor(assumptions.annual_salary_growth, completed_years)
+            profile.monthly_net_income * salary_factors[completed_years]
             + profile.other_monthly_income
         )
-        expenses = profile.monthly_expenses * annual_step_factor(
-            assumptions.annual_expense_growth, completed_years
-        )
+        expenses = profile.monthly_expenses * expense_factors[completed_years]
         debt_payment = min(profile.monthly_debt_payment, debt)
         surplus = income - expenses - debt_payment
         debt_before = debt
@@ -197,7 +200,7 @@ def project(
         snapshots.append(
             MonthSnapshot(
                 month=month,
-                date=add_months(start, month),
+                date=dates[month],
                 income=income,
                 expenses=expenses,
                 debt_payment=debt_payment,
