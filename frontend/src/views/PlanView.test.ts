@@ -28,7 +28,12 @@ const SAVED_PROFILE: ProfileOut = {
   },
 };
 
+const NOT_STARTED = { has_profile: false, has_goal: false, ready: false };
+const FINANCES_ONLY = { has_profile: true, has_goal: false, ready: false };
+const READY = { has_profile: true, has_goal: true, ready: true };
+
 const EMPTY_DB = {
+  "GET /plan/status": [200, NOT_STARTED],
   "GET /profile": [404, { detail: "no financial profile has been saved yet" }],
   "GET /goals": [200, []],
   "GET /assumptions": [200, SETS],
@@ -137,5 +142,49 @@ describe("plan page", () => {
     await flushPromises();
 
     expect(wrapper.find('[role="alert"]').text()).toContain("before the projection start");
+  });
+
+  it("guides a new user: welcome, steps to do, empty fields with examples", async () => {
+    fakeApi({ ...EMPTY_DB });
+    const wrapper = await mountPlan();
+    const text = wrapper.text();
+
+    expect(text).toContain("Welcome. Enter your own figures in two steps");
+    expect(wrapper.find('[aria-label="Setup steps"]').text()).toContain("Your finances (to do)");
+    expect(text).not.toContain("Your plan is ready");
+
+    const income = wrapper.find<HTMLInputElement>("#profile-monthly_net_income");
+    expect(income.element.value).toBe("");
+    expect(income.attributes("placeholder")).toBe("e.g. 2,500");
+    expect(wrapper.find("#profile-cash-hint").text()).toContain("Leave empty for €0.");
+    expect(wrapper.find("#profile-monthly_net_income-hint").text()).not.toContain("€0");
+    expect(wrapper.find<HTMLInputElement>("#goal-name").attributes("placeholder")).toBe("e.g. Buy a house");
+    expect(wrapper.find<HTMLSelectElement>("#goal-type").element.value).toBe("other");
+  });
+
+  it("says when empty amounts were saved as €0, and ticks the finances step", async () => {
+    fakeApi({ ...EMPTY_DB });
+    const wrapper = await mountPlan();
+    await wrapper.find("#profile-monthly_net_income").setValue("2500");
+    await wrapper.find("#profile-monthly_expenses").setValue("1700");
+
+    fakeApi({ ...EMPTY_DB, "GET /plan/status": [200, FINANCES_ONLY], "PUT /profile": [200, SAVED_PROFILE] });
+    await formWith(wrapper, "profile-cash").trigger("submit");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("Empty amounts were saved as €0.");
+    const steps = wrapper.find('[aria-label="Setup steps"]').text();
+    expect(steps).toContain("Your finances (done)");
+    expect(steps).toContain("Your goal (to do)");
+  });
+
+  it("points to the projection once the plan is ready", async () => {
+    fakeApi({ ...EMPTY_DB, "GET /plan/status": [200, READY] });
+    const wrapper = await mountPlan();
+    expect(wrapper.text()).toContain("Your plan is ready.");
+    expect(wrapper.findComponent(RouterLinkStub).exists()).toBe(true);
+    expect(
+      wrapper.findAllComponents(RouterLinkStub).some((l) => l.props("to") === "/" && l.text() === "See your projection"),
+    ).toBe(true);
   });
 });

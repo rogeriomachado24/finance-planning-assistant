@@ -3,6 +3,7 @@ import { computed } from "vue";
 import AssumptionSetPicker from "../components/AssumptionSetPicker.vue";
 import AssumptionsPanel from "../components/AssumptionsPanel.vue";
 import GoalStatus from "../components/GoalStatus.vue";
+import SetupNeeded from "../components/SetupNeeded.vue";
 import ProjectionCard from "../components/ProjectionCard.vue";
 import StatTile from "../components/StatTile.vue";
 import WarningList from "../components/WarningList.vue";
@@ -25,25 +26,7 @@ const noPlanYet = computed(() => error.value?.status === 404);
 
     <p v-if="loading && !result && !error" class="text-sm text-ink-2">Loading projection…</p>
 
-    <section
-      v-else-if="noPlanYet"
-      class="rounded-lg border border-hairline bg-surface p-6"
-      aria-labelledby="empty-heading"
-    >
-      <h2 id="empty-heading" class="font-semibold">No plan yet</h2>
-      <p class="mt-1 text-sm text-ink-2">The API says: {{ error?.message }}.</p>
-      <RouterLink
-        to="/plan"
-        class="mt-4 inline-block rounded-md bg-ink px-3 py-1.5 text-sm font-medium text-surface"
-      >
-        Set up your plan
-      </RouterLink>
-      <p class="mt-3 text-sm text-ink-2">
-        Or try a sample plan: run
-        <code class="rounded bg-page px-1.5 py-0.5">python -m app.seed</code> in
-        <code class="rounded bg-page px-1.5 py-0.5">backend/</code>, then reload.
-      </p>
-    </section>
+    <SetupNeeded v-else-if="noPlanYet" what="your projection" />
 
     <section
       v-else-if="error"

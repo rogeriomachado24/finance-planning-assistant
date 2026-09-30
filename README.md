@@ -18,7 +18,7 @@ answer shows the assumptions it depends on.
 | **Projection** | When the goal is reached, the value on the target date, the monthly amount needed to get there on time, and a month-by-month chart with a table view. Switch between conservative, base and optimistic assumptions. |
 | **Compare** | Scenarios side by side (invest more, earn more, your own what-ifs), with differences from the current plan. |
 | **Ask** | A chat that answers questions about your plan. Replies show the engine's figures as cards, how the question was understood, and whether rules or the model understood it. Advice requests are declined. |
-| **Your plan** | Forms for your finances, your goal and the three assumption sets. |
+| **Your plan** | Where a new user starts: two guided steps (your finances, your goal) with empty fields and examples, plus three editable assumption sets. |
 
 Everything runs locally: SQLite for storage, and optionally [Ollama](https://ollama.com) for a
 small local language model. Without a model, the chat still works with rules and templates.
@@ -126,7 +126,7 @@ Requirements: Python 3.12+, Node.js 20+. Optional: Ollama, for the chat's langua
 
 ```powershell
 .\setup.ps1            # once: Python environment, packages, backend\.env
-.\start.ps1 -Demo      # build the UI, load a sample plan, serve on http://127.0.0.1:8000
+.\start.ps1            # build the UI and serve on http://127.0.0.1:8000 (add -Demo for a sample plan)
 ```
 
 If PowerShell blocks scripts, run them as `powershell -ExecutionPolicy Bypass -File .\setup.ps1`.
@@ -142,7 +142,7 @@ cd backend
 python -m venv .venv
 .venv/bin/python -m pip install -e ".[dev]"      # Windows: .venv\Scripts\python.exe
 cp .env.example .env                              # optional: chat model settings
-.venv/bin/python -m app.seed                      # optional: sample plan
+.venv/bin/python -m app.seed                      # optional: sample plan (--empty starts over)
 
 cd ../frontend
 npm ci

@@ -5,7 +5,9 @@ import pytest
 from app.config import Settings
 from app.db.session import create_db_engine, create_session_factory
 from app.seed import main
+from app.services.assumptions import list_assumption_sets
 from app.services.goals import list_goals
+from app.services.plan_status import get_plan_status
 from app.services.profile import get_profile
 
 
@@ -41,3 +43,26 @@ def test_reset_reloads_the_demo(empty_db_url: str):
     main([], settings)
     assert main(["--reset"], settings) == 0
     assert goals_in(empty_db_url) == ["Buy a house"]
+
+
+def test_empty_removes_everything_but_the_assumption_presets(
+    empty_db_url: str, capsys: pytest.CaptureFixture[str]
+):
+    settings = Settings(database_url=empty_db_url)
+    main([], settings)  # the demo plan
+    assert main(["--empty"], settings) == 0
+    assert "no finances, no goal" in capsys.readouterr().out
+
+    engine = create_db_engine(empty_db_url)
+    try:
+        with create_session_factory(engine)() as session:
+            status = get_plan_status(session)
+            assert (status.has_profile, status.has_goal) == (False, False)
+            assert len(list_assumption_sets(session)) == 3
+    finally:
+        engine.dispose()
+
+
+def test_empty_and_reset_cannot_be_combined(empty_db_url: str):
+    with pytest.raises(SystemExit):
+        main(["--empty", "--reset"], Settings(database_url=empty_db_url))

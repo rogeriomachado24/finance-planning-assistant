@@ -113,17 +113,20 @@ describe("dashboard", () => {
     expect(lastBody(fetchMock, "POST", "/simulate")).toEqual({ assumption_set: "conservative" });
   });
 
-  it("explains how to get started when no plan is stored", async () => {
+  it.each([
+    [{ has_profile: false, has_goal: false, ready: false }, "needs your finances and a goal"],
+    [{ has_profile: true, has_goal: false, ready: false }, "needs a goal"],
+  ])("names what's missing before a projection is possible (%j)", async (status, expected) => {
     fakeApi({
       "/assumptions": [200, SETS],
       "/goals": [200, []],
-      "/simulate": [404, { detail: "no financial profile has been saved yet" }],
+      "/plan/status": [200, status],
+      "/simulate": [404, { detail: "no active goal has been saved yet" }],
     });
     const text = (await mountApp()).text();
 
-    expect(text).toContain("No plan yet");
-    expect(text).toContain("no financial profile has been saved yet");
-    expect(text).toContain("Set up your plan");
+    expect(text).toContain("Set up your plan first");
+    expect(text).toContain(`To show your projection, the simulator ${expected}.`);
     expect(text).toContain("python -m app.seed");
   });
 

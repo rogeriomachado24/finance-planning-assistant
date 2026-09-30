@@ -24,6 +24,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/plan/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Plan Status
+         * @description What's saved so far. Projections need both your finances and an active goal.
+         */
+        get: operations["plan_status_plan_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/profile": {
         parameters: {
             query?: never;
@@ -507,6 +527,24 @@ export interface components {
             /** Annual Expense Growth */
             annual_expense_growth?: number | null;
         };
+        /** PlanStatusOut */
+        PlanStatusOut: {
+            /**
+             * Has Profile
+             * @description Your finances have been saved.
+             */
+            has_profile: boolean;
+            /**
+             * Has Goal
+             * @description An active goal exists.
+             */
+            has_goal: boolean;
+            /**
+             * Ready
+             * @description Projections, comparisons and the chat can run.
+             */
+            ready: boolean;
+        };
         /** PositionOut */
         PositionOut: {
             /** Total Monthly Income */
@@ -883,6 +921,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthOut"];
+                };
+            };
+        };
+    };
+    plan_status_plan_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanStatusOut"];
                 };
             };
         };

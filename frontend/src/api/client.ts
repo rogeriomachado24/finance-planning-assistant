@@ -28,6 +28,7 @@ export type ChatRequest = Schemas["ChatRequest"];
 export type ChatResponse = Schemas["ChatResponse"];
 export type ChatIntent = ChatResponse["intent"];
 export type Health = Schemas["HealthOut"];
+export type PlanStatus = Schemas["PlanStatusOut"];
 
 export class ApiError extends Error {
   constructor(
@@ -99,4 +100,5 @@ export const api = {
   deleteScenario: (id: number) => request<void>(`/scenarios/${id}`, { method: "DELETE" }),
   chat: (body: ChatRequest) => request<ChatResponse>("/chat", send("POST", body)),
   health: () => request<Health>("/health"),
+  planStatus: () => request<PlanStatus>("/plan/status"),
 };

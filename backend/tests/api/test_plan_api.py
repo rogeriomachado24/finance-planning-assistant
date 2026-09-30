@@ -124,3 +124,15 @@ def test_startup_builds_a_database_that_does_not_exist_yet(empty_db_url: str):
         assert client.get("/health").json()["database"] == "ok"
         assert len(client.get("/assumptions").json()) == 3
         assert client.get("/profile").status_code == 404  # no demo data unless asked for
+
+
+class TestPlanStatus:
+    def test_follows_the_setup_steps(self, client: TestClient):
+        def status() -> dict:
+            return client.get("/plan/status").json()
+
+        assert status() == {"has_profile": False, "has_goal": False, "ready": False}
+        client.put("/profile", json=PROFILE_JSON)
+        assert status() == {"has_profile": True, "has_goal": False, "ready": False}
+        client.post("/goals", json=GOAL_JSON)
+        assert status() == {"has_profile": True, "has_goal": True, "ready": True}

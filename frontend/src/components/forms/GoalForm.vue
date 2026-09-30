@@ -29,7 +29,7 @@ const previous = computed(() => props.goals.filter((g) => !g.is_active));
 
 const form = reactive({
   name: active.value?.name ?? "",
-  goal_type: (active.value?.goal_type ?? "house") as GoalType,
+  goal_type: (active.value?.goal_type ?? "other") as GoalType,
   target_amount: (active.value?.target_amount ?? null) as number | null,
   target_date: active.value?.target_date ?? "",
   description: active.value?.description ?? "",
@@ -78,6 +78,7 @@ const borderFor = (field: string) => (fieldErrors.value[field] ? "border-error" 
               type="text"
               required
               maxlength="100"
+              placeholder="e.g. Buy a house"
               :class="[inputClass, borderFor('name')]"
               :aria-describedby="describedBy"
               :aria-invalid="invalid || undefined"
@@ -106,6 +107,7 @@ const borderFor = (field: string) => (fieldErrors.value[field] ? "border-error" 
           unit="eur"
           label="Target amount"
           hint="Cash + investments you want to have by the target date."
+          placeholder="e.g. 80,000"
           required
           :min="0.01"
           :error="fieldErrors.target_amount"
@@ -139,6 +141,7 @@ const borderFor = (field: string) => (fieldErrors.value[field] ? "border-error" 
             v-model="form.description"
             rows="2"
             maxlength="1000"
+            placeholder="e.g. Deposit for a first flat"
             :class="[inputClass, 'border-axis']"
             :aria-describedby="describedBy"
           />

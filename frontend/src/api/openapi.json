@@ -28,6 +28,28 @@
         }
       }
     },
+    "/plan/status": {
+      "get": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Plan Status",
+        "description": "What's saved so far. Projections need both your finances and an active goal.",
+        "operationId": "plan_status_plan_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanStatusOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/profile": {
       "get": {
         "tags": [
@@ -1177,6 +1199,32 @@
         "type": "object",
         "title": "OverridesIn",
         "description": "Changes relative to the saved plan. Omitted fields keep their saved value."
+      },
+      "PlanStatusOut": {
+        "properties": {
+          "has_profile": {
+            "type": "boolean",
+            "title": "Has Profile",
+            "description": "Your finances have been saved."
+          },
+          "has_goal": {
+            "type": "boolean",
+            "title": "Has Goal",
+            "description": "An active goal exists."
+          },
+          "ready": {
+            "type": "boolean",
+            "title": "Ready",
+            "description": "Projections, comparisons and the chat can run."
+          }
+        },
+        "type": "object",
+        "required": [
+          "has_profile",
+          "has_goal",
+          "ready"
+        ],
+        "title": "PlanStatusOut"
       },
       "PositionOut": {
         "properties": {

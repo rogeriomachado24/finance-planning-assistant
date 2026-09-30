@@ -10,9 +10,11 @@ import { api, type AssumptionSet, type ChatResponse, type Health } from "../api/
 import AssumptionSetPicker from "../components/AssumptionSetPicker.vue";
 import ChatResults from "../components/chat/ChatResults.vue";
 import { useChat } from "../composables/useChat";
+import { usePlanStatus } from "../composables/usePlanStatus";
 import { describeIntent } from "../lib/intent";
 
 const { state, send, retry, reset } = useChat();
+const { ready: planReady, status: planStatus } = usePlanStatus();
 
 const EXAMPLES = [
   "Am I on track?",
@@ -102,6 +104,10 @@ watch(
         Questions are turned into requests for the same engine as the dashboard; the assistant
         never calculates. Every answer shows its figures and the assumptions behind them. It
         doesn't give advice.
+      </p>
+      <p v-if="planStatus.loaded && !planReady" class="mt-3 rounded-md bg-page p-3 text-sm">
+        Questions about your projection need your finances and a goal first.
+        <RouterLink to="/plan" class="font-medium underline underline-offset-2">Set up your plan</RouterLink>
       </p>
       <div class="mt-4 flex flex-wrap gap-2">
         <button

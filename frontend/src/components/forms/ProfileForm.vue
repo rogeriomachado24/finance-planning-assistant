@@ -28,41 +28,48 @@ const form = reactive<FormState>({
   age: props.initial?.age ?? null,
 });
 
-const GROUPS: { title: string; fields: { key: MoneyField; label: string; hint: string; required?: boolean }[] }[] = [
+type Field = { key: MoneyField; label: string; hint: string; example: string; required?: boolean };
+
+// Examples are shown as grey placeholders only: an empty optional field is saved as 0.
+const GROUPS: { title: string; fields: Field[] }[] = [
   {
     title: "Income",
     fields: [
-      { key: "monthly_net_income", label: "Monthly take-home pay", hint: "After tax. Grows with salary growth.", required: true },
-      { key: "other_monthly_income", label: "Other monthly income", hint: "E.g. rent received. Stays the same over time." },
+      { key: "monthly_net_income", label: "Monthly take-home pay", hint: "After tax. Grows with salary growth.", example: "e.g. 2,500", required: true },
+      { key: "other_monthly_income", label: "Other monthly income", hint: "E.g. rent received. Stays the same over time.", example: "e.g. 300" },
     ],
   },
   {
     title: "Spending",
     fields: [
-      { key: "monthly_expenses", label: "Monthly expenses", hint: "Living costs, excluding debt payments.", required: true },
+      { key: "monthly_expenses", label: "Monthly expenses", hint: "Living costs, excluding debt payments.", example: "e.g. 1,700", required: true },
     ],
   },
   {
     title: "Savings",
     fields: [
-      { key: "cash", label: "Cash", hint: "Current and savings accounts. Earns no interest in the projection." },
-      { key: "investments", label: "Investments", hint: "Current value. Grows at the assumed return." },
-      { key: "monthly_investment_contribution", label: "Invested each month", hint: "Moved from cash to investments at the end of each month." },
+      { key: "cash", label: "Cash", hint: "Current and savings accounts. Earns no interest in the projection.", example: "e.g. 10,000" },
+      { key: "investments", label: "Investments", hint: "Current value. Grows at the assumed return.", example: "e.g. 15,000" },
+      { key: "monthly_investment_contribution", label: "Invested each month", hint: "Moved from cash to investments at the end of each month.", example: "e.g. 400" },
     ],
   },
   {
     title: "Debt",
     fields: [
-      { key: "debt_balance", label: "Debt balance", hint: "What you still owe. No interest is modelled." },
-      { key: "monthly_debt_payment", label: "Monthly debt payment", hint: "Stops once the balance is repaid." },
+      { key: "debt_balance", label: "Debt balance", hint: "What you still owe. No interest is modelled.", example: "e.g. 5,000" },
+      { key: "monthly_debt_payment", label: "Monthly debt payment", hint: "Stops once the balance is repaid.", example: "e.g. 250" },
     ],
   },
 ];
 
 const position = ref<PositionOut | null>(null);
+const savedZeros = ref(false);
 
 const { status, error, fieldErrors, submit, markEdited } = useSubmit(
   () => {
+    savedZeros.value = GROUPS.some((g) =>
+      g.fields.some((f) => !f.required && form[f.key] === null),
+    );
     const body: ProfileIn = {
       monthly_net_income: form.monthly_net_income ?? 0,
       monthly_expenses: form.monthly_expenses ?? 0,
@@ -97,7 +104,8 @@ watch(form, markEdited);
           v-model="form[field.key]"
           unit="eur"
           :label="field.label"
-          :hint="field.hint"
+          :hint="field.required ? field.hint : `${field.hint} Leave empty for €0.`"
+          :placeholder="field.example"
           :required="field.required"
           :optional="!field.required"
           :min="0"
@@ -112,6 +120,7 @@ watch(form, markEdited);
         v-model="form.age"
         label="Age"
         hint="For your reference; not used in the projection."
+        placeholder="e.g. 32"
         optional
         :min="0"
         :max="120"
@@ -126,6 +135,7 @@ watch(form, markEdited);
           Saved. Monthly surplus {{ formatEur(position.monthly_surplus) }}<template
             v-if="position.savings_rate !== null"
           >, savings rate {{ formatPercent(position.savings_rate) }}</template>.
+          <template v-if="savedZeros"> Empty amounts were saved as €0.</template>
         </template>
       </template>
     </SaveBar>

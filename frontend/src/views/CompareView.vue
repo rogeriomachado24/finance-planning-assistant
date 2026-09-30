@@ -8,6 +8,7 @@ import { api, ApiError, type AssumptionSet, type Comparison } from "../api/clien
 import AssumptionSetPicker from "../components/AssumptionSetPicker.vue";
 import AssumptionsPanel from "../components/AssumptionsPanel.vue";
 import ComparisonTable from "../components/ComparisonTable.vue";
+import SetupNeeded from "../components/SetupNeeded.vue";
 import WhatIfForm from "../components/forms/WhatIfForm.vue";
 import GoalChart, { type ChartSeries } from "../components/GoalChart.vue";
 import { formatDate, formatEur } from "../lib/format";
@@ -95,13 +96,7 @@ const noPlanYet = computed(() => error.value?.status === 404);
 
     <p v-if="loading && !comparison && !error" class="text-sm text-ink-2">Loading scenarios…</p>
 
-    <section v-else-if="noPlanYet" class="rounded-lg border border-hairline bg-surface p-6" aria-labelledby="empty-heading">
-      <h2 id="empty-heading" class="font-semibold">No plan yet</h2>
-      <p class="mt-1 text-sm text-ink-2">The API says: {{ error?.message }}.</p>
-      <RouterLink to="/plan" class="mt-4 inline-block rounded-md bg-ink px-3 py-1.5 text-sm font-medium text-surface">
-        Set up your plan
-      </RouterLink>
-    </section>
+    <SetupNeeded v-else-if="noPlanYet" what="a comparison" />
 
     <section v-else-if="error" class="rounded-lg border border-hairline bg-surface p-6" role="alert">
       <h2 class="font-semibold">Couldn't load the comparison</h2>

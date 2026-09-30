@@ -111,6 +111,12 @@ class Rates(BaseModel):
         return cls(**asdict(assumptions))
 
 
+class PlanStatusOut(BaseModel):
+    has_profile: bool = Field(description="Your finances have been saved.")
+    has_goal: bool = Field(description="An active goal exists.")
+    ready: bool = Field(description="Projections, comparisons and the chat can run.")
+
+
 class AssumptionSetOut(BaseModel):
     name: str
     assumptions: Rates

@@ -9,6 +9,7 @@ from app.schemas.plan import (
     AssumptionSetOut,
     GoalIn,
     GoalOut,
+    PlanStatusOut,
     PositionOut,
     Profile,
     ProfileIn,
@@ -16,6 +17,7 @@ from app.schemas.plan import (
     Rates,
 )
 from app.services import assumptions, goals, profile
+from app.services.plan_status import get_plan_status
 
 router = APIRouter()
 
@@ -25,6 +27,13 @@ def _profile_out(session: SessionDep) -> ProfileOut:
         profile=Profile.from_domain(profile.get_profile(session)),
         position=PositionOut.from_domain(profile.get_position(session)),
     )
+
+
+@router.get("/plan/status", tags=["profile"])
+def plan_status(session: SessionDep) -> PlanStatusOut:
+    """What's saved so far. Projections need both your finances and an active goal."""
+    s = get_plan_status(session)
+    return PlanStatusOut(has_profile=s.has_profile, has_goal=s.has_goal, ready=s.ready)
 
 
 @router.get("/profile", tags=["profile"])
