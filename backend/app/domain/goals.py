@@ -1,5 +1,6 @@
 """Goal progress, goal date and required contribution."""
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date
 
@@ -7,7 +8,11 @@ from app.domain.errors import InvalidInputError
 from app.domain.models import Assumptions, FinancialProfile
 from app.domain.periods import months_between
 from app.domain.projection import MAX_PROJECTION_MONTHS, Projection, project
-from app.domain.rates import annual_to_monthly_rate, compound_growth_minus_one
+from app.domain.rates import (
+    annual_to_monthly_rate,
+    compound_growth_minus_one,
+    yearly_to_monthly_rate,
+)
 
 
 def months_to_target_date(
@@ -90,6 +95,7 @@ def calculate_required_monthly_contribution(
     current_cash: float,
     current_investments: float,
     annual_return: float,
+    annual_returns: Sequence[float] | None = None,
 ) -> float | None:
     """Monthly amount that, invested at the assumed return from next month, brings today's
     cash + investments to the target after `months` months.
@@ -104,6 +110,10 @@ def calculate_required_monthly_contribution(
 
     Returns 0 when the goal is already covered, and None when `months` is 0 and the goal
     is not yet reached (no time left to contribute).
+
+    With `annual_returns` (one return per projected year, e.g. a market drop in year 1),
+    G and A are built month by month instead: a contribution made at the end of month k
+    grows over months k+1..n, so A is the sum of those growth products.
     """
     if target_amount <= 0:
         raise InvalidInputError(f"target_amount must be > 0; got {target_amount}")
@@ -111,6 +121,11 @@ def calculate_required_monthly_contribution(
         raise InvalidInputError(f"months must be >= 0; got {months}")
     if current_cash < 0 or current_investments < 0:
         raise InvalidInputError("current_cash and current_investments must be >= 0")
+
+    if annual_returns is not None:
+        return _required_with_yearly_returns(
+            target_amount, months, current_cash, current_investments, annual_returns
+        )
 
     monthly_return = annual_to_monthly_rate(annual_return)
     growth_minus_one = compound_growth_minus_one(monthly_return, months)
@@ -121,4 +136,25 @@ def calculate_required_monthly_contribution(
         return None
 
     annuity_factor = months if monthly_return == 0 else growth_minus_one / monthly_return
+    return gap / annuity_factor
+
+
+def _required_with_yearly_returns(
+    target_amount: float,
+    months: int,
+    current_cash: float,
+    current_investments: float,
+    annual_returns: Sequence[float],
+) -> float | None:
+    rates = [yearly_to_monthly_rate(annual_returns[k // 12]) for k in range(months)]
+    growth_after = 1.0  # growth from the end of month k to the end of month n
+    annuity_factor = 0.0
+    for rate in reversed(rates):  # month n down to month 1
+        annuity_factor += growth_after
+        growth_after *= 1 + rate
+    gap = target_amount - current_cash - current_investments * growth_after
+    if gap <= 0:
+        return 0.0
+    if months == 0:
+        return None
     return gap / annuity_factor

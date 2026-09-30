@@ -40,6 +40,9 @@ class OverridesIn(BaseModel):
     annual_return: Rate | None = None
     annual_salary_growth: Rate | None = None
     annual_expense_growth: Rate | None = None
+    first_year_return: Rate | None = Field(
+        None, description="Return of the first year only, e.g. -0.3 for a 30% market drop."
+    )
 
     def to_domain(self) -> ScenarioOverrides:
         return ScenarioOverrides(**self.model_dump())

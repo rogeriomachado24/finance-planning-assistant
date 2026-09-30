@@ -544,6 +544,11 @@ export interface components {
             annual_salary_growth?: number | null;
             /** Annual Expense Growth */
             annual_expense_growth?: number | null;
+            /**
+             * First Year Return
+             * @description Return of the first year only, e.g. -0.3 for a 30% market drop.
+             */
+            first_year_return?: number | null;
         };
         /** PlanStatusOut */
         PlanStatusOut: {

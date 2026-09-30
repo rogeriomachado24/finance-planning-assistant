@@ -153,8 +153,11 @@ in `/simulate`) returns the outputs above. `/simulate` is unchanged. The profile
 - **Ordered percentiles:** 10th ≤ 50th ≤ 90th at every month (property-based, Hypothesis).
 - **Reproducible:** the same seed gives identical results; different seeds agree within a few
   percentage points at 1,000 futures.
-- **Sensible direction, same random draws:** a higher contribution or a higher return never
-  lowers the probability.
+- **Sensible direction, same random draws:** a higher return or more money coming in never
+  lowers any future. Investing more of the surplus instead of keeping it as cash raises the
+  typical future but widens the range: in the worst futures the cash would have been worth more
+  (cash is safe in the model, investments can fall), so this is tested as such, not as "always
+  better".
 - **The sampler:** with a fixed seed, the mean and spread of the sampled log returns match μ
   and σ within statistical tolerance.
 - **Performance:** a 50-year goal with 1,000 futures stays under a set time budget.

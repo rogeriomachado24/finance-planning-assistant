@@ -1219,6 +1219,21 @@
               }
             ],
             "title": "Annual Expense Growth"
+          },
+          "first_year_return": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "exclusiveMinimum": -1.0,
+                "description": "Annual rate as a decimal: 0.05 = 5%."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Year Return",
+            "description": "Return of the first year only, e.g. -0.3 for a 30% market drop."
           }
         },
         "additionalProperties": false,

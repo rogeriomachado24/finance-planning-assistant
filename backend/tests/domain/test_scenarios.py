@@ -75,6 +75,15 @@ class TestOverrides:
         with pytest.raises(InvalidInputError):
             ScenarioOverrides(annual_return=7).apply(profile, assumptions)
 
+    def test_rejects_invalid_market_drop(self):
+        with pytest.raises(InvalidInputError):
+            ScenarioOverrides(first_year_return=-1)
+
+    def test_market_drop_replaces_only_the_first_year(self, assumptions):
+        overrides = ScenarioOverrides(first_year_return=-0.30)
+        assert overrides.yearly_returns(assumptions, 3) == [-0.30, 0.05, 0.05]
+        assert ScenarioOverrides().yearly_returns(assumptions, 3) is None
+
 
 class TestRunScenario:
     def test_current_plan_reaches_goal(self, profile, assumptions, goal, start):
@@ -102,6 +111,21 @@ class TestRunScenario:
         result = run_scenario(Scenario("Current plan"), profile, assumptions, goal, start)
         expected = project(profile, assumptions, start, 68).at(68).liquid_assets
         assert result.projected_value_at_target_date == pytest.approx(expected)
+
+    def test_market_drop_lowers_the_outcome(self, profile, assumptions, goal, start):
+        """30% off €15,000 invested (plus a year of contributions) in the first year."""
+        plan = run_scenario(Scenario("Current plan"), profile, assumptions, goal, start)
+        drop = run_scenario(
+            Scenario("Drop", ScenarioOverrides(first_year_return=-0.30)),
+            profile,
+            assumptions,
+            goal,
+            start,
+        )
+        assert drop.projected_value_at_target_date < plan.projected_value_at_target_date
+        assert drop.months_to_goal > plan.months_to_goal
+        assert drop.required_monthly_contribution > plan.required_monthly_contribution
+        assert drop.snapshots[12].investments < plan.snapshots[12].investments * 0.75
 
     def test_shortfall_when_goal_is_missed(self, profile, assumptions, goal, start):
         big_goal = replace(goal, target_amount=150_000)

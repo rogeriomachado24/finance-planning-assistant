@@ -18,6 +18,7 @@ If cash is still negative after selling all investments, the plan has an unfunde
 See docs/PHASE1_DESIGN.md section 3 for the full model and its simplifications.
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date
 from enum import StrEnum
@@ -25,7 +26,7 @@ from enum import StrEnum
 from app.domain.errors import InvalidInputError
 from app.domain.models import Assumptions, FinancialProfile
 from app.domain.periods import add_months
-from app.domain.rates import annual_step_factor, annual_to_monthly_rate
+from app.domain.rates import annual_step_factor, yearly_to_monthly_rate
 
 MAX_PROJECTION_MONTHS = 50 * 12
 
@@ -112,14 +113,25 @@ def project(
     assumptions: Assumptions,
     start: date,
     months: int,
+    annual_returns: Sequence[float] | None = None,
 ) -> Projection:
-    """Simulate `months` months from `start`. Returns months + 1 snapshots (0..months)."""
+    """Simulate `months` months from `start`. Returns months + 1 snapshots (0..months).
+
+    `annual_returns` sets the investment return of each projected year (index 0 = months
+    1-12). By default every year earns `assumptions.annual_return`; a market drop or a
+    Monte Carlo future passes its own sequence.
+    """
     if not 0 <= months <= MAX_PROJECTION_MONTHS:
         raise InvalidInputError(
             f"months must be between 0 and {MAX_PROJECTION_MONTHS}; got {months}"
         )
 
-    monthly_return = annual_to_monthly_rate(assumptions.annual_return)
+    years = max(1, -(-months // 12))  # years touched by the projection, rounded up
+    if annual_returns is None:
+        annual_returns = [assumptions.annual_return] * years
+    elif len(annual_returns) < years:
+        raise InvalidInputError(f"{years} yearly returns needed; got {len(annual_returns)}")
+    monthly_returns = [yearly_to_monthly_rate(r) for r in annual_returns[:years]]
     cash = profile.cash
     investments = profile.investments
     debt = profile.debt_balance
@@ -147,6 +159,7 @@ def project(
 
     for month in range(1, months + 1):
         completed_years = (month - 1) // 12
+        monthly_return = monthly_returns[completed_years]
         income = (
             profile.monthly_net_income
             * annual_step_factor(assumptions.annual_salary_growth, completed_years)

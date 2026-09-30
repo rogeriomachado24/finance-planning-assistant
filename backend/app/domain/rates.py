@@ -32,7 +32,16 @@ def annual_to_monthly_rate(annual_rate: float) -> float:
     Computed as expm1(log1p(r) / 12) to stay precise for rates close to zero.
     """
     validate_annual_rate(annual_rate, "annual_rate")
-    return math.expm1(math.log1p(annual_rate) / 12)
+    return yearly_to_monthly_rate(annual_rate)
+
+
+def yearly_to_monthly_rate(yearly_rate: float) -> float:
+    """The same conversion for a year's return produced by the engine (a market drop or a
+    simulated year). Only returns of -100% or less are impossible: unlike a typed-in rate,
+    a simulated year above +100% is rare but real, not a typo."""
+    if yearly_rate <= -1:
+        raise InvalidInputError(f"a yearly return must be above -100%; got {yearly_rate}")
+    return math.expm1(math.log1p(yearly_rate) / 12)
 
 
 def compound_growth_minus_one(monthly_rate: float, months: int) -> float:

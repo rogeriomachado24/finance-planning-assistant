@@ -207,3 +207,31 @@ class TestShortfalls:
 
     def test_healthy_plan_has_no_warnings(self, profile, assumptions, start):
         assert project(profile, assumptions, start, 120).warnings == ()
+
+
+class TestYearlyReturns:
+    """A sequence of yearly returns (Phase 2: market drop and Monte Carlo)."""
+
+    def test_each_year_uses_its_own_return(self, start):
+        profile = FinancialProfile(monthly_net_income=0, monthly_expenses=0, investments=10_000)
+        projection = project(profile, Assumptions(), start, 24, [-0.30, 0.10])
+        assert projection.at(12).investments == pytest.approx(7_000)
+        assert projection.at(24).investments == pytest.approx(7_700)
+
+    def test_constant_sequence_matches_the_assumed_return(self, profile, assumptions, start):
+        assert project(profile, assumptions, start, 60, [0.05] * 5) == project(
+            profile, assumptions, start, 60
+        )
+
+    def test_a_year_above_100_percent_is_allowed(self, start):
+        profile = FinancialProfile(monthly_net_income=0, monthly_expenses=0, investments=1_000)
+        final = project(profile, Assumptions(), start, 12, [1.5]).at(12)
+        assert final.investments == pytest.approx(2_500)
+
+    def test_rejects_too_few_returns(self, profile, assumptions, start):
+        with pytest.raises(InvalidInputError):
+            project(profile, assumptions, start, 25, [0.05, 0.05])
+
+    def test_rejects_a_loss_of_everything(self, profile, assumptions, start):
+        with pytest.raises(InvalidInputError):
+            project(profile, assumptions, start, 12, [-1.0])

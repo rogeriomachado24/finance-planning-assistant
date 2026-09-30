@@ -24,6 +24,7 @@ from app.domain.projection import (
     ProjectionWarning,
     project,
 )
+from app.domain.rates import validate_annual_rate
 
 
 @dataclass(frozen=True)
@@ -43,8 +44,13 @@ class ScenarioOverrides:
     annual_return: float | None = None
     annual_salary_growth: float | None = None
     annual_expense_growth: float | None = None
+    first_year_return: float | None = None
+    """Return of the first projected year only, e.g. -0.30 for "markets fall 30% next year";
+    later years use the assumed return again."""
 
     def __post_init__(self) -> None:
+        if self.first_year_return is not None:
+            validate_annual_rate(self.first_year_return, "first_year_return")
         for name in _AMOUNTS_WITH_DELTA:
             if getattr(self, name) is not None and getattr(self, f"{name}_delta") is not None:
                 raise InvalidInputError(f"set either {name} or its delta, not both")
@@ -67,6 +73,12 @@ class ScenarioOverrides:
             ),
         )
         return new_profile, new_assumptions
+
+    def yearly_returns(self, assumptions: Assumptions, years: int) -> list[float] | None:
+        """The return of each projected year, or None when every year uses the assumption."""
+        if self.first_year_return is None:
+            return None
+        return [self.first_year_return] + [assumptions.annual_return] * (years - 1)
 
     def _amount(self, name: str, current: float) -> float:
         absolute, delta = getattr(self, name), getattr(self, f"{name}_delta")
@@ -128,7 +140,8 @@ def run_scenario(
     months_to_target = months_to_target_date(goal.target_date, start, max_months)
 
     eff_profile, eff_assumptions = scenario.overrides.apply(profile, assumptions)
-    projection = project(eff_profile, eff_assumptions, start, max_months)
+    yearly_returns = scenario.overrides.yearly_returns(eff_assumptions, -(-max_months // 12))
+    projection = project(eff_profile, eff_assumptions, start, max_months, yearly_returns)
     goal_month = find_goal_month(projection, goal.target_amount)
     value_at_target = projection.at(months_to_target).liquid_assets
 
@@ -157,6 +170,7 @@ def run_scenario(
             eff_profile.cash,
             eff_profile.investments,
             eff_assumptions.annual_return,
+            yearly_returns,
         ),
         goal_progress=calculate_goal_progress(eff_profile.liquid_assets, goal.target_amount),
         warnings=warnings,

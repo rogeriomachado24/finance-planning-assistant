@@ -158,3 +158,34 @@ class TestMonthsToTargetDate:
         assert months_to_target_date(date(2076, 10, 1), self.START) == 600
         with pytest.raises(InvalidInputError, match="more than 600 months"):
             months_to_target_date(date(2076, 11, 1), self.START)
+
+
+class TestRequiredContributionWithYearlyReturns:
+    def test_constant_returns_match_the_closed_form(self):
+        closed = calculate_required_monthly_contribution(80_000, 68, 10_000, 15_000, 0.05)
+        by_year = calculate_required_monthly_contribution(
+            80_000, 68, 10_000, 15_000, 0.05, [0.05] * 6
+        )
+        assert by_year == pytest.approx(closed)
+
+    def test_a_market_drop_requires_more(self):
+        normal = calculate_required_monthly_contribution(80_000, 68, 10_000, 15_000, 0.05)
+        drop = calculate_required_monthly_contribution(
+            80_000, 68, 10_000, 15_000, 0.05, [-0.30] + [0.05] * 5
+        )
+        assert drop > normal
+
+    def test_investing_the_required_amount_after_a_drop_reaches_the_target(self, start):
+        returns = [-0.30] + [0.05] * 5
+        required = calculate_required_monthly_contribution(
+            80_000, 68, 10_000, 15_000, 0.05, returns
+        )
+        profile = FinancialProfile(
+            monthly_net_income=required,
+            monthly_expenses=0,
+            cash=10_000,
+            investments=15_000,
+            monthly_investment_contribution=required,
+        )
+        final = project(profile, Assumptions(annual_return=0.05), start, 68, returns).at(68)
+        assert final.liquid_assets == pytest.approx(80_000)
