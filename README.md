@@ -42,9 +42,9 @@ Then open <http://127.0.0.1:8000/docs> to try every endpoint in the browser.
   entered yourself; `python -m app.seed --reset` deletes everything and reloads the demo.
 - Set `DATABASE_URL` (or put it in `backend/.env`) to use a different database.
 - Chat (`POST /chat`): works with no AI model (rules and templates). To use a local model,
-  install [Ollama](https://ollama.com), run `ollama pull phi3`, and copy `backend/.env.example`
+  install [Ollama](https://ollama.com), run `ollama pull qwen2.5:3b`, and copy `backend/.env.example`
   to `backend/.env` (`LLM_PROVIDER=ollama`). The model only helps understand questions the rules
-  don't; it never calculates. `python -m app.agents.evaluate --model phi3` scores it.
+  don't; it never calculates. `python -m app.agents.evaluate --model qwen2.5:3b` scores it.
 
 On macOS/Linux use `.venv/bin/python` instead.
 

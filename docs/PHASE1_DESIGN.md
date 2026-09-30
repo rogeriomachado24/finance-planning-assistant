@@ -209,11 +209,12 @@ parse_intent ─► validate ─► execute (no LLM) ─► explain ─► END
 - **Memory:** in-memory LangGraph checkpointer keyed by `thread_id`, so follow-ups work
   ("and with €300 instead?").
 - **Providers:** `LLM_PROVIDER=ollama | mock` (code default `mock`, so tests and CI never need a
-  model; a local `.env` selects `ollama`; model set by `OLLAMA_MODEL`, currently `phi3`). A factory
+  model; a local `.env` selects `ollama`; model set by `OLLAMA_MODEL`, currently `qwen2.5:3b`). A factory
   builds the provider; adding Gemini/OpenAI later is one branch.
 - **Measured, not assumed:** `python -m app.agents.evaluate --model phi3` scores parsers on a
   labelled set (35 messages, some deliberately outside the rules' patterns). Result: rules 86%,
-  phi3 alone 63%, rules first then phi3 89%. So the rules parse first and the model handles only
+  phi3 alone about 65%, rules first then phi3 89%; qwen2.5:3b alone 80%, rules first then
+  qwen 91%. So the rules parse first and the model handles only
   messages the rules can't place; its output is checked (numbers must appear in the message) and
   rejected output falls back to the rules. Replies are templated by default: phi3's rewording
   produced wrong statements ("a month before" for 11 months, an invented date, two scenarios
@@ -306,6 +307,7 @@ Money columns use `Numeric`. No user table in Phase 1.
 | Replies are templated by default; LLM rewording is opt-in (`OLLAMA_REWRITE_REPLIES`) | A small model's rewording introduced factual errors; exact, checkable wording matters more than style in a finance tool |
 | The chat response's `intent` is typed (the discriminated union), not a dict | The UI can show "Understood as …" from typed data; the OpenAPI docs list every intent |
 | Chat page: reply text as commentary, engine figures as cards, "Understood as …" and who parsed/wrote each reply | Misreadings are visible at once; the numbers shown never come from model text |
+| Model: qwen2.5:3b instead of phi3 | Same labelled set: 80% vs ~65% alone, 91% vs 89% with the rules first; smaller (1.9 vs 2.2 GB) and slightly faster. Its remaining error type (a flipped sign, e.g. "rent goes up" read as expenses −100) passes the number checks: checks can prove where a number came from, not that it was understood |
 | The model warms up in a background thread at startup | Ollama's first load took ~90 s; the API is usable immediately and the chat falls back to rules until the model answers |
 | Comparison chart: one line per scenario in fixed categorical colours, legend + tooltip + table instead of end labels | End labels of converging lines collide; colour follows the scenario, never its position; at most 8 hues, extra scenarios appear in the table only |
 | Ollama as default provider | Free, local, private; provider stays configurable |
