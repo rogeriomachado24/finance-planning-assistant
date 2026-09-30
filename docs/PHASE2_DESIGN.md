@@ -11,13 +11,18 @@ advice.
 ## 1. Scope
 
 **In Phase 2:** random yearly investment returns; an "investment risk" setting (low, medium,
-high); the probability of reaching the target by the target date; a band of likely outcomes on
-the projection chart; the range of likely goal dates. Then, in later steps, the probability per
-scenario on the Compare page, and a chat question ("How likely am I to reach my goal?").
+high); the probability of reaching the target by the target date, with its precision; how that
+probability grows year by year; how large the shortfall typically is in the futures that miss; a
+band of likely outcomes on the projection chart; the range of likely goal dates; a deterministic
+**market-drop what-if** ("what if investments fall 30% next year?"). Then the probability per
+scenario on the Compare page, and chat questions ("How likely am I to reach my goal?", "What if
+the market falls 30%?"). Last, if everything else is solid: **"what would it take"**, the monthly
+investment that reaches the target on time in a chosen share of futures (e.g. 8 in 10).
+Optional polish: a few example futures drawn on the chart.
 
 **Not in Phase 2:** random salary, expenses or inflation; market data or historical returns;
-correlations, crashes or other return regimes; optimisation ("which contribution gives 90%?");
-recommendations. Each can be added later on top of the same simulator.
+correlations or random crash regimes (the market drop is one user-chosen, deterministic shock);
+optimising anything other than the monthly investment; recommendations. Each can be added later on top of the same simulator.
 
 ## 2. Model
 
@@ -63,7 +68,22 @@ A property of the user's portfolio, stored on the profile and editable in "Your 
 The levels are illustrative, like the assumption presets, and the volatility is always shown next
 to the results. Cash has no risk in the model (it earns nothing, as in Phase 1).
 
-### 2.4 Simulation
+**Risk and return are set separately.** The risk level only widens or narrows the range; the
+typical return comes from the assumption set. In reality, riskier investments are usually chosen
+*because* they are expected to return more, so comparing risk levels on the same return would
+always make low risk look better. The UI therefore never compares risk levels side by side, and
+says next to the results: "The risk level sets how widely returns vary; the typical return comes
+from your assumptions."
+
+### 2.4 Market-drop what-if (deterministic)
+
+A scenario override `first_year_return`: the return of the first projected year, replacing the
+assumed return for months 1–12; later years use the assumed return again. "What if investments
+fall 30% next year?" is `first_year_return = −0.30`. It works everywhere a what-if works
+(Projection, Compare, chat) and needs no randomness. In the Monte Carlo simulation it fixes the
+first year in every future, and later years stay random.
+
+### 2.5 Simulation
 
 - **1,000 simulated futures** per request.
 - **Reproducible:** Python's `random.Random(seed)` with a fixed default seed, sent with the
@@ -78,7 +98,7 @@ to the results. Cash has no risk in the model (it earns nothing, as in Phase 1).
   up to ~200 months for typical goals) is well under a second; 50-year goals take longer and
   have a performance test.
 
-### 2.5 Outputs
+### 2.6 Outputs
 
 | Output | Definition |
 |---|---|
@@ -86,6 +106,9 @@ to the results. Cash has no risk in the model (it earns nothing, as in Phase 1).
 | Goal-date range | 10th, 50th and 90th percentile of the date each future first reaches the target; the share never reaching it within the horizon |
 | Band | 10th, 50th and 90th percentile of cash + investments at each month (the chart's band and middle line) |
 | Value on the target date | 10th, 50th and 90th percentile |
+| Precision | Half-width of the 95% interval of the probability, 1.96 × √(p(1 − p) / n), in whole percentage points (at most about ±3 for 1,000 futures) |
+| Reached by each year | Share of futures that have reached the target by each 1 January, and by the target date |
+| Shortfall when missed | In the futures that miss the target date: the median and 90th-percentile shortfall; none when every future reaches it |
 | Inputs echoed | Number of futures, seed, risk level, volatility, assumption set |
 
 Percentiles use one fixed method (nearest rank on the sorted values), tested directly.
@@ -103,6 +126,14 @@ Percentiles use one fixed method (nearest rank on the sorted values), tested dir
   (percentiles at yearly points), so nothing depends on colour alone.
 - Goal-date range: *"In the middle 80% of futures, the goal is reached between Mar 2031 and
   Feb 2033."*
+- Precision next to the probability: *"about 72% (±3 points: 1,000 futures)"*.
+- Reached by year: a small rising curve or list (*"by 2031: 40% · by 2032: 72% · by 2033: 88%"*).
+- Shortfall when missed: *"In the futures that miss the target date, they are typically €4,000
+  short (€11,000 in the worst tenth)."*
+- A short explanation for newcomers: "72% means that in 720 of 1,000 simulated futures the goal
+  is reached by the target date."
+- "What would it take" (last step): *"To reach the goal by the target date in 8 of 10 simulated
+  futures, about €720 a month would need to be invested."* Worded as a figure, never as advice.
 - This is still a projection, not a guarantee, and the probability is only as good as the
   assumed return and volatility.
 
@@ -132,14 +163,19 @@ in `/simulate`) returns the outputs above. `/simulate` is unchanged. The profile
 
 ## 6. Build order
 
-1. **Domain:** the engine accepts a sequence of yearly returns; the lognormal sampler; the
-   Monte Carlo summary; tests.
+1. **Domain:** the engine accepts a sequence of yearly returns; the market-drop override; the
+   lognormal sampler; the Monte Carlo summary (probability and precision, reached-by-year,
+   shortfall when missed, bands, goal dates); tests.
 2. **Data and API:** `investment_risk` on the profile (migration, forms), `POST
    /simulate/uncertainty`, integration tests.
 3. **Projection page:** the probability headline, the band on the chart, the goal-date range, the
    table view.
 4. **Compare:** probability per scenario, on common random numbers.
-5. **Chat:** "How likely am I to reach my goal?", answered from the same result, with grounding.
+5. **Chat:** "How likely am I to reach my goal?" and "What if the market falls 30%?", answered
+   from the same results, with grounding.
+6. **What would it take:** the monthly investment for a chosen share of futures (a search over
+   simulations on common random numbers).
+7. *Optional:* example futures on the chart.
 
 ## 7. Decision log
 
@@ -153,3 +189,8 @@ in `/simulate`) returns the outputs above. `/simulate` is unchanged. The profile
 | Common random numbers across scenarios | Comparisons show the effect of the change, not of different luck |
 | Standard library only, no NumPy | Keeps the domain rule; 1,000 futures are fast enough in pure Python |
 | Whole-number percentages, "simulated futures" wording | Avoids false precision and promises |
+| Show the probability's precision (±) | 1,000 futures estimate the probability to about ±3 points; saying so is honest and teaches what a simulation can tell |
+| Report how large the misses are, not only how often | 70% with small misses and 70% with large ones call for different reactions |
+| Market drop as a deterministic override (`first_year_return`) | Relatable and explainable, works in every view and in the chat, and needs no randomness |
+| Risk and return stay separate; risk levels are never compared side by side | Pairing them would hide an assumption; comparing them on one return would make low risk always look better |
+| "What would it take" last | The most practical output, but it needs many simulations per answer and careful wording |
