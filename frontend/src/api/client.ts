@@ -23,6 +23,8 @@ export type InvestmentRisk = Schemas["InvestmentRisk"];
 export type Uncertainty = Schemas["UncertaintyOut"];
 export type UncertaintyRequest = Schemas["UncertaintyRequest"];
 export type BandPoint = Schemas["BandPointOut"];
+export type PlanDraft = Schemas["PlanDraft"];
+export type DraftReply = Schemas["DraftOut"];
 export type FuturesComparison = Schemas["FuturesComparisonOut"];
 export type ComparedFutures = Schemas["ComparedFuturesOut"];
 export type Comparison = Schemas["CompareOut"];
@@ -114,4 +116,6 @@ export const api = {
   chat: (body: ChatRequest) => request<ChatResponse>("/chat", send("POST", body)),
   health: () => request<Health>("/health"),
   planStatus: () => request<PlanStatus>("/plan/status"),
+  draftPlan: (body: { message?: string; draft?: PlanDraft }) =>
+    request<DraftReply>("/plan/draft", send("POST", body)),
 };

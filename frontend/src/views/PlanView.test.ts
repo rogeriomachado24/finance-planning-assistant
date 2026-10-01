@@ -1,7 +1,7 @@
 /** The plan page with a fake API: what's sent when saving, and how errors are shown. */
 import { flushPromises, mount, RouterLinkStub, type VueWrapper } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { AssumptionSet, Goal, ProfileOut } from "../api/client";
+import type { AssumptionSet, DraftReply, Goal, ProfileOut } from "../api/client";
 import { fakeApi, lastBody } from "../test/fakeApi";
 import PlanView from "./PlanView.vue";
 
@@ -32,7 +32,18 @@ const NOT_STARTED = { has_profile: false, has_goal: false, ready: false };
 const FINANCES_ONLY = { has_profile: true, has_goal: false, ready: false };
 const READY = { has_profile: true, has_goal: true, ready: true };
 
+const FIRST_QUESTION: DraftReply = {
+  draft: { notes: {}, skipped: [], to_check: [], asked: "monthly_net_income" },
+  understood: [],
+  question: "How much do you take home each month, after tax?",
+  still_missing: ["Take-home pay", "Expenses", "Goal amount", "Goal date", "Goal name"],
+  optional_missing: ["Cash", "Investments", "Monthly investment", "Debt"],
+  complete: false,
+  read_by: "rules",
+};
+
 const EMPTY_DB = {
+  "POST /plan/draft": [200, FIRST_QUESTION],
   "GET /plan/status": [200, NOT_STARTED],
   "GET /profile": [404, { detail: "no financial profile has been saved yet" }],
   "GET /goals": [200, []],
@@ -200,5 +211,73 @@ describe("plan page", () => {
     expect(
       wrapper.findAllComponents(RouterLinkStub).some((l) => l.props("to") === "/" && l.text() === "See your projection"),
     ).toBe(true);
+  });
+});
+
+describe("describe your situation", () => {
+  const FILLED: DraftReply = {
+    draft: {
+      monthly_net_income: 2400, monthly_expenses: 1600, cash: 8000, goal_name: "House deposit",
+      goal_type: "house", goal_target_amount: 60_000, goal_target_date: "2032-06-01",
+      notes: { monthly_expenses: "€900 + €700" }, skipped: [], to_check: ["cash"],
+      asked: "investments",
+    },
+    understood: [
+      "Take-home pay: €2,400 a month",
+      "Expenses: €1,600 a month (€900 + €700)",
+      "Cash: €8,000 · read by the AI, please check",
+    ],
+    question: "And in investments, such as funds or ETFs? If nothing, say 0.",
+    still_missing: [],
+    optional_missing: ["Investments", "Monthly investment", "Debt"],
+    complete: true,
+    read_by: "qwen2.5:3b",
+  };
+
+  it("fills the forms from a description, labels them, and saves nothing by itself", async () => {
+    const fetchMock = fakeApi({
+      ...EMPTY_DB,
+      "POST /plan/draft": [[200, FIRST_QUESTION], [200, FILLED]], // first question, then the reply
+    });
+    const wrapper = await mountPlan();
+
+    await wrapper.find("#describe-input").setValue("I take home 2,400, rent 900 and 700 for the rest…");
+    await wrapper.find("#describe-input").element.closest("form")!.dispatchEvent(new Event("submit"));
+    await flushPromises();
+
+    expect(lastBody(fetchMock, "POST", "/plan/draft").message).toBe("I take home 2,400, rent 900 and 700 for the rest…");
+    const value = (id: string) => wrapper.find<HTMLInputElement>(id).element.value;
+    expect(value("#profile-monthly_net_income")).toBe("2400");
+    expect(value("#profile-cash")).toBe("8000");
+    expect(value("#goal-name")).toBe("House deposit");
+    expect(value("#goal-target_date")).toBe("2032-06-01");
+
+    const label = (id: string) => wrapper.find(`label[for="${id}"]`).text();
+    expect(label("profile-monthly_net_income")).toContain("From your description");
+    expect(label("profile-cash")).toContain("Read by the AI: please check");
+    expect(label("profile-investments")).not.toContain("From your description");
+    expect(wrapper.find("#profile-monthly_expenses-hint").text()).toContain("€900 + €700.");
+
+    const box = wrapper.find('[aria-labelledby="describe-heading"]').text();
+    expect(box).toContain("Expenses: €1,600 a month (€900 + €700)");
+    expect(box).toContain("And in investments, such as funds or ETFs?");
+    expect(box).toContain("Optional: Investments, Monthly investment, Debt");
+    expect(box).toContain("Last message read by qwen2.5:3b");
+    expect(fetchMock.mock.calls.some(([, init]) => init?.method === "PUT")).toBe(false);
+  });
+
+  it("starts a returning user from the saved plan", async () => {
+    const fetchMock = fakeApi({
+      ...EMPTY_DB,
+      "GET /plan/status": [200, READY],
+      "GET /profile": [200, SAVED_PROFILE],
+      "GET /goals": [200, [HOUSE]],
+    });
+    const wrapper = await mountPlan();
+
+    expect(wrapper.text()).toContain("Describe a change in your own words");
+    const sent = lastBody(fetchMock, "POST", "/plan/draft").draft;
+    expect(sent.monthly_net_income).toBe(2500);
+    expect(sent.goal_target_amount).toBe(80_000);
   });
 });

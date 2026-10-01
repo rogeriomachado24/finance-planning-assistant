@@ -3,12 +3,14 @@
  * "Your plan": the facts (finances), the goal and the assumptions that projections use.
  * A new user is guided through it in three steps; the fields start empty, with examples.
  */
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { api, ApiError, type AssumptionSet, type Goal, type Profile } from "../api/client";
+import DescribePlan from "../components/DescribePlan.vue";
 import AssumptionSetForm from "../components/forms/AssumptionSetForm.vue";
 import GoalForm from "../components/forms/GoalForm.vue";
 import ProfileForm from "../components/forms/ProfileForm.vue";
 import { usePlanStatus } from "../composables/usePlanStatus";
+import { draftFromPlan, type DraftUpdate } from "../lib/draft";
 
 const profile = ref<Profile | null>(null);
 const goals = ref<Goal[]>([]);
@@ -16,6 +18,12 @@ const sets = ref<AssumptionSet[]>([]);
 const loading = ref(true);
 const error = ref<ApiError | null>(null);
 const { status, ready, refresh } = usePlanStatus();
+
+/** The latest change from "Describe your situation", passed to the forms. */
+const update = ref<DraftUpdate | null>(null);
+const startDraft = computed(() =>
+  draftFromPlan(profile.value, goals.value.find((g) => g.is_active) ?? null),
+);
 
 async function loadProfile(): Promise<Profile | null> {
   try {
@@ -116,18 +124,20 @@ onMounted(load);
     </section>
 
     <template v-else>
+      <DescribePlan :start="startDraft" :returning="ready" @update="update = $event" />
+
       <section class="scroll-mt-6 rounded-lg border border-hairline bg-surface p-5" aria-labelledby="finances-heading">
         <h2 id="finances-heading" class="scroll-mt-6 font-semibold">1. Your finances today</h2>
         <p class="mb-4 text-sm text-ink-2">
           Monthly amounts in euros. Grey figures are only examples: type your own.
         </p>
-        <ProfileForm :initial="profile" @saved="refresh().catch(() => {})" />
+        <ProfileForm :initial="profile" :update="update" @saved="refresh().catch(() => {})" />
       </section>
 
       <section class="rounded-lg border border-hairline bg-surface p-5" aria-labelledby="goal-form-heading">
         <h2 id="goal-form-heading" class="scroll-mt-6 font-semibold">2. Your goal</h2>
         <p class="mb-4 text-sm text-ink-2">What you're saving for, how much, and by when.</p>
-        <GoalForm :goals="goals" @saved="onGoalSaved" />
+        <GoalForm :goals="goals" :update="update" @saved="onGoalSaved" />
       </section>
 
       <section class="rounded-lg border border-hairline bg-surface p-5" aria-labelledby="sets-heading">

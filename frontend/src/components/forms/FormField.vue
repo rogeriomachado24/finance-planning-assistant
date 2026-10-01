@@ -11,6 +11,9 @@ const props = defineProps<{
   hint?: string;
   error?: string;
   optional?: boolean;
+  /** A label after the field name, e.g. "From your description". */
+  badge?: string;
+  badgeTone?: "info" | "check";
 }>();
 
 const describedBy = computed(
@@ -26,6 +29,11 @@ const describedBy = computed(
     <label :for="id" class="block text-sm font-medium">
       {{ label }}
       <span v-if="optional" class="font-normal text-ink-2">(optional)</span>
+      <span
+        v-if="badge"
+        class="ml-1 rounded px-1.5 py-0.5 text-xs font-normal"
+        :class="badgeTone === 'check' ? 'bg-warning/25 text-ink' : 'bg-series-1/10 text-ink-2'"
+      >{{ badge }}</span>
     </label>
     <div class="mt-1">
       <slot :described-by="describedBy" :invalid="Boolean(error)" />

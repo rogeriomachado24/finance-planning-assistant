@@ -24,6 +24,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/plan/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Draft Plan
+         * @description Turn a description ("I take home 2,400 a month…") into a draft of the plan forms, with
+         *     the next question. Nothing is saved and the description isn't stored: the person checks
+         *     the forms and saves them. Send the returned draft back with the next message.
+         */
+        post: operations["draft_plan_plan_draft_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/plan/status": {
         parameters: {
             query?: never;
@@ -499,6 +521,47 @@ export interface components {
              */
             value_at_target_difference: number;
         };
+        /** DraftOut */
+        DraftOut: {
+            draft: components["schemas"]["PlanDraft"];
+            /**
+             * Understood
+             * @description What this message changed, in words.
+             */
+            understood: string[];
+            /** Question */
+            question: string;
+            /**
+             * Still Missing
+             * @description Required fields not filled yet.
+             */
+            still_missing: string[];
+            /**
+             * Optional Missing
+             * @description Optional fields not answered yet.
+             */
+            optional_missing: string[];
+            /**
+             * Complete
+             * @description Every required field is filled.
+             */
+            complete: boolean;
+            /**
+             * Read By
+             * @description Who read the message: "rules", or a model's name.
+             */
+            read_by: string;
+        };
+        /** DraftRequest */
+        DraftRequest: {
+            /**
+             * Message
+             * @description What the person wrote. Omit to get the next question only.
+             */
+            message?: string | null;
+            /** @description The draft so far, as returned last time: the server keeps nothing. */
+            draft?: components["schemas"]["PlanDraft"];
+        };
         /**
          * ExplainAssumptions
          * @description 'What are you assuming?'
@@ -743,6 +806,67 @@ export interface components {
             p50: number;
             /** P90 */
             p90: number;
+        };
+        /**
+         * PlanDraft
+         * @description The forms' values so far. Sent back by the browser with each message (the API keeps
+         *     nothing). None means "not known yet"; 0 means "said to be nothing".
+         */
+        PlanDraft: {
+            /** Monthly Net Income */
+            monthly_net_income?: number | null;
+            /** Other Monthly Income */
+            other_monthly_income?: number | null;
+            /** Monthly Expenses */
+            monthly_expenses?: number | null;
+            /** Cash */
+            cash?: number | null;
+            /** Investments */
+            investments?: number | null;
+            /** Monthly Investment Contribution */
+            monthly_investment_contribution?: number | null;
+            /** Debt Balance */
+            debt_balance?: number | null;
+            /** Monthly Debt Payment */
+            monthly_debt_payment?: number | null;
+            /** Age */
+            age?: number | null;
+            /** Goal Name */
+            goal_name?: string | null;
+            goal_type?: components["schemas"]["GoalType"] | null;
+            /** Goal Target Amount */
+            goal_target_amount?: number | null;
+            /** Goal Target Date */
+            goal_target_date?: string | null;
+            /**
+             * Notes
+             * @description How a value was worked out: "€900 + €700".
+             * @default {}
+             */
+            notes: {
+                [key: string]: string;
+            };
+            /**
+             * Skipped
+             * @default []
+             */
+            skipped: string[];
+            /**
+             * Asked
+             * @description The field the last question was about.
+             */
+            asked?: string | null;
+            /**
+             * To Check
+             * @description Fields read by a language model, to be checked before saving.
+             * @default []
+             */
+            to_check: string[];
+            /**
+             * Pending Goal Amount
+             * @description A goal amount worked out from a percentage, waiting for a yes.
+             */
+            pending_goal_amount?: number | null;
         };
         /** PlanStatusOut */
         PlanStatusOut: {
@@ -1272,6 +1396,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthOut"];
+                };
+            };
+        };
+    };
+    draft_plan_plan_draft_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

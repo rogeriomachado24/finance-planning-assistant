@@ -3,15 +3,20 @@
  * "Your goal": saving creates a new goal that becomes the active one; the previous goal
  * is kept in the history below (the API never edits a goal in place).
  */
-import { computed, reactive, watch } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 import { api, type Goal, type GoalIn, type GoalType } from "../../api/client";
 import { useSubmit } from "../../composables/useSubmit";
+import { type DraftUpdate, fieldLabel, GOAL_FIELDS } from "../../lib/draft";
 import { formatDate, formatEur } from "../../lib/format";
 import FormField from "./FormField.vue";
 import NumberField from "./NumberField.vue";
 import SaveBar from "./SaveBar.vue";
 
-const props = defineProps<{ goals: Goal[] }>();
+const props = defineProps<{
+  goals: Goal[];
+  /** Values from "Describe your situation": only the changed fields are filled in. */
+  update?: DraftUpdate | null;
+}>();
 const emit = defineEmits<{ saved: [goal: Goal] }>();
 
 const GOAL_TYPES: Record<GoalType, string> = {
@@ -55,6 +60,30 @@ const { status, error, fieldErrors, submit, markEdited } = useSubmit(
 
 watch(form, markEdited);
 
+// Fields a description filled (draft names, e.g. "goal_target_amount"), labelled.
+const described = ref(new Set<string>());
+watch(
+  () => props.update,
+  (u) => {
+    if (!u) return;
+    const d = u.draft;
+    for (const key of u.changed) {
+      if (!(key in GOAL_FIELDS)) continue;
+      described.value.add(key);
+      if (key === "goal_name") form.name = d.goal_name ?? "";
+      if (key === "goal_type") form.goal_type = d.goal_type ?? "other";
+      if (key === "goal_target_amount") form.target_amount = d.goal_target_amount ?? null;
+      if (key === "goal_target_date") form.target_date = d.goal_target_date ?? "";
+    }
+  },
+);
+const label = (key: string) => fieldLabel(props.update?.draft ?? null, described.value, key);
+const withNote = (key: string, hint: string | undefined) => {
+  const note = label(key)?.note;
+  if (!note) return hint;
+  return `${note.charAt(0).toUpperCase()}${note.slice(1)}.${hint ? ` ${hint}` : ""}`;
+};
+
 const inputClass =
   "w-full rounded-md border bg-surface px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-series-1";
 const borderFor = (field: string) => (fieldErrors.value[field] ? "border-error" : "border-axis");
@@ -70,7 +99,13 @@ const borderFor = (field: string) => (fieldErrors.value[field] ? "border-error" 
 
     <form class="space-y-4" @submit.prevent="submit">
       <div class="grid gap-4 sm:grid-cols-2">
-        <FormField id="goal-name" label="Name" :error="fieldErrors.name">
+        <FormField
+          id="goal-name"
+          label="Name"
+          :error="fieldErrors.name"
+          :badge="label('goal_name')?.badge"
+          :badge-tone="label('goal_name')?.tone"
+        >
           <template #default="{ describedBy, invalid }">
             <input
               id="goal-name"
@@ -86,7 +121,13 @@ const borderFor = (field: string) => (fieldErrors.value[field] ? "border-error" 
           </template>
         </FormField>
 
-        <FormField id="goal-type" label="Type" :error="fieldErrors.goal_type">
+        <FormField
+          id="goal-type"
+          label="Type"
+          :error="fieldErrors.goal_type"
+          :badge="label('goal_type')?.badge"
+          :badge-tone="label('goal_type')?.tone"
+        >
           <template #default="{ describedBy }">
             <select
               id="goal-type"
@@ -106,7 +147,9 @@ const borderFor = (field: string) => (fieldErrors.value[field] ? "border-error" 
           v-model="form.target_amount"
           unit="eur"
           label="Target amount"
-          hint="Cash + investments you want to have by the target date."
+          :hint="withNote('goal_target_amount', 'Cash + investments you want to have by the target date.')"
+          :badge="label('goal_target_amount')?.badge"
+          :badge-tone="label('goal_target_amount')?.tone"
           placeholder="e.g. 80,000"
           required
           :min="0.01"
@@ -116,7 +159,9 @@ const borderFor = (field: string) => (fieldErrors.value[field] ? "border-error" 
         <FormField
           id="goal-target_date"
           label="Target date"
-          hint="From this month, up to 50 years ahead."
+          :hint="withNote('goal_target_date', 'From this month, up to 50 years ahead.')"
+          :badge="label('goal_target_date')?.badge"
+          :badge-tone="label('goal_target_date')?.tone"
           :error="fieldErrors.target_date"
         >
           <template #default="{ describedBy, invalid }">

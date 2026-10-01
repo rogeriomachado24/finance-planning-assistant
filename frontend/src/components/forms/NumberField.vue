@@ -17,6 +17,8 @@ withDefaults(
     max?: number;
     step?: number | "any";
     placeholder?: string;
+    badge?: string;
+    badgeTone?: "info" | "check";
   }>(),
   { unit: "none", step: 0.01 },
 );
@@ -28,7 +30,15 @@ function onInput(event: Event) {
 </script>
 
 <template>
-  <FormField :id="id" :label="label" :hint="hint" :error="error" :optional="optional">
+  <FormField
+    :id="id"
+    :label="label"
+    :hint="hint"
+    :error="error"
+    :optional="optional"
+    :badge="badge"
+    :badge-tone="badgeTone"
+  >
     <template #default="{ describedBy, invalid }">
       <div
         class="flex items-center rounded-md border bg-surface focus-within:ring-2 focus-within:ring-series-1"

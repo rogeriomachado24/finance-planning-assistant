@@ -262,9 +262,9 @@ def apply_extraction(draft: PlanDraft, found: Extraction, today: date) -> DraftR
     return _reply(d, understood)
 
 
-def start() -> DraftReply:
-    """The first question, before anything has been described."""
-    return _reply(PlanDraft(), [])
+def start(draft: PlanDraft | None = None) -> DraftReply:
+    """The next question for a draft as it is (the first one for an empty draft)."""
+    return _reply((draft or PlanDraft()).model_copy(deep=True), [])
 
 
 def _reply(d: PlanDraft, understood: list[str]) -> DraftReply:

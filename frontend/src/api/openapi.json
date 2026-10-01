@@ -28,6 +28,48 @@
         }
       }
     },
+    "/plan/draft": {
+      "post": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Draft Plan",
+        "description": "Turn a description (\"I take home 2,400 a month…\") into a draft of the plan forms, with\nthe next question. Nothing is saved and the description isn't stored: the person checks\nthe forms and saves them. Send the returned draft back with the next message.",
+        "operationId": "draft_plan_plan_draft_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/plan/status": {
       "get": {
         "tags": [
@@ -1075,6 +1117,86 @@
         "title": "DeltaOut",
         "description": "How a scenario differs from the baseline (the first scenario compared)."
       },
+      "DraftOut": {
+        "properties": {
+          "draft": {
+            "$ref": "#/components/schemas/PlanDraft"
+          },
+          "understood": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Understood",
+            "description": "What this message changed, in words."
+          },
+          "question": {
+            "type": "string",
+            "title": "Question"
+          },
+          "still_missing": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Still Missing",
+            "description": "Required fields not filled yet."
+          },
+          "optional_missing": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Optional Missing",
+            "description": "Optional fields not answered yet."
+          },
+          "complete": {
+            "type": "boolean",
+            "title": "Complete",
+            "description": "Every required field is filled."
+          },
+          "read_by": {
+            "type": "string",
+            "title": "Read By",
+            "description": "Who read the message: \"rules\", or a model's name."
+          }
+        },
+        "type": "object",
+        "required": [
+          "draft",
+          "understood",
+          "question",
+          "still_missing",
+          "optional_missing",
+          "complete",
+          "read_by"
+        ],
+        "title": "DraftOut"
+      },
+      "DraftRequest": {
+        "properties": {
+          "message": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message",
+            "description": "What the person wrote. Omit to get the next question only."
+          },
+          "draft": {
+            "$ref": "#/components/schemas/PlanDraft",
+            "description": "The draft so far, as returned last time: the server keeps nothing."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "DraftRequest"
+      },
       "ExplainAssumptions": {
         "properties": {
           "assumption_set": {
@@ -1667,6 +1789,206 @@
           "p90"
         ],
         "title": "PercentilesOut"
+      },
+      "PlanDraft": {
+        "properties": {
+          "monthly_net_income": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Net Income"
+          },
+          "other_monthly_income": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Other Monthly Income"
+          },
+          "monthly_expenses": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Expenses"
+          },
+          "cash": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cash"
+          },
+          "investments": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Investments"
+          },
+          "monthly_investment_contribution": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Investment Contribution"
+          },
+          "debt_balance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Debt Balance"
+          },
+          "monthly_debt_payment": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Debt Payment"
+          },
+          "age": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age"
+          },
+          "goal_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goal Name"
+          },
+          "goal_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GoalType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "goal_target_amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goal Target Amount"
+          },
+          "goal_target_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goal Target Date"
+          },
+          "notes": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Notes",
+            "description": "How a value was worked out: \"€900 + €700\".",
+            "default": {}
+          },
+          "skipped": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Skipped",
+            "default": []
+          },
+          "asked": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asked",
+            "description": "The field the last question was about."
+          },
+          "to_check": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "To Check",
+            "description": "Fields read by a language model, to be checked before saving.",
+            "default": []
+          },
+          "pending_goal_amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending Goal Amount",
+            "description": "A goal amount worked out from a percentage, waiting for a yes."
+          }
+        },
+        "type": "object",
+        "title": "PlanDraft",
+        "description": "The forms' values so far. Sent back by the browser with each message (the API keeps\nnothing). None means \"not known yet\"; 0 means \"said to be nothing\"."
       },
       "PlanStatusOut": {
         "properties": {

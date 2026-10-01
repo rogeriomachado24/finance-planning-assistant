@@ -12,11 +12,16 @@ import {
   type ProfileIn,
 } from "../../api/client";
 import { useSubmit } from "../../composables/useSubmit";
+import { type DraftUpdate, fieldLabel, PROFILE_FIELDS } from "../../lib/draft";
 import { formatEur, formatPercent } from "../../lib/format";
 import NumberField from "./NumberField.vue";
 import SaveBar from "./SaveBar.vue";
 
-const props = defineProps<{ initial: Profile | null }>();
+const props = defineProps<{
+  initial: Profile | null;
+  /** Values from "Describe your situation": only the changed fields are filled in. */
+  update?: DraftUpdate | null;
+}>();
 const emit = defineEmits<{ saved: [] }>();
 
 type MoneyField = Exclude<keyof ProfileIn, "age" | "investment_risk">;
@@ -79,6 +84,25 @@ const RISK_LEVELS: { value: InvestmentRisk; label: string; detail: string }[] = 
   { value: "high", label: "High", detail: "Returns vary by about 15% a year. Mostly shares." },
 ];
 
+// Fields a description filled, labelled until the page is left.
+const described = ref(new Set<string>());
+watch(
+  () => props.update,
+  (u) => {
+    if (!u) return;
+    for (const key of PROFILE_FIELDS) {
+      if (!u.changed.includes(key)) continue;
+      form[key] = u.draft[key] ?? null;
+      described.value.add(key);
+    }
+  },
+);
+const label = (key: string) => fieldLabel(props.update?.draft ?? null, described.value, key);
+const withNote = (key: string, hint: string) => {
+  const note = label(key)?.note;
+  return note ? `${note.charAt(0).toUpperCase()}${note.slice(1)}. ${hint}` : hint;
+};
+
 const position = ref<PositionOut | null>(null);
 const savedZeros = ref(false);
 
@@ -122,7 +146,9 @@ watch(form, markEdited);
           v-model="form[field.key]"
           unit="eur"
           :label="field.label"
-          :hint="field.required ? field.hint : `${field.hint} Leave empty for €0.`"
+          :hint="withNote(field.key, field.required ? field.hint : `${field.hint} Leave empty for €0.`)"
+          :badge="label(field.key)?.badge"
+          :badge-tone="label(field.key)?.tone"
           :placeholder="field.example"
           :required="field.required"
           :optional="!field.required"
@@ -169,6 +195,8 @@ watch(form, markEdited);
         v-model="form.age"
         label="Age"
         hint="For your reference; not used in the projection."
+        :badge="label('age')?.badge"
+        :badge-tone="label('age')?.tone"
         placeholder="e.g. 32"
         optional
         :min="0"

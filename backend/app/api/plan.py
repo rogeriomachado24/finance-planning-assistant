@@ -2,8 +2,10 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Path, status
+from fastapi import APIRouter, Path, Request, status
 
+from app.agents.plan_draft import apply_extraction, start
+from app.agents.providers import RULES
 from app.api.deps import SessionDep, TodayDep
 from app.schemas.plan import (
     AssumptionSetOut,
@@ -16,10 +18,23 @@ from app.schemas.plan import (
     ProfileOut,
     Rates,
 )
+from app.schemas.plan_draft import DraftOut, DraftRequest
 from app.services import assumptions, goals, profile
 from app.services.plan_status import get_plan_status
 
 router = APIRouter()
+
+
+@router.post("/plan/draft", tags=["profile"])
+def draft_plan(body: DraftRequest, request: Request, today: TodayDep) -> DraftOut:
+    """Turn a description ("I take home 2,400 a month…") into a draft of the plan forms, with
+    the next question. Nothing is saved and the description isn't stored: the person checks
+    the forms and saves them. Send the returned draft back with the next message."""
+    if not body.message:
+        return DraftOut(**start(body.draft).model_dump(), read_by=RULES)
+    read = request.app.state.chat_provider.read_plan(body.message, body.draft.asked)
+    reply = apply_extraction(body.draft, read.extraction, today)
+    return DraftOut(**reply.model_dump(), read_by=read.source)
 
 
 def _profile_out(session: SessionDep) -> ProfileOut:
