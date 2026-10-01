@@ -3,6 +3,7 @@
  * Scenarios side by side: the built-in levers, then the user's saved what-ifs, measured
  * against the current plan under one assumption set.
  */
+import PageIntro from "../components/PageIntro.vue";
 import { computed, onMounted, ref, watch } from "vue";
 import {
   api,
@@ -131,7 +132,7 @@ const noPlanYet = computed(() => error.value?.status === 404);
 
 <template>
   <div>
-    <h1 class="sr-only">Compare scenarios</h1>
+    <PageIntro title="Compare scenarios" answers="How would different choices change when you reach your goal? Each scenario is measured against your current plan, which never changes here." />
     <div v-if="sets.length" class="mb-5">
       <AssumptionSetPicker v-model="selectedSet" :names="sets.map((s) => s.name)" />
     </div>

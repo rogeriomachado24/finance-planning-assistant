@@ -1,13 +1,16 @@
 # Personal Finance Planning Assistant
 
-A savings-goal simulator with a conversational interface. Enter your finances and a goal
-("€80,000 for a house deposit by June 2032"), see when you're projected to reach it, compare
-what-if scenarios, and ask questions in plain English: *"What if I invest €200 more per month?"*,
-*"What if the market falls 30% next year?"*, *"How likely am I to reach my goal?"*
+A savings-goal simulator with a conversational interface. Describe your situation in your own
+words ("I take home about 2,400 a month… I want 60k for a house deposit by June 2032") or fill in
+a form, see when you're projected to reach the goal and how sure that is across 1,000 simulated
+futures, compare what-if scenarios, and ask questions in plain English: *"What if I invest €200
+more per month?"*, *"What if the market falls 30% next year?"*, *"How likely am I to reach my
+goal?"*
 
 **The core rule:** every number comes from a deterministic, tested Python engine. The language
-model only helps understand questions; it never calculates, rounds or changes a figure. Every
-answer shows the assumptions it depends on.
+model only helps read what people write (questions and descriptions); it never calculates,
+rounds or changes a figure, and everything it reads is checked by code. Every answer shows the
+assumptions it depends on.
 
 > A planning tool, not financial advice. Projections depend entirely on the assumptions you
 > enter and are not guarantees.
@@ -16,10 +19,10 @@ answer shows the assumptions it depends on.
 
 | Page | What you get |
 |---|---|
-| **Projection** | Where you are today (progress towards the goal, net worth, savings rate), when the goal is reached, the value on the target date, the monthly amount needed to get there on time, and a month-by-month chart with a table view. **How sure is this?** 1,000 simulated futures with varying investment returns: the share that reaches the goal on time (with its precision), the range of goal dates, how the share grows year by year, and how far off the misses are, drawn as a band around the projection, and what it would take: the monthly investment that reaches the goal on time in half, 8 in 10 or 9 in 10 of the futures. Switch between conservative, base and optimistic assumptions. |
-| **Compare** | Scenarios side by side (invest more, earn more, your own what-ifs), with differences from the current plan. |
+| **Projection** | Where you are today (progress towards the goal, net worth, savings rate), when the goal is reached, the value on the target date, the monthly amount needed to get there on time, and a month-by-month chart with a table view. **How sure is this?** 1,000 simulated futures with varying investment returns: the share that reaches the goal on time (with its precision), the range of goal dates, how the share grows year by year, and how far off the misses are, drawn as a band around the projection, and what it would take: the monthly investment that reaches the goal on time in half, 8 in 10 or 9 in 10 of the futures. Switch between conservative, base and optimistic assumptions. **What does this mean for me?** A plain-language summary of the page, on request. |
+| **Compare** | Scenarios side by side (invest more, earn more, your own what-ifs), with differences from the current plan, including the share of simulated futures each one is on time in, all on the same futures. A plain-language summary on request. |
 | **Ask** | A chat that answers questions about your plan. Replies show the engine's figures as cards, how the question was understood, and whether rules or the model understood it. Answers "how likely" from simulated futures and one-off market drops as what-ifs. What-ifs can be saved to Compare. Advice requests are declined. |
-| **Your plan** | Where a new user starts: two guided steps (your finances, your goal) with empty fields and examples, an investment risk level (low, medium, high), plus three editable assumption sets. |
+| **Your plan** | Where a new user starts. **Describe your situation** in your own words: the forms fill in as a draft, with how each value was worked out ("€900 + €700"), one question at a time for what's missing, and a "please check" label on anything the language model read. Nothing is saved until you check the forms and save them. Or fill in the forms directly: your finances, your goal, an investment risk level (low, medium, high), and three editable assumption sets. |
 
 Everything runs locally: SQLite for storage, and optionally [Ollama](https://ollama.com) for a
 small local language model. Without a model, the chat still works with rules and templates.
@@ -33,7 +36,7 @@ flowchart TB
   end
   subgraph API_["Backend: Python 3.12"]
     api["FastAPI routes + Pydantic schemas"]
-    chat["Chat workflow (LangGraph)"]
+    chat["AI layer: chat workflow (LangGraph),<br/>plan descriptions, page summaries"]
     services["Services: use cases"]
     domain["Domain engine: all financial maths<br/>pure Python, no dependencies"]
     db[("SQLite<br/>SQLAlchemy + Alembic")]
@@ -46,7 +49,7 @@ flowchart TB
   chat -- "runs the same services" --> services
   services --> domain
   services --> db
-  chat -. "only to parse questions the rules cannot place" .-> llm
+  chat -. "only to read what the rules cannot place: questions, plan descriptions" .-> llm
 ```
 
 Dependencies only point downwards. Automated tests enforce the boundaries: the domain engine
@@ -85,6 +88,14 @@ The model's output is checked before it's used, and anything that fails falls ba
   statements that passed a digits-only check but were wrong ("a month before" instead of 11
   months, an invented date, two scenarios merged). Rewording is available behind a setting,
   under a stricter check that requires every figure to be copied exactly.
+- **The model never does arithmetic:** in a plan description it only copies what was written;
+  "rent 900 and 700 for the rest" stays two parts and "36k a year" keeps its period, and the
+  engine adds and converts them, visibly ("€900 + €700", "€36,000 a year ÷ 12").
+- **What the model read is marked for a person to check:** its misreadings in the evaluation
+  (a trip budget read as monthly spending) pass every number check, so the form labels exactly
+  those fields "Read by the AI: please check" and nothing is saved without confirmation.
+- **Summaries are facts chosen by code:** "What does this mean for me?" is built from the
+  engine's results by rules; a model may only reword them, under the same checks.
 
 **Measured, not assumed.** A labelled set of messages (`python -m app.agents.evaluate`), some
 phrased deliberately outside the rules' patterns. It had 35 messages in Phase 1 and 43 since
@@ -98,8 +109,34 @@ Phase 2 added likelihood and market-drop questions:
 | **Rules first, model when the rules are unsure** (used) | 89% | 91% | **95%** |
 
 Letting the small model go first made results *worse*: its plausible-but-wrong answers pass
-number checks. So the rules parse first, and the model handles only what they can't place. The
-set is small and written by the author, so treat these numbers as a sanity check, not a benchmark.
+number checks. So the rules parse first, and the model handles only what they can't place.
+
+The same strategy reads plan descriptions. A labelled set of 30 descriptions (79 fields), scored
+field by field as correct, missing or **wrong** (the costly kind: a missing value gets a question,
+a wrong one may go unnoticed), with `python -m app.agents.evaluate_setup`:
+
+| Reader | Fields right | Wrong | Descriptions fully right |
+|---|---|---|---|
+| Rules only | 85% | 4 | 22 / 30 |
+| qwen2.5:3b alone | 66% | 14 | 10 / 30 |
+| **Rules, then qwen2.5:3b** (used) | **91%** | 6 | 23 / 30 |
+
+And three local models compared on every task, on the same sets:
+
+| | phi3 (3.8B) | **qwen2.5:3b** (used) | qwen3:4b |
+|---|---|---|---|
+| Chat questions, rules then model | 86% | **95%** | 95% |
+| Plan descriptions, rules then model | 89% | **91%** | 90% |
+| Wrong values, model alone | 8 | 14 | **7** |
+| Time per message, model alone | ~1.7 s | **~1.2 s** | ~3.0 s |
+| Page summaries passing the checks (11 pages) | 1 | 1 | – (its reasoning leaks into free text) |
+
+The summaries settled a design question: a 3–4B model misstated facts on almost every page, and
+the few texts that passed the figure checks were still wrong in meaning ("You have €80,000" when
+€105,000 covers an €80,000 goal). So summaries are the code-chosen facts by default
+(`python -m app.agents.evaluate_summaries --model …` to measure another model). qwen2.5:3b stays:
+as accurate as qwen3:4b where the app uses a model, and two to three times faster. The sets are
+small and written by the author, so treat these numbers as a sanity check, not a benchmark.
 
 ## Engineering highlights
 
@@ -116,7 +153,12 @@ set is small and written by the author, so treat these numbers as a sanity check
   from the plan, not from luck. Standard library only. The tests caught a real subtlety: moving
   money from cash to investments raises the typical outcome but can lower the worst ones. See
   [docs/PHASE2_DESIGN.md](docs/PHASE2_DESIGN.md).
-- **Grounding tests:** every euro amount in a chat reply must come from the engine's results.
+- **The AI as a guide, measured:** a description fills a draft of the forms that a person
+  confirms; summaries are facts chosen by code. Measuring the model on both changed the design
+  twice: model-read values are flagged for review, and summaries stay templated. See
+  [docs/PHASE3_DESIGN.md](docs/PHASE3_DESIGN.md).
+- **Grounding tests:** every euro amount and percentage in a chat reply must come from the
+  engine's results.
 - **One contract, generated types:** the frontend's TypeScript types are generated from the
   API's OpenAPI description, and a test fails if they drift apart.
 - **Database rules mirror the domain:** check constraints for non-negative money and valid
@@ -178,17 +220,18 @@ After changing the API, regenerate the frontend's types: `python -m app.export_o
 
 ```bash
 # backend/
-.venv/bin/python -m pytest          # 320 tests: domain, database, services, API, chat
+.venv/bin/python -m pytest          # 538 tests: domain, database, services, API, chat
 .venv/bin/ruff check . && .venv/bin/ruff format --check .
 # frontend/
-npm test                            # 67 tests: formatting, chart geometry, pages
+npm test                            # 109 tests: formatting, chart geometry, pages
 npm run build                       # includes the type check
 ```
 
 The test suite never needs a language model: it forces the rule-based provider. Two optional
 extras use a real one: `OLLAMA_TESTS=1 pytest -k real_model` checks that the model doesn't make
-parsing worse, and `python -m app.agents.evaluate --model qwen2.5:3b --show-misses` prints the
-scores above. CI runs on every push (`.github/workflows/ci.yml`).
+parsing worse, and `python -m app.agents.evaluate --model qwen2.5:3b --show-misses`,
+`python -m app.agents.evaluate_setup --model qwen2.5:3b --show-misses` and
+`python -m app.agents.evaluate_summaries --model qwen2.5:3b --show` print the scores above. CI runs on every push (`.github/workflows/ci.yml`).
 
 ## Project structure
 
@@ -200,7 +243,8 @@ backend/
     services/    use cases shared by the API and the chat
     schemas/     Pydantic request/response models
     api/         FastAPI routes
-    agents/      chat workflow: intents, rule parser, LLM provider, templates, evaluation
+    agents/      chat workflow, plan descriptions, page summaries: rules, LLM provider,
+                 templates, checks, evaluations
     tools/       the actions the chat can run (wrapping services)
     main.py      the API app          serve.py   API + built UI on one server
   tests/         mirrors app/
@@ -212,12 +256,14 @@ frontend/
     lib/         formatting, chart geometry, unit conversion, wording
 docs/PHASE1_DESIGN.md   financial model, architecture, decision log
 docs/PHASE2_DESIGN.md   uncertainty: simulated futures (Monte Carlo)
+docs/PHASE3_DESIGN.md   the AI as a guide: describe your plan, page summaries
 ```
 
 ## Scope
 
 A single-user, local simulator. Phase 2 adds uncertainty for investment returns only (income,
-expenses and inflation stay as planned). Deliberately out of scope: bank connections, market
-data, investment recommendations, taxes, fees, debt interest, inflation-adjusted figures,
-accounts and authentication. Chat context is kept in memory and resets
-when the server restarts.
+expenses and inflation stay as planned); Phase 3 uses the language model to guide (reading
+descriptions, wording summaries), never to calculate or advise. Deliberately out of scope: bank
+connections, market data, investment recommendations, taxes, fees, debt interest,
+inflation-adjusted figures, accounts and authentication. Chat context is kept in memory and
+resets when the server restarts; descriptions and summaries are never stored.

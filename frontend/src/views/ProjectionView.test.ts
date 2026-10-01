@@ -201,6 +201,11 @@ describe("how sure is this", () => {
     expect(card.text()).toContain("the typical return comes from your assumptions");
     expect(card.text()).toContain("not a guarantee");
     expect(card.text()).not.toMatch(/\byou should\b|\byou will\b|\byour chance\b/i);
+    // The headline and "what it would take" are visible; the rest starts folded
+    const details = card.find("details");
+    expect(details.attributes("open")).toBeUndefined();
+    expect(details.find("summary").text()).toContain("Show details");
+    expect(details.text()).toContain("between Nov 2030 and Apr 2032");
   });
 
   it("shows what it would take in half, 8 in 10 and 9 in 10 of futures", async () => {

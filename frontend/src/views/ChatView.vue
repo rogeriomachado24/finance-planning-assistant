@@ -5,6 +5,7 @@
  * calculates: it turns the question into a structured request for the same engine the
  * dashboard uses.
  */
+import PageIntro from "../components/PageIntro.vue";
 import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { api, type AssumptionSet, type ChatResponse, type Health } from "../api/client";
 import AssumptionSetPicker from "../components/AssumptionSetPicker.vue";
@@ -82,7 +83,7 @@ watch(
 
 <template>
   <div class="mx-auto max-w-3xl">
-    <h1 class="sr-only">Ask about your plan</h1>
+    <PageIntro title="Ask about your plan" answers="Ask about your plan in your own words. Every figure in a reply comes from the simulator, not from the AI." />
 
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
       <AssumptionSetPicker v-if="sets.length" v-model="state.assumptionSet" :names="sets.map((s) => s.name)" />

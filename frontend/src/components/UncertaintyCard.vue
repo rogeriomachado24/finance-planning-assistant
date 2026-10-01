@@ -70,41 +70,8 @@ const shortfall = computed(() => (u.value ? shortfallSentence(u.value) : null));
         {{ shareExplained(u) }}
       </p>
 
-      <div class="mt-4 grid gap-5 md:grid-cols-2">
-        <div class="space-y-3 text-sm">
-          <p>{{ goalDateRange(u) }}</p>
-          <p>{{ valueRange(u) }}</p>
-          <p v-if="shortfall">{{ shortfall }}</p>
-        </div>
-
-        <div>
-          <h3 id="reached-by-heading" class="text-xs font-medium text-ink-2">
-            Share of futures that have reached the goal
-          </h3>
-          <ul class="mt-2 space-y-1.5 text-sm" aria-labelledby="reached-by-heading">
-            <li
-              v-for="row in rows"
-              :key="row.key"
-              class="grid grid-cols-[minmax(0,1fr)_4rem_6.5rem] items-center gap-2"
-            >
-              <span :class="{ 'font-medium': row.isTarget }">{{ row.label }}</span>
-              <span
-                class="h-2 overflow-hidden rounded-full"
-                :style="{ background: 'color-mix(in oklab, var(--color-series-1) 22%, var(--color-surface))' }"
-                aria-hidden="true"
-              >
-                <span class="block h-full rounded-full bg-series-1" :style="{ width: `${row.share * 100}%` }" />
-              </span>
-              <span class="text-right tabular-nums" :class="{ 'font-medium': row.isTarget }">
-                {{ formatShare(row.share) }}
-              </span>
-            </li>
-          </ul>
-        </div>
-      </div>
-
       <!-- What it would take: the monthly investment for half, 8 in 10 and 9 in 10 of futures -->
-      <div class="mt-5">
+      <div class="mt-4">
         <h3 id="what-it-takes-heading" class="text-xs font-medium text-ink-2">
           What it would take: invested each month from next month, to reach the goal on time in…
         </h3>
@@ -125,6 +92,46 @@ const shortfall = computed(() => (u.value ? shortfallSentence(u.value) : null));
           not the leftover surplus.
         </p>
       </div>
+
+      <!-- The headline and what it would take stay visible; the rest is one click away -->
+      <details class="mt-4 rounded-md border border-hairline px-3 py-2">
+        <summary class="cursor-pointer text-sm font-medium">
+          Show details: when the goal is reached, the range on the target date, and the misses
+        </summary>
+        <div class="mt-3 grid gap-5 md:grid-cols-2">
+          <div class="space-y-3 text-sm">
+            <p>{{ goalDateRange(u) }}</p>
+            <p>{{ valueRange(u) }}</p>
+            <p v-if="shortfall">{{ shortfall }}</p>
+          </div>
+
+          <div>
+            <h3 id="reached-by-heading" class="text-xs font-medium text-ink-2">
+              Share of futures that have reached the goal
+            </h3>
+            <ul class="mt-2 space-y-1.5 text-sm" aria-labelledby="reached-by-heading">
+              <li
+                v-for="row in rows"
+                :key="row.key"
+                class="grid grid-cols-[minmax(0,1fr)_4rem_6.5rem] items-center gap-2"
+              >
+                <span :class="{ 'font-medium': row.isTarget }">{{ row.label }}</span>
+                <span
+                  class="h-2 overflow-hidden rounded-full"
+                  :style="{ background: 'color-mix(in oklab, var(--color-series-1) 22%, var(--color-surface))' }"
+                  aria-hidden="true"
+                >
+                  <span class="block h-full rounded-full bg-series-1" :style="{ width: `${row.share * 100}%` }" />
+                </span>
+                <span class="text-right tabular-nums" :class="{ 'font-medium': row.isTarget }">
+                  {{ formatShare(row.share) }}
+                </span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+      </details>
 
       <p class="mt-4 border-t border-grid pt-3 text-xs text-ink-2">
         Investment returns vary from year to year around the assumed

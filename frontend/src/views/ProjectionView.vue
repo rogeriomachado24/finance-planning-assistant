@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageIntro from "../components/PageIntro.vue";
 import { computed } from "vue";
 import AssumptionSetPicker from "../components/AssumptionSetPicker.vue";
 import AssumptionsPanel from "../components/AssumptionsPanel.vue";
@@ -35,7 +36,7 @@ const noPlanYet = computed(() => error.value?.status === 404);
 
 <template>
   <div>
-    <h1 class="sr-only">Projection</h1>
+    <PageIntro title="Projection" answers="When do you reach your goal, and how sure is that? Everything below follows from your plan and the assumptions you pick here." />
     <!-- Filter row: scopes everything below it -->
     <div v-if="setNames.length" class="mb-5">
       <AssumptionSetPicker v-model="selectedSet" :names="setNames" />
