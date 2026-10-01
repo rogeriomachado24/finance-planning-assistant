@@ -178,9 +178,9 @@ describe("simulated futures per scenario", () => {
     seed: 2026,
     baseline: "Current plan",
     scenarios: [
-      { ...summary(0.948, 0.0138), name: "Current plan", saved_id: null, probability_difference: 0 },
-      { ...summary(1, 0), name: "Higher income", saved_id: null, probability_difference: 0.052 },
-      { ...summary(0.937, 0.0151), name: "Spend €200 less", saved_id: 7, probability_difference: -0.011 },
+      { ...summary(0.948, 0.0138), name: "Current plan", saved_id: null, probability_difference: 0, points_difference: 0 },
+      { ...summary(1, 0), name: "Higher income", saved_id: null, probability_difference: 0.052, points_difference: 5 },
+      { ...summary(0.937, 0.0151), name: "Spend €200 less", saved_id: 7, probability_difference: -0.011, points_difference: -1 },
     ],
   };
 
@@ -226,5 +226,25 @@ describe("simulated futures per scenario", () => {
     expect(wrapper.findAll("tbody tr")).toHaveLength(3);
     expect(wrapper.text()).toContain("Couldn't simulate the futures: simulation failed");
     expect(wrapper.find("button.underline").text()).toBe("Try again");
+  });
+});
+
+describe("what does this mean for me (compare)", () => {
+  it("summarises the comparison on request", async () => {
+    const fetchMock = fakeApi({
+      "GET /assumptions": [200, SETS],
+      "POST /scenarios/compare": [200, COMPARISON],
+      "POST /explain/compare": [200, {
+        summary: "Higher income: the goal is reached on 1 Mar 2031 (4 months earlier).",
+        facts: ["Higher income: the goal is reached on 1 Mar 2031 (4 months earlier)."],
+        worded_by: "template",
+      }],
+    });
+    const wrapper = await mountCompare();
+    await wrapper.find('[aria-labelledby="summary-heading"] button').trigger("click");
+    await flushPromises();
+
+    expect(lastBody(fetchMock, "POST", "/explain/compare")).toEqual({ assumption_set: "base" });
+    expect(wrapper.find('[aria-labelledby="summary-heading"]').text()).toContain("4 months earlier");
   });
 });

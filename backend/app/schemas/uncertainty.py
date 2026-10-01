@@ -187,6 +187,10 @@ class UncertaintyOut(FuturesSummaryOut):
 class ComparedFuturesOut(FuturesSummaryOut):
     name: str
     saved_id: int | None = Field(description="Id of a saved scenario; null for built-in ones.")
+    points_difference: int = Field(
+        description="The difference between the shares as displayed (whole percentages), in "
+        "points: what to show next to them. 92.6% and 91.4% show as 93% and 91%, so -2."
+    )
     probability_difference: float = Field(
         description="Share reaching the goal on time, minus the baseline's (0.03 = 3 points)."
     )
@@ -219,6 +223,7 @@ class FuturesComparisonOut(BaseModel):
                     name=s.scenario.name,
                     saved_id=s.saved_id,
                     probability_difference=share(s.probability_difference),
+                    points_difference=s.points_difference,
                 )
                 for s in c.scenarios
             ],

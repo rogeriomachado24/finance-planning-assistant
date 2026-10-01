@@ -45,3 +45,32 @@ def test_every_figure_in_the_summary_is_in_the_facts(plan_client: TestClient):
 
 def test_without_a_plan_it_is_404(client: TestClient):
     assert client.post("/explain/projection", json={}).status_code == 404
+
+
+class TestCompareSummary:
+    def test_each_scenario_as_a_difference_from_the_plan(self, plan_client: TestClient):
+        plan_client.post(
+            "/scenarios",
+            json={"name": "Spend €200 less", "overrides": {"monthly_expenses_delta": -200}},
+        ).raise_for_status()
+        body = plan_client.post("/explain/compare", json={}).json()
+        facts = body["facts"]
+
+        assert facts[0].startswith(
+            "With the current plan, the €80,000 goal is reached on 1 Aug 2031"
+        )
+        assert "of 1,000 simulated futures it is reached by 1 Jun 2032" in facts[0]
+        assert facts[1].startswith("Higher contribution: the goal is reached on")
+        assert "than the current plan" in facts[1]
+        income = next(f for f in facts if f.startswith("Higher income:"))
+        assert "earlier)" in income
+        assert "Spend €200 less reaches the goal earliest" in " ".join(facts)
+        assert not any(word in body["summary"].lower() for word in ("should", "best", "recommend"))
+        assert body["summary"] == " ".join(facts)
+
+    def test_investing_more_with_a_lower_share_is_explained(self, plan_client: TestClient):
+        facts = plan_client.post("/explain/compare", json={}).json()["facts"]
+        compared = plan_client.post("/scenarios/compare/uncertainty", json={}).json()
+        higher = next(s for s in compared["scenarios"] if s["name"] == "Higher contribution")
+        explained = any("moves money from cash" in f for f in facts)
+        assert explained == (higher["probability_difference"] < 0)

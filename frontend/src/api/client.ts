@@ -119,6 +119,8 @@ export const api = {
   planStatus: () => request<PlanStatus>("/plan/status"),
   explainProjection: (assumptionSet: string) =>
     request<PageSummary>("/explain/projection", send("POST", { assumption_set: assumptionSet })),
+  explainCompare: (assumptionSet: string) =>
+    request<PageSummary>("/explain/compare", send("POST", { assumption_set: assumptionSet })),
   draftPlan: (body: { message?: string; draft?: PlanDraft }) =>
     request<DraftReply>("/plan/draft", send("POST", body)),
 };

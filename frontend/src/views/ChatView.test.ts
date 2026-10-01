@@ -187,8 +187,8 @@ describe("Ask page", () => {
         assumption_set: "base", investment_risk: "medium", volatility: 0.1, paths: 1000, seed: 2026,
         baseline: "Current plan",
         scenarios: [
-          { ...summary, name: "Current plan", saved_id: null, probability_by_target_date: 0.926, probability_margin: 0.0162, probability_difference: 0 },
-          { ...summary, name: "What-if", saved_id: null, probability_by_target_date: 0.699, probability_margin: 0.0284, probability_difference: -0.227 },
+          { ...summary, name: "Current plan", saved_id: null, probability_by_target_date: 0.926, probability_margin: 0.0162, probability_difference: 0, points_difference: 0 },
+          { ...summary, name: "What-if", saved_id: null, probability_by_target_date: 0.699, probability_margin: 0.0284, probability_difference: -0.227, points_difference: -23 },
         ],
       },
     };
@@ -218,7 +218,7 @@ describe("Ask page", () => {
         baseline: "Current plan",
         scenarios: [{
           name: "Current plan", saved_id: null, probability_by_target_date: 0.948,
-          probability_margin: 0.0138, probability_difference: 0,
+          probability_margin: 0.0138, probability_difference: 0, points_difference: 0,
           goal_dates: { p10: "2030-11-01", p50: "2031-07-01", p90: "2032-04-01" },
           not_reached_share: 0, value_at_target_date: { p10: 81_725, p50: 92_122, p90: 105_378 },
           shortfall_when_missed: null,

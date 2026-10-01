@@ -99,13 +99,11 @@ export function formatCount(value: number): string {
 }
 
 /**
- * API difference in shares -> "+3 points", "−1 point" (true minus sign), "Same" when there is
- * no difference, "Less than 1 point" when it rounds away.
+ * The API's difference between two shares as displayed, in whole points: 3 -> "+3 points",
+ * -1 -> "−1 point" (true minus sign), 0 -> "Same".
  */
-export function formatPointsDifference(difference: number): string {
-  if (difference === 0) return "Same";
-  const points = Math.round(difference * 100);
-  if (points === 0) return "Less than 1 point";
+export function formatPointsDifference(points: number): string {
+  if (points === 0) return "Same";
   const size = Math.abs(points);
   return `${points > 0 ? "+" : "−"}${size} ${size === 1 ? "point" : "points"}`;
 }

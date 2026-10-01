@@ -3,11 +3,11 @@ as the pages, computed here from the stored plan, never from figures sent by the
 
 from fastapi import APIRouter, Request
 
-from app.agents.summary import projection_facts
+from app.agents.summary import compare_facts, projection_facts
 from app.api.deps import SessionDep, TodayDep
 from app.schemas.explain import ExplainRequest, SummaryOut
-from app.schemas.scenarios import ScenarioResultOut
-from app.schemas.uncertainty import UncertaintyOut
+from app.schemas.scenarios import ComparedScenarioOut, ScenarioResultOut
+from app.schemas.uncertainty import FuturesComparisonOut, UncertaintyOut
 from app.services import scenarios, uncertainty
 
 router = APIRouter(tags=["explain"])
@@ -27,5 +27,23 @@ def explain_projection(
         uncertainty.simulate(session, today, assumption_set=body.assumption_set)
     )
     facts = projection_facts(result, futures)
+    worded = request.app.state.chat_provider.summarise(facts)
+    return SummaryOut(summary=worded.text, facts=facts, worded_by=worded.source)
+
+
+@router.post("/explain/compare")
+def explain_compare(
+    body: ExplainRequest, request: Request, session: SessionDep, today: TodayDep
+) -> SummaryOut:
+    """'What does this mean for me?' for the Compare page: each scenario's difference from the
+    current plan, and which reaches the goal earliest or is on time in the most futures."""
+    compared = [
+        ComparedScenarioOut.from_domain(c)
+        for c in scenarios.compare(session, today, body.assumption_set)
+    ]
+    futures = FuturesComparisonOut.from_service(
+        uncertainty.compare(session, today, body.assumption_set)
+    )
+    facts = compare_facts(compared, futures)
     worded = request.app.state.chat_provider.summarise(facts)
     return SummaryOut(summary=worded.text, facts=facts, worded_by=worded.source)

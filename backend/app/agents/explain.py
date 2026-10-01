@@ -106,14 +106,13 @@ def points(margin: float) -> str:
     return "less than ±1 point" if whole < 1 else f"±{whole} point{'s' if whole != 1 else ''}"
 
 
-def points_difference(difference: float) -> str:
-    """0.052 -> "5 points more", -0.011 -> "1 point fewer", 0 -> "the same share"."""
-    if difference == 0:
+def points_difference(points: int) -> str:
+    """The API's difference between two shares as displayed, in whole points: 5 -> "5 points
+    more", -1 -> "1 point fewer", 0 -> "the same share"."""
+    if points == 0:
         return "the same share"
-    whole = int(Decimal(str(abs(difference) * 100)).quantize(Decimal(1), rounding=ROUND_HALF_UP))
-    if whole == 0:
-        return "less than 1 point different"
-    return f"{whole} point{'s' if whole != 1 else ''} {'more' if difference > 0 else 'fewer'}"
+    size = abs(points)
+    return f"{size} point{'s' if size != 1 else ''} {'more' if points > 0 else 'fewer'}"
 
 
 def duration(months: int) -> str:
@@ -351,7 +350,7 @@ def _likelihood(
         text = (
             f"With {describe_overrides(overrides)}, the {goal} goal is reached by {target_day} "
             f"in {share(shown.probability_by_target_date)} of {count} simulated futures: "
-            f"{points_difference(shown.probability_difference)} than with the current plan "
+            f"{points_difference(shown.points_difference)} than with the current plan "
             f"({share(current.probability_by_target_date).removeprefix('about ')})."
         )
         invests_more = (overrides.monthly_investment_contribution_delta or 0) > 0 or (

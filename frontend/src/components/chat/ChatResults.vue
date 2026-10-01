@@ -82,7 +82,7 @@ const goalDate = (date: string | null) => (date ? formatDate(date) : "Not within
         </p>
         <p class="mt-1 text-lg font-semibold">{{ formatShare(f.probability_by_target_date) }}</p>
         <p class="text-xs text-ink-2">
-          {{ i === 0 ? formatPoints(f.probability_margin) : formatPointsDifference(f.probability_difference) }}
+          {{ i === 0 ? formatPoints(f.probability_margin) : formatPointsDifference(f.points_difference) }}
           <template v-if="f.goal_dates.p10 && f.goal_dates.p90">
             · goal reached {{ formatMonthYear(f.goal_dates.p10) }} – {{ formatMonthYear(f.goal_dates.p90) }}
             in the middle 80%

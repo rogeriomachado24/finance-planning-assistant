@@ -113,11 +113,10 @@ describe("formatMonthYear and formatCount", () => {
 });
 
 describe("formatPointsDifference", () => {
-  it("shows differences between shares in whole points", () => {
-    expect(formatPointsDifference(0.032)).toBe("+3 points");
-    expect(formatPointsDifference(-0.011)).toBe("−1 point");
+  it("shows the API's whole-point difference with a sign", () => {
+    expect(formatPointsDifference(3)).toBe("+3 points");
+    expect(formatPointsDifference(-1)).toBe("−1 point");
     expect(formatPointsDifference(0)).toBe("Same");
-    expect(formatPointsDifference(0.003)).toBe("Less than 1 point");
   });
 });
 

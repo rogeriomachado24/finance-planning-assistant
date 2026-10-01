@@ -15,6 +15,7 @@ import {
 import AssumptionSetPicker from "../components/AssumptionSetPicker.vue";
 import AssumptionsPanel from "../components/AssumptionsPanel.vue";
 import ComparisonTable from "../components/ComparisonTable.vue";
+import PageSummary from "../components/PageSummary.vue";
 import SetupNeeded from "../components/SetupNeeded.vue";
 import WhatIfForm from "../components/forms/WhatIfForm.vue";
 import GoalChart, { type ChartSeries } from "../components/GoalChart.vue";
@@ -154,6 +155,11 @@ const noPlanYet = computed(() => error.value?.status === 404);
       :aria-busy="loading"
     >
       <div class="min-w-0 space-y-5">
+        <!-- Reset when the set or the scenarios change: a summary describes one comparison -->
+        <PageSummary
+          :load="() => api.explainCompare(selectedSet)"
+          :reset-key="`${selectedSet}|${scenarios.map((s) => s.name).join('|')}`"
+        />
         <figure class="rounded-lg border border-hairline bg-surface p-4 sm:p-5">
           <figcaption class="mb-3">
             <h2 class="font-semibold">Cash + investments by scenario</h2>

@@ -13,6 +13,7 @@ import math
 import random
 from dataclasses import dataclass
 from datetime import date
+from decimal import ROUND_HALF_UP, Decimal
 
 from app.domain.errors import InvalidInputError
 from app.domain.goals import calculate_required_monthly_contribution, months_to_target_date
@@ -256,3 +257,16 @@ def compare_uncertainty(
 def probability_difference(result: UncertaintyResult, baseline: UncertaintyResult) -> float:
     """Share of futures reaching the goal on time, minus the baseline's (0.03 = 3 points)."""
     return result.probability_by_target_date - baseline.probability_by_target_date
+
+
+def whole_percent(share: float) -> int:
+    """A share as it is displayed: whole percentages, halves rounded up (0.926 -> 93)."""
+    return int(Decimal(str(share * 100)).quantize(Decimal(1), rounding=ROUND_HALF_UP))
+
+
+def points_difference(result: UncertaintyResult, baseline: UncertaintyResult) -> int:
+    """The difference between the two shares as displayed, in whole points: 92.6% and 91.4%
+    show as 93% and 91%, so the difference reads "2 points", not the exact 1.2."""
+    return whole_percent(result.probability_by_target_date) - whole_percent(
+        baseline.probability_by_target_date
+    )

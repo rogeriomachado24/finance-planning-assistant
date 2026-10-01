@@ -322,6 +322,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/explain/compare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Explain Compare
+         * @description 'What does this mean for me?' for the Compare page: each scenario's difference from the
+         *     current plan, and which reaches the goal earliest or is on time in the most futures.
+         */
+        post: operations["explain_compare_explain_compare_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -507,6 +528,11 @@ export interface components {
              * @description Id of a saved scenario; null for built-in ones.
              */
             saved_id: number | null;
+            /**
+             * Points Difference
+             * @description The difference between the shares as displayed (whole percentages), in points: what to show next to them. 92.6% and 91.4% show as 93% and 91%, so -2.
+             */
+            points_difference: number;
             /**
              * Probability Difference
              * @description Share reaching the goal on time, minus the baseline's (0.03 = 3 points).
@@ -1910,6 +1936,39 @@ export interface operations {
         };
     };
     explain_projection_explain_projection_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExplainRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SummaryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    explain_compare_explain_compare_post: {
         parameters: {
             query?: never;
             header?: never;

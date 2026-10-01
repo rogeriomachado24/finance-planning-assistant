@@ -15,6 +15,7 @@ from app.domain.uncertainty import (
     VOLATILITY,
     UncertaintyResult,
     compare_uncertainty,
+    points_difference,
     probability_difference,
     simulate_uncertainty,
 )
@@ -75,6 +76,8 @@ class ComparedFutures:
     scenario: Scenario
     result: UncertaintyResult
     probability_difference: float
+    points_difference: int
+    """The difference between the shares as displayed, in whole points."""
     """Share reaching the goal on time, minus the baseline's (the first scenario)."""
     saved_id: int | None
 
@@ -120,6 +123,7 @@ def compare(
                 scenario=scenario,
                 result=result,
                 probability_difference=probability_difference(result, results[0]),
+                points_difference=points_difference(result, results[0]),
                 saved_id=saved_ids.get(scenario.name),
             )
             for scenario, result in zip(scenarios, results, strict=True)

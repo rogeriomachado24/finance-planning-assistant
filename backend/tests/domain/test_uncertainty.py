@@ -19,9 +19,11 @@ from app.domain.uncertainty import (
     Percentiles,
     compare_uncertainty,
     percentile,
+    points_difference,
     probability_difference,
     sample_yearly_returns,
     simulate_uncertainty,
+    whole_percent,
 )
 
 PLAN = Scenario("Current plan")
@@ -341,3 +343,16 @@ class TestWhatWouldItTake:
     def test_rejects_shares_outside_0_to_1(self, profile, assumptions, goal, start, share):
         with pytest.raises(InvalidInputError):
             simulate(profile, assumptions, goal, start, paths=5, required_shares=(share,))
+
+
+class TestPointsAsDisplayed:
+    def test_the_difference_matches_the_rounded_shares(self, profile, assumptions, goal, start):
+        base = simulate(profile, assumptions, goal, start, paths=200)
+        plan = replace(base, probability_by_target_date=0.926)
+        other = replace(base, probability_by_target_date=0.914)
+        assert probability_difference(other, plan) == pytest.approx(-0.012)
+        assert points_difference(other, plan) == -2  # 91% vs 93%, as shown side by side
+
+    @pytest.mark.parametrize(("value", "shown"), [(0.926, 93), (0.925, 93), (0.004, 0), (1, 100)])
+    def test_whole_percent_rounds_halves_up(self, value, shown):
+        assert whole_percent(value) == shown

@@ -93,7 +93,7 @@ const emit = defineEmits<{ delete: [id: number, name: string] }>();
                 {{
                   index === 0
                     ? formatPoints(futures.get(s.name)!.probability_margin)
-                    : formatPointsDifference(futures.get(s.name)!.probability_difference)
+                    : formatPointsDifference(futures.get(s.name)!.points_difference)
                 }}
               </div>
             </template>

@@ -219,7 +219,15 @@ class OllamaProvider:
         such as merging two scenarios into one sentence."""
         self.name = model
         self.rewrite_replies = rewrite_replies
-        common = {"model": model, "base_url": base_url, "temperature": 0, "keep_alive": "30m"}
+        # reasoning=False: models that "think" first (qwen3) answer directly; it is ignored by
+        # models that don't. Thinking would only add time to a fill-in-the-form task.
+        common = {
+            "model": model,
+            "base_url": base_url,
+            "temperature": 0,
+            "keep_alive": "30m",
+            "reasoning": False,
+        }
         self._parser = ChatOllama(
             **common, format=ModelRequest.model_json_schema(), client_kwargs={"timeout": timeout}
         )

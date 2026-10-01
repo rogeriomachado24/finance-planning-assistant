@@ -652,6 +652,48 @@
           }
         }
       }
+    },
+    "/explain/compare": {
+      "post": {
+        "tags": [
+          "explain"
+        ],
+        "summary": "Explain Compare",
+        "description": "'What does this mean for me?' for the Compare page: each scenario's difference from the\ncurrent plan, and which reaches the goal earliest or is on time in the most futures.",
+        "operationId": "explain_compare_explain_compare_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExplainRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SummaryOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1071,6 +1113,11 @@
             "title": "Saved Id",
             "description": "Id of a saved scenario; null for built-in ones."
           },
+          "points_difference": {
+            "type": "integer",
+            "title": "Points Difference",
+            "description": "The difference between the shares as displayed (whole percentages), in points: what to show next to them. 92.6% and 91.4% show as 93% and 91%, so -2."
+          },
           "probability_difference": {
             "type": "number",
             "title": "Probability Difference",
@@ -1088,6 +1135,7 @@
           "required_monthly_investment",
           "name",
           "saved_id",
+          "points_difference",
           "probability_difference"
         ],
         "title": "ComparedFuturesOut"
