@@ -123,12 +123,30 @@ templates" when no model is used or the model's text failed a check.
 The backend computes the facts itself from the stored plan, so the summary never depends on
 figures sent by the browser.
 
-### 3.3 Compare
+### 3.3 Measured: model wording is off by default
+
+`python -m app.agents.evaluate_summaries --model qwen2.5:3b` runs eight plans (on track,
+behind, already covered, high risk, short deadline, spending more than income, debt, a long
+retirement goal) and checks the model's text as the app would.
+
+- **6 of 8 texts were rejected, and every one contained a real error:** a shortfall turned
+  into "€29,130 more than needed", a goal date moved, two facts merged into a false claim ("by
+  investing €939 per month, you can reach your goal by August 2031"), "a 9 in 10 chance".
+- **The 2 that passed the figure checks were also wrong:** "You have €80,000" (the person has
+  €105,000, which covers €80,000), and "fewer than one out of every thousand" for a *success*
+  rate under 1%. Numbers in words are now rejected (1 of 8 passes), but a wrong meaning built
+  from correct figures can't be caught by checks.
+
+So, as for the chat's replies, **summaries are templated by default**: the facts chosen by code
+are the summary, and model wording is available behind `OLLAMA_REWRITE_REPLIES=true` for a
+stronger model to be measured with the same script.
+
+### 3.4 Compare
 
 The same pipeline on the comparison: which scenarios change the goal date or the share on time
 most, stated as differences, never as "the best option".
 
-### 3.4 API
+### 3.5 API
 
 `POST /explain/projection` and `POST /explain/compare`, each with `{assumption_set}`, return
 `{summary, facts, worded_by}`.
@@ -179,3 +197,4 @@ most, stated as differences, never as "the best option".
 | Values read by the model are marked for review | Measured: the model's misreadings pass the number checks, so a person checks exactly those |
 | Summaries from facts chosen by code | The model can only reword what code decided is true and relevant |
 | Template fallback for every AI feature | Everything works without a model, and a failed check is never shown |
+| Summaries templated by default | Measured: a 3B model misstated facts in all 8 test plans, twice in ways the checks can't catch |

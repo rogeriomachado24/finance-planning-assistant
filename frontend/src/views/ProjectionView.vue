@@ -3,6 +3,7 @@ import { computed } from "vue";
 import AssumptionSetPicker from "../components/AssumptionSetPicker.vue";
 import AssumptionsPanel from "../components/AssumptionsPanel.vue";
 import GoalStatus from "../components/GoalStatus.vue";
+import PageSummary from "../components/PageSummary.vue";
 import SetupNeeded from "../components/SetupNeeded.vue";
 import ProjectionCard from "../components/ProjectionCard.vue";
 import StatTile from "../components/StatTile.vue";
@@ -11,6 +12,7 @@ import UncertaintyCard from "../components/UncertaintyCard.vue";
 import WarningList from "../components/WarningList.vue";
 import { useProjection } from "../composables/useProjection";
 import { useUncertainty } from "../composables/useUncertainty";
+import { api } from "../api/client";
 import { formatDate, formatEur, formatPercent } from "../lib/format";
 
 const { assumptionSets, selectedSet, goal, result, today, error, loading, reload } = useProjection();
@@ -66,6 +68,7 @@ const noPlanYet = computed(() => error.value?.status === 404);
       :aria-busy="loading"
     >
       <div class="min-w-0 space-y-5">
+        <PageSummary :load="() => api.explainProjection(selectedSet)" :reset-key="selectedSet" />
         <GoalStatus :result="result" :goal="goal" />
         <UncertaintyCard
           :uncertainty="futures.uncertainty.value"

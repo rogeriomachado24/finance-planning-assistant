@@ -9,7 +9,7 @@ from fastapi import FastAPI
 
 from app.agents.graph import build_chat_graph
 from app.agents.providers import build_provider
-from app.api import chat, health, plan, scenarios
+from app.api import chat, explain, health, plan, scenarios
 from app.api.errors import register_error_handlers
 from app.config import Settings, get_settings
 from app.db.session import create_db_engine, create_session_factory
@@ -59,7 +59,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.chat_provider = build_provider(settings)
     app.state.chat_graph = build_chat_graph(session_factory, app.state.chat_provider)
     register_error_handlers(app)
-    for module in (health, plan, scenarios, chat):
+    for module in (health, plan, scenarios, chat, explain):
         app.include_router(module.router)
     return app
 

@@ -300,6 +300,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/explain/projection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Explain Projection
+         * @description 'What does this mean for me?' for the Projection page: when the goal is reached, how
+         *     often on time in simulated futures, and what being on time in 9 of 10 would take. Worded
+         *     by the model when one is available and its text passes the checks.
+         */
+        post: operations["explain_projection_explain_projection_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -577,6 +599,14 @@ export interface components {
              * @enum {string}
              */
             kind: "explain_assumptions";
+        };
+        /** ExplainRequest */
+        ExplainRequest: {
+            /**
+             * Assumption Set
+             * @default base
+             */
+            assumption_set: string;
         };
         /** FuturesComparisonOut */
         FuturesComparisonOut: {
@@ -1208,6 +1238,24 @@ export interface components {
             liquid_assets: number;
             /** Net Worth */
             net_worth: number;
+        };
+        /** SummaryOut */
+        SummaryOut: {
+            /**
+             * Summary
+             * @description Three to five sentences about the page.
+             */
+            summary: string;
+            /**
+             * Facts
+             * @description What the summary was written from, chosen by code from the engine's results.
+             */
+            facts: string[];
+            /**
+             * Worded By
+             * @description The model that reworded the facts (checked), or "template" for the facts as they are.
+             */
+            worded_by: string;
         };
         /** UncertaintyOut */
         UncertaintyOut: {
@@ -1848,6 +1896,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ChatResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    explain_projection_explain_projection_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExplainRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SummaryOut"];
                 };
             };
             /** @description Validation Error */

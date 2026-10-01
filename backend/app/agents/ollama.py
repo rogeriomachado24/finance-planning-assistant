@@ -160,6 +160,14 @@ EXPLAIN_SYSTEM = (
     "do not add a disclaimer."
 )
 
+SUMMARY_SYSTEM = (
+    "You rewrite facts about a person's savings projection as a short summary in plain "
+    "language (3 or 4 sentences), speaking to that person.\n"
+    "Rules: use only these facts; copy every amount, date, percentage, duration and share "
+    "(such as '9 of 10') exactly as written; add no other numbers; never say what the person "
+    "should do and never recommend anything; do not add a disclaimer."
+)
+
 _ADVICE_WORDS = re.compile(
     r"\b(should|recommend\w*|advis\w*|suggest\w*|guarantee\w*|keep up)\b", re.I
 )
@@ -169,11 +177,18 @@ _MONTH = r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"
 _FIGURE = re.compile(
     rf"[−+]?€\d{{1,3}}(?:,\d{{3}})*|\d{{1,2}} {_MONTH} \d{{4}}|{_MONTH} \d{{4}}"
     r"|\d+(?:\.\d+)?%|\d+ years?(?: \d+ months?)?|\d+ months?|±?\d+ points?"
-    r"|\d{1,3}(?:,\d{3})* simulated futures"
+    r"|\d{1,3}(?:,\d{3})* simulated futures|\d+ (?:in|of) \d+"
 )
 _WORD_DURATION = re.compile(
     r"\b(a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|a few|several)"
     r" (months?|years?)\b",
+    re.I,
+)
+# Numbers in words can't be checked against the facts ("fewer than one out of every thousand"
+# where the facts said "fewer than 1%"), so a text that uses them is not shown.
+_NUMBER_WORDS = re.compile(
+    r"\b(two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|forty|fifty"
+    r"|hundred|thousand|million|half|quarter|dozen)\b",
     re.I,
 )
 
@@ -299,6 +314,26 @@ class OllamaProvider:
         reply = self._plan_reader.invoke(messages)
         return ModelPlanForm.model_validate_json(reply.content)
 
+    # ---- page summaries -------------------------------------------------------------------
+
+    def summarise(self, facts: list[str]) -> Worded:
+        """The facts reworded by the model, if rewording is on and the text passes the
+        checks; otherwise the facts as they are. Off by default: measured with qwen2.5:3b
+        (`python -m app.agents.evaluate_summaries`), 6 of 8 texts failed the checks and both
+        that passed still misstated a fact (docs/PHASE3_DESIGN.md, 3.3)."""
+        if not self.rewrite_replies:
+            return Worded(" ".join(facts), TEMPLATE)
+        source = "\n".join(facts)
+        try:
+            text = self._writer.invoke(
+                [("system", SUMMARY_SYSTEM), ("human", f"Facts:\n{source}")]
+            ).content.strip()
+            check_explanation(text, source)
+            return Worded(text, self.name)
+        except Exception as exc:
+            log.info("model summary rejected (%s); using the facts", exc)
+            return Worded(" ".join(facts), TEMPLATE)
+
     def warm_up(self) -> None:
         """Load the model into memory now (the first load can take a minute or more), so a
         user's first question doesn't wait for it. Failures are fine: the chat falls back."""
@@ -375,8 +410,17 @@ def check_explanation(text: str, facts: str) -> None:
         remaining = remaining.replace(phrase, " ")
     if leftover := re.findall(r"\S*\d\S*", remaining):
         raise UntrustedOutput(f"figures not copied as written: {leftover}")
-    if _WORD_DURATION.search(text):
+    # "€826 a month" is an amount per month, not a duration: only the rest is checked.
+    without_rates = re.sub(
+        r"€[\d,]+ (?:a|per|each|every) (?:month|year)\b"
+        r"(?!\s+(?:early|earlier|late|later|before|after|sooner|ahead))",
+        " ",
+        text,
+    )
+    if _WORD_DURATION.search(without_rates):
         raise UntrustedOutput("a duration in words instead of the facts' figure")
+    if _NUMBER_WORDS.search(text):
+        raise UntrustedOutput("a number in words, which can't be checked against the facts")
     if _ADVICE_WORDS.search(text):
         raise UntrustedOutput("reads like advice")
 

@@ -20,7 +20,9 @@ class Settings(BaseSettings):
     ollama_model: str = "qwen2.5:3b"
     ollama_base_url: str = "http://127.0.0.1:11434"
     ollama_rewrite_replies: bool = False
-    """Let the model reword replies (strictly checked). Off: see docs/PHASE1_DESIGN.md."""
+    """Let the model reword chat replies and page summaries (strictly checked). Off: small
+    models misstate facts in ways the checks can't catch (docs/PHASE1_DESIGN.md,
+    docs/PHASE3_DESIGN.md 3.3)."""
 
 
 @lru_cache

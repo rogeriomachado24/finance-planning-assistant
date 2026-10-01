@@ -610,6 +610,48 @@
           }
         }
       }
+    },
+    "/explain/projection": {
+      "post": {
+        "tags": [
+          "explain"
+        ],
+        "summary": "Explain Projection",
+        "description": "'What does this mean for me?' for the Projection page: when the goal is reached, how\noften on time in simulated futures, and what being on time in 9 of 10 would take. Worded\nby the model when one is available and its text passes the checks.",
+        "operationId": "explain_projection_explain_projection_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExplainRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SummaryOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1226,6 +1268,18 @@
         "type": "object",
         "title": "ExplainAssumptions",
         "description": "'What are you assuming?'"
+      },
+      "ExplainRequest": {
+        "properties": {
+          "assumption_set": {
+            "type": "string",
+            "title": "Assumption Set",
+            "default": "base"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ExplainRequest"
       },
       "FuturesComparisonOut": {
         "properties": {
@@ -2682,6 +2736,35 @@
         ],
         "title": "SnapshotOut",
         "description": "Balances at the end of the month, and the flows during it."
+      },
+      "SummaryOut": {
+        "properties": {
+          "summary": {
+            "type": "string",
+            "title": "Summary",
+            "description": "Three to five sentences about the page."
+          },
+          "facts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Facts",
+            "description": "What the summary was written from, chosen by code from the engine's results."
+          },
+          "worded_by": {
+            "type": "string",
+            "title": "Worded By",
+            "description": "The model that reworded the facts (checked), or \"template\" for the facts as they are."
+          }
+        },
+        "type": "object",
+        "required": [
+          "summary",
+          "facts",
+          "worded_by"
+        ],
+        "title": "SummaryOut"
       },
       "UncertaintyOut": {
         "properties": {

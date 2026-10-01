@@ -248,3 +248,50 @@ describe("how sure is this", () => {
     expect(wrapper.text()).not.toContain("Middle 80%");
   });
 });
+
+describe("what does this mean for me", () => {
+  const SUMMARY = {
+    summary: "Under these assumptions, you reach the €80,000 goal on 1 Jul 2031. In about 95% of 1,000 simulated futures, the goal is reached by 1 Jun 2032.",
+    facts: [
+      "Under these assumptions, you reach the €80,000 goal on 1 Jul 2031.",
+      "In about 95% of 1,000 simulated futures, the goal is reached by 1 Jun 2032.",
+    ],
+    worded_by: "template",
+  };
+  const routes = {
+    "/assumptions": [200, SETS],
+    "/goals": [200, [GOAL]],
+    "/simulate": [200, result()],
+    "/simulate/uncertainty": [200, uncertainty()],
+    "POST /explain/projection": [200, SUMMARY],
+  } as const;
+
+  it("writes a summary on request, says how it was written, and shows its facts", async () => {
+    const fetchMock = fakeApi(routes);
+    const wrapper = await mountApp();
+    const card = () => wrapper.find('[aria-labelledby="summary-heading"]');
+
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/explain"))).toBe(false);
+    await card().find("button").trigger("click");
+    await flushPromises();
+
+    expect(lastBody(fetchMock, "POST", "/explain/projection")).toEqual({ assumption_set: "base" });
+    expect(card().text()).toContain("In about 95% of 1,000 simulated futures");
+    expect(card().text()).toContain("Summary from templates");
+    expect(card().find("details").exists()).toBe(false); // the summary is the facts
+  });
+
+  it("says when a model wrote it, and clears it for another assumption set", async () => {
+    fakeApi({ ...routes, "POST /explain/projection": [200, { ...SUMMARY, worded_by: "qwen2.5:3b" }] });
+    const wrapper = await mountApp();
+    await wrapper.find('[aria-labelledby="summary-heading"] button').trigger("click");
+    await flushPromises();
+    expect(wrapper.text()).toContain("Written by qwen2.5:3b and checked");
+    expect(wrapper.find("details").text()).toContain("The facts it was written from");
+
+    await wrapper.find('input[value="conservative"]').setValue();
+    await flushPromises();
+    expect(wrapper.text()).not.toContain("Written by qwen2.5:3b");
+    expect(wrapper.find('[aria-labelledby="summary-heading"] button').text()).toBe("Explain this page");
+  });
+});

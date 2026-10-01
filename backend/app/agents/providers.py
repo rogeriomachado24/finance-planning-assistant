@@ -49,6 +49,8 @@ class ChatProvider(Protocol):
 
     def read_plan(self, message: str, asked: str | None) -> ReadPlan: ...
 
+    def summarise(self, facts: list[str]) -> Worded: ...
+
     def is_available(self) -> bool: ...
 
     def warm_up(self) -> None: ...
@@ -67,6 +69,9 @@ class MockProvider:
 
     def read_plan(self, message: str, asked: str | None) -> ReadPlan:
         return ReadPlan(extract_rules(message, asked), RULES)
+
+    def summarise(self, facts: list[str]) -> Worded:
+        return Worded(" ".join(facts), TEMPLATE)
 
     def is_available(self) -> bool:
         return True

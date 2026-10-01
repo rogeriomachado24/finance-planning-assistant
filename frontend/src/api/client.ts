@@ -25,6 +25,7 @@ export type UncertaintyRequest = Schemas["UncertaintyRequest"];
 export type BandPoint = Schemas["BandPointOut"];
 export type PlanDraft = Schemas["PlanDraft"];
 export type DraftReply = Schemas["DraftOut"];
+export type PageSummary = Schemas["SummaryOut"];
 export type FuturesComparison = Schemas["FuturesComparisonOut"];
 export type ComparedFutures = Schemas["ComparedFuturesOut"];
 export type Comparison = Schemas["CompareOut"];
@@ -116,6 +117,8 @@ export const api = {
   chat: (body: ChatRequest) => request<ChatResponse>("/chat", send("POST", body)),
   health: () => request<Health>("/health"),
   planStatus: () => request<PlanStatus>("/plan/status"),
+  explainProjection: (assumptionSet: string) =>
+    request<PageSummary>("/explain/projection", send("POST", { assumption_set: assumptionSet })),
   draftPlan: (body: { message?: string; draft?: PlanDraft }) =>
     request<DraftReply>("/plan/draft", send("POST", body)),
 };

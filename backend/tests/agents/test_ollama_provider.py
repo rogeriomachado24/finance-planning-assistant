@@ -183,6 +183,13 @@ class TestCheckExplanation:
         with pytest.raises(UntrustedOutput):
             check_explanation("About 93% get there by June 2032.", facts)
 
+    def test_an_amount_per_month_is_not_a_duration_in_words(self):
+        """Regression: "€631 a month" was rejected as if it said "a month" for 11 months."""
+        facts = "To reach €80,000 by 1 Jun 2032, about €631 a month would need to be invested."
+        check_explanation("You'd need about €631 a month to reach €80,000 by 1 Jun 2032.", facts)
+        with pytest.raises(UntrustedOutput, match="in words"):
+            check_explanation("You'd reach €80,000 a month early, by 1 Jun 2032.", facts)
+
     def test_a_faithful_rewording_passes(self):
         check_explanation(
             "Investing €200 more each month gets you to the goal on 1 Jun 2031, 1 month earlier "

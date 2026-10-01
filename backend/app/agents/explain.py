@@ -170,7 +170,7 @@ def template_body(facts: Facts) -> str:
     elif isinstance(intent, RequiredContribution):
         body = _required(current)
     elif isinstance(intent, GoalDate | RunProjection):
-        body = _goal_sentence(current)
+        body = goal_sentence(current)
         if isinstance(intent, RunProjection) and current.months_to_goal != 0:
             body += (
                 f" On the target date the projection shows "
@@ -191,7 +191,7 @@ def assumptions_line(facts: Facts) -> str:
     )
 
 
-def _goal_sentence(r: ScenarioResultOut) -> str:
+def goal_sentence(r: ScenarioResultOut) -> str:
     target, target_day = eur(r.target_amount), day(r.target_date)
     if r.months_to_goal == 0:
         return f"Your cash and investments already cover the {target} goal."
