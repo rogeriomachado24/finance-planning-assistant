@@ -13,6 +13,9 @@ const eurCompact = new Intl.NumberFormat("en-IE", {
   style: "currency",
   currency: "EUR",
   notation: "compact",
+  // Explicit: otherwise some engines (Node 22) keep one of the euro's default two decimals,
+  // so the axis reads "€20.0K" instead of "€20K".
+  minimumFractionDigits: 0,
   maximumFractionDigits: 1,
 });
 const percent = new Intl.NumberFormat("en-IE", { style: "percent", maximumFractionDigits: 2 });
