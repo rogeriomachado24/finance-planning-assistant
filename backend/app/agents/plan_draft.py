@@ -108,6 +108,9 @@ class Extraction(BaseModel):
     goal_date: GoalDate | None = None
     goal_share: GoalShare | None = None
     answer: Answer | None = None
+    from_model: list[str] = Field(
+        [], description="Fields a language model read (not the rules): shown for review."
+    )
 
 
 class PlanDraft(BaseModel):
@@ -130,6 +133,9 @@ class PlanDraft(BaseModel):
     notes: dict[str, str] = Field({}, description='How a value was worked out: "€900 + €700".')
     skipped: list[str] = []
     asked: str | None = Field(None, description="The field the last question was about.")
+    to_check: list[str] = Field(
+        [], description="Fields read by a language model, to be checked before saving."
+    )
     pending_goal_amount: float | None = Field(
         None, description="A goal amount worked out from a percentage, waiting for a yes."
     )
@@ -189,6 +195,11 @@ def apply_extraction(draft: PlanDraft, found: Extraction, today: date) -> DraftR
             d.notes[field] = note
         if field in d.skipped:
             d.skipped.remove(field)
+        if field in d.to_check:
+            d.to_check.remove(field)
+        if field in found.from_model:
+            d.to_check.append(field)
+            line += " · read by the AI, please check"
         understood.append(line)
 
     # A goal amount worked out from a percentage waits for a yes (or another amount).

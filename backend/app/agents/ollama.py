@@ -17,6 +17,7 @@ from typing import Literal
 from langchain_ollama import ChatOllama
 from pydantic import BaseModel, Field, ValidationError
 
+from app.agents import plan_model
 from app.agents.explain import Facts, footer, template_body, template_reply
 from app.agents.grounding import as_number, numbers_in, only_known_numbers
 from app.agents.intents import (
@@ -32,7 +33,10 @@ from app.agents.intents import (
     WhatIf,
 )
 from app.agents.mock_parser import parse_message
-from app.agents.providers import RULES, TEMPLATE, Parsed, Worded
+from app.agents.plan_draft import QUESTIONS
+from app.agents.plan_model import ModelPlanForm
+from app.agents.plan_rules import extract_rules
+from app.agents.providers import RULES, TEMPLATE, Parsed, ReadPlan, Worded
 from app.schemas.scenarios import OverridesIn
 
 log = logging.getLogger(__name__)
@@ -205,6 +209,9 @@ class OllamaProvider:
             **common, format=ModelRequest.model_json_schema(), client_kwargs={"timeout": timeout}
         )
         self._writer = ChatOllama(**common, num_predict=200, client_kwargs={"timeout": timeout})
+        self._plan_reader = ChatOllama(
+            **common, format=ModelPlanForm.model_json_schema(), client_kwargs={"timeout": timeout}
+        )
 
     # ---- parsing ---------------------------------------------------------------------------
 
@@ -265,6 +272,32 @@ class OllamaProvider:
         except Exception as exc:
             log.info("model explanation rejected (%s); using template", exc)
             return Worded(template_reply(facts), TEMPLATE)
+
+    # ---- reading a plan description ------------------------------------------------------
+
+    def read_plan(self, message: str, asked: str | None) -> ReadPlan:
+        """Rules first; the model only when the rules left a number unexplained or
+        understood nothing, and only for the fields the rules left empty."""
+        by_rules = extract_rules(message, asked)
+        if not plan_model.rules_missed_something(message, by_rules):
+            return ReadPlan(by_rules, RULES)
+        try:
+            by_model = plan_model.to_extraction(self._read_plan_with_model(message, asked), message)
+        except Exception as exc:  # model down, timeout or invalid JSON
+            log.info("model plan reading failed (%s); using rules", exc)
+            return ReadPlan(by_rules, RULES)
+        merged = plan_model.merge(by_rules, by_model)
+        return ReadPlan(merged, self.name if merged != by_rules else RULES)
+
+    def _read_plan_with_model(self, message: str, asked: str | None) -> ModelPlanForm:
+        messages: list[tuple[str, str]] = [("system", plan_model.SYSTEM)]
+        for example, answer in plan_model.EXAMPLES:
+            messages += [("human", example), ("ai", json.dumps(answer))]
+        if asked in QUESTIONS:
+            messages.append(("system", f"The question the person is answering: {QUESTIONS[asked]}"))
+        messages.append(("human", message))
+        reply = self._plan_reader.invoke(messages)
+        return ModelPlanForm.model_validate_json(reply.content)
 
     def warm_up(self) -> None:
         """Load the model into memory now (the first load can take a minute or more), so a

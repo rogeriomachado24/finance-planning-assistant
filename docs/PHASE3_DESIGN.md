@@ -74,7 +74,21 @@ the rules couldn't fill, through a flat JSON form like the chat's `ModelRequest`
 a value, the rules win. Without a model, the rules alone fill what they can and the questions do
 the rest.
 
-### 2.5 API
+### 2.5 Measured (30 descriptions, 79 fields)
+
+| Reader | Fields right | Missing | Wrong | Descriptions fully right |
+|---|---|---|---|---|
+| Rules only | 85% | 10 | 4 | 22 / 30 |
+| qwen2.5:3b alone | 66% | 22 | 14 | 10 / 30 |
+| Rules, then qwen2.5:3b (used) | 91% | 5 | 6 | 23 / 30 |
+
+The model fills five more fields but adds two wrong ones that pass every number check (a trip
+budget read as monthly spending; "I'd like to start with 200 a month" read as €200 invested).
+So every value the model read is marked "read by the AI, please check" in the draft and on the
+form. Wrong values left by the rules: gross pay read as take-home pay, "by the end of 2027" read
+as January, and "in about 5 years" leaving its 5 in the goal amount.
+
+### 2.6 API
 
 `POST /plan/draft` with `{message, draft}` returns `{draft, understood, questions, parsed_by}`.
 It is stateless: the browser sends the current draft back with each message, so nothing about
@@ -162,5 +176,6 @@ most, stated as differences, never as "the best option".
 | Arithmetic on extracted values in the domain, shown in the draft | "€900 + €700" and "÷ 12" are calculations, so code does them, visibly |
 | Percent-of-price goals confirmed by a question | The user decides what the goal is; the simulator only does the sum |
 | Stateless draft API | Nothing about the description is kept on the server |
+| Values read by the model are marked for review | Measured: the model's misreadings pass the number checks, so a person checks exactly those |
 | Summaries from facts chosen by code | The model can only reword what code decided is true and relevant |
 | Template fallback for every AI feature | Everything works without a model, and a failed check is never shown |

@@ -11,6 +11,8 @@ from typing import Protocol
 from app.agents.explain import Facts, template_reply
 from app.agents.intents import Intent
 from app.agents.mock_parser import parse_message
+from app.agents.plan_draft import Extraction
+from app.agents.plan_rules import extract_rules
 from app.config import Settings
 
 RULES = "rules"
@@ -31,12 +33,21 @@ class Worded:
     """Who wrote the reply: a model name, or "template"."""
 
 
+@dataclass(frozen=True)
+class ReadPlan:
+    extraction: Extraction
+    source: str
+    """Who read the description: "rules", or the model's name when it added something."""
+
+
 class ChatProvider(Protocol):
     name: str
 
     def parse(self, message: str, previous: Intent | None) -> Parsed: ...
 
     def explain(self, facts: Facts) -> Worded: ...
+
+    def read_plan(self, message: str, asked: str | None) -> ReadPlan: ...
 
     def is_available(self) -> bool: ...
 
@@ -53,6 +64,9 @@ class MockProvider:
 
     def explain(self, facts: Facts) -> Worded:
         return Worded(template_reply(facts), TEMPLATE)
+
+    def read_plan(self, message: str, asked: str | None) -> ReadPlan:
+        return ReadPlan(extract_rules(message, asked), RULES)
 
     def is_available(self) -> bool:
         return True
