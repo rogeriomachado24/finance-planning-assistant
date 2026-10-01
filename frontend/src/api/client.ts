@@ -117,6 +117,7 @@ export const api = {
   chat: (body: ChatRequest) => request<ChatResponse>("/chat", send("POST", body)),
   health: () => request<Health>("/health"),
   planStatus: () => request<PlanStatus>("/plan/status"),
+  clearPlan: () => request<void>("/plan", { method: "DELETE" }),
   explainProjection: (assumptionSet: string) =>
     request<PageSummary>("/explain/projection", send("POST", { assumption_set: assumptionSet })),
   explainCompare: (assumptionSet: string) =>

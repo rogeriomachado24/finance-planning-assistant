@@ -2,10 +2,10 @@
 
 from dataclasses import dataclass
 
-from sqlalchemy import exists, select
+from sqlalchemy import delete, exists, select
 from sqlalchemy.orm import Session
 
-from app.db.models import SINGLE_PROFILE_ID, FinancialProfileRecord, GoalRecord
+from app.db.models import SINGLE_PROFILE_ID, FinancialProfileRecord, GoalRecord, ScenarioRecord
 
 
 @dataclass(frozen=True)
@@ -25,3 +25,11 @@ def get_plan_status(session: Session) -> PlanStatus:
         has_profile=session.get(FinancialProfileRecord, SINGLE_PROFILE_ID) is not None,
         has_goal=bool(session.scalar(select(exists().where(GoalRecord.is_active)))),
     )
+
+
+def start_fresh(session: Session) -> None:
+    """Delete the finances, every goal and the saved scenarios: a new plan from scratch. The
+    assumption sets stay (they are views about the future, not facts about the person)."""
+    for table in (ScenarioRecord, GoalRecord, FinancialProfileRecord):
+        session.execute(delete(table))
+    session.commit()

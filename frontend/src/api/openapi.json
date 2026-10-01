@@ -92,6 +92,21 @@
         }
       }
     },
+    "/plan": {
+      "delete": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Clear Plan",
+        "description": "Start fresh: delete your finances, every goal and the saved scenarios. The assumption\nsets are kept.",
+        "operationId": "clear_plan_plan_delete",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        }
+      }
+    },
     "/profile": {
       "get": {
         "tags": [

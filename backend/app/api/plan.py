@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Path, Request, status
+from fastapi import APIRouter, Path, Request, Response, status
 
 from app.agents.plan_draft import apply_extraction, start
 from app.agents.providers import RULES
@@ -20,7 +20,7 @@ from app.schemas.plan import (
 )
 from app.schemas.plan_draft import DraftOut, DraftRequest
 from app.services import assumptions, goals, profile
-from app.services.plan_status import get_plan_status
+from app.services.plan_status import get_plan_status, start_fresh
 
 router = APIRouter()
 
@@ -49,6 +49,14 @@ def plan_status(session: SessionDep) -> PlanStatusOut:
     """What's saved so far. Projections need both your finances and an active goal."""
     s = get_plan_status(session)
     return PlanStatusOut(has_profile=s.has_profile, has_goal=s.has_goal, ready=s.ready)
+
+
+@router.delete("/plan", tags=["profile"], status_code=status.HTTP_204_NO_CONTENT)
+def clear_plan(session: SessionDep) -> Response:
+    """Start fresh: delete your finances, every goal and the saved scenarios. The assumption
+    sets are kept."""
+    start_fresh(session)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/profile", tags=["profile"])

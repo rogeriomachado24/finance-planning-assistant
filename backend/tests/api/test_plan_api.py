@@ -142,3 +142,26 @@ class TestPlanStatus:
         assert status() == {"has_profile": True, "has_goal": False, "ready": False}
         client.post("/goals", json=GOAL_JSON)
         assert status() == {"has_profile": True, "has_goal": True, "ready": True}
+
+
+class TestStartFresh:
+    def test_clears_the_plan_but_keeps_the_assumption_sets(self, client: TestClient):
+        client.put("/profile", json=PROFILE_JSON).raise_for_status()
+        client.post("/goals", json=GOAL_JSON).raise_for_status()
+        client.post("/scenarios", json={"name": "Spend less", "overrides": {}}).raise_for_status()
+        sets_before = client.get("/assumptions").json()
+
+        assert client.delete("/plan").status_code == 204
+
+        assert client.get("/profile").status_code == 404
+        assert client.get("/goals").json() == []
+        assert client.get("/scenarios").json() == []
+        assert client.get("/assumptions").json() == sets_before
+        assert client.get("/plan/status").json() == {
+            "has_profile": False,
+            "has_goal": False,
+            "ready": False,
+        }
+
+    def test_clearing_an_empty_plan_is_fine(self, client: TestClient):
+        assert client.delete("/plan").status_code == 204

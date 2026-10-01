@@ -15,7 +15,7 @@ import { routes } from "./router";
         </div>
         <nav aria-label="Main" class="flex gap-1">
           <RouterLink
-            v-for="route in routes"
+            v-for="route in routes.filter((r) => !r.meta.hidden)"
             :key="route.path"
             :to="route.path"
             class="border-b-2 border-transparent px-3 pb-3 text-sm text-ink-2 hover:text-ink"
