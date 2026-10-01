@@ -36,8 +36,11 @@ form below."* After each message:
 - the forms below are filled with the draft, each filled field marked "from your description";
 - a short list of what was understood ("Take-home pay: €2,400 a month"), so a misreading is
   visible at once;
-- at most one question for what's still missing ("How much do you invest each month? If nothing
-  yet, say 0."). The answer goes in the same box, and the draft is updated.
+- one question for the most important missing piece ("How much do you invest each month? If
+  nothing yet, say 0."), with a short line under it listing everything still missing ("Still
+  missing: goal date · optional: investments, debt"). The answer goes in the same box; a short
+  answer ("300", "no") goes to the question asked, and a longer one can fill several fields at
+  once. Questions can be skipped, and the forms can always be typed in directly.
 
 The user then checks the forms and saves them as today. The description is never stored.
 
@@ -154,6 +157,7 @@ most, stated as differences, never as "the best option".
 |---|---|
 | The model guides, the engine still answers | Keeps the guarantee that no figure comes from the model, while giving the model real work |
 | A draft the user confirms, never an automatic save | Extraction can be wrong; a person checks before anything changes |
+| One question at a time, plus a "still missing" line | Easy for a first-time user, while someone who knows their numbers can answer several at once |
 | Rules first, model for the rest | Measured on the chat: a small model going first made results worse |
 | Arithmetic on extracted values in the domain, shown in the draft | "€900 + €700" and "÷ 12" are calculations, so code does them, visibly |
 | Percent-of-price goals confirmed by a question | The user decides what the goal is; the simulator only does the sum |

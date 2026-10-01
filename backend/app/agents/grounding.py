@@ -7,19 +7,28 @@ and an explanation may only contain numbers that appear in the engine's facts.
 import re
 from decimal import Decimal, InvalidOperation
 
-_NUMBER = re.compile(r"(?<![\w.])(\d+(?:,\d{3})*(?:\.\d+)?)(\s?k\b)?", re.IGNORECASE)
+_NUMBER = re.compile(
+    r"(?<![\w.])(\d+(?:,\d{3})*(?:\.\d+)?)(\s?(?:k|thousand|m|million)\b)?", re.IGNORECASE
+)
+_SCALE = {"k": 1000, "thousand": 1000, "m": 1_000_000, "million": 1_000_000}
 
 
 def numbers_in(text: str) -> set[Decimal]:
-    """Every number written in the text: "€80,000" -> 80000, "1.5k" -> 1500, "3.5%" -> 3.5.
-    Dates count too ("1 Jun 2031" -> 1 and 2031), so a changed date is caught."""
+    """Every number written in the text: "€80,000" -> 80000, "1.5k" -> 1500, "3.5%" -> 3.5,
+    "20 thousand" -> 20000. "2.200" counts as both 2.2 and 2200 (a European writer's
+    thousands). Dates count too ("1 Jun 2031" -> 1 and 2031), so a changed date is caught."""
     found = set()
     for match in _NUMBER.finditer(text):
-        try:
-            value = Decimal(match.group(1).replace(",", ""))
-        except InvalidOperation:  # pragma: no cover - the pattern only matches digits
-            continue
-        found.add((value * 1000 if match.group(2) else value).normalize())
+        raw, unit = match.group(1), match.group(2)
+        readings = [raw.replace(",", "")]
+        if re.fullmatch(r"\d{1,3}(?:\.\d{3})+", raw):
+            readings.append(raw.replace(".", ""))
+        scale = _SCALE[unit.strip().lower()] if unit else 1
+        for reading in readings:
+            try:
+                found.add((Decimal(reading) * scale).normalize())
+            except InvalidOperation:  # pragma: no cover - the pattern only matches digits
+                continue
     return found
 
 
