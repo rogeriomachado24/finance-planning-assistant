@@ -44,31 +44,59 @@ amount: goal progress today, the goal date, the value on the target date, the sh
 
 ## 3. What the person sees
 
-- **Your plan, goal form:** the two amounts, with a hint ("Money this goal doesn't use, e.g. an
-  emergency fund"). Empty means €0.
-- **Projection:** when something is kept aside, the chart and table show **"Counted towards
-  the goal"** instead of "Cash + investments", and the page says what is kept aside: "Keeping
-  €5,000 of savings and €7,000 of investments aside: €8,000 of today's €20,000 counts."
-- **Where you are today:** "€8,000 of €20,000 counted (€12,000 kept aside)".
+- **Your plan, goal form:** "Money this goal doesn't use (optional)", with "Keep in savings"
+  and "Keep in investments". Empty means €0.
+- **Projection:** when something is kept aside, the chart is titled **"Counted towards the goal
+  over time"** and plots the counted amount, so the line meets the target exactly when the goal
+  is reached; its tooltip and the table view add "Kept aside" (and the table "Counted").
+- **Where you are today:** progress counts only the counted money, with "€15,000 kept aside, not
+  counted" next to it.
 - **Kept aside** (a card on Projection, only when something is kept): what the kept money is
-  on the target date, so it doesn't look like it disappears. Savings stay the amount kept;
-  investments show today's amount, their value on the target date at the assumed return and
-  the growth ("€7,000 today, about €7,700 on 1 Oct 2028, +€700"); the total kept aside; and
-  cash + investments altogether. If a pot fell below its kept amount, it shows what is really
-  there ("€3,000 of the €5,000 kept"). The table view gets a "Kept aside" column.
-- **What-ifs** (Compare, chat): "what if I keep €5,000 in savings?", "what if I don't touch my
-  investments?" (keeps all of today's investments aside). Overrides `keep_savings` and
-  `keep_investments`.
-- **Describe your plan:** "I want to keep 5k as an emergency fund" fills "Keep in savings".
-- **Summaries:** the goal line mentions what is kept aside.
+  on the target date, so it doesn't look like it disappears. Savings stay the amount kept (or
+  "Cash falls below the €5,000 kept" if spending draws them down); investments show today's
+  amount and their growth at the assumed return; the total kept aside; and cash + investments
+  altogether. All of it from the API (`ScenarioResult.kept_aside`), never added up in the UI.
+- **What-ifs** (Compare form, chat): "what if I keep €5,000 in savings?" (`keep_savings`),
+  "what if I don't touch my investments?" (`keep_all_investments`: all of today's investments,
+  whatever they are). A what-if amount replaces the goal's own amount for that pot only.
+  Asking whether to keep money aside ("should I keep an emergency fund?") is still declined as
+  advice.
+- **Describe your plan:** "I want to keep 5k as an emergency fund" fills "Keep in savings", and
+  isn't read as an emergency-fund goal. "I don't want to touch my investments" fills "Keep in
+  investments" with the investments amount once it is known, and follows it if it is corrected;
+  an amount said later replaces it. "I keep 10k in my savings account" says what there is (cash),
+  not what is kept aside, unless the sentence says "aside", "emergency", "buffer" or similar.
+- **Summaries:** a **"Kept aside"** point after the goal: "€5,000 of savings and €10,000 of
+  investments not counted for this goal; about €16,025 by the target date."
+
+### Worked example (the engine's numbers)
+
+Take-home €2,500, expenses €1,900, €300 invested a month, €10,000 saved and €10,000 invested; a
+€20,000 car by 1 Oct 2028; base assumptions (5% return), medium risk.
+
+| | Nothing kept aside | Keep €5,000 of savings and all investments |
+|---|---|---|
+| Counted today | €20,000: already covered | €5,000 (€15,000 kept aside) |
+| Goal reached | today | 1 Nov 2028, a month late (€108 short on the target date) |
+| Needed per month to be on time | – | €596 (€300 today) |
+| On time in simulated futures | all | about 45% of 1,000 |
+| To be on time in 9 of 10 futures | – | about €656 a month |
+| Kept aside on 1 Oct 2028 | – | €16,025 (investments +€1,025) |
+
+Cash + investments on the target date are €35,917 either way: keeping money aside changes what
+the goal may count, not what the person has.
 
 ## 4. Data and API
 
 Two columns on goals (`keep_savings`, `keep_investments`, money ≥ 0, default 0) with a
-migration; the goal schemas, the draft and the what-if overrides gain the same two fields. The
+migration; the goal schemas, the draft and the what-if overrides gain the same two fields (the
+overrides also `keep_all_savings` / `keep_all_investments`, resolved in the domain by
+`ScenarioOverrides.kept_aside(goal, profile)`). The
 snapshots gain `counted` (what counts towards the goal that month) and `kept_savings` /
 `kept_investments` (what is kept aside that month: the kept amount, or what is left of it if
-the pot fell below it), computed by the domain, so counted + kept = cash + investments.
+the pot fell below it), computed by the domain, so counted + kept = cash + investments. The
+result gains `kept_aside` (today, on the target date, the investments' growth, and cash +
+investments altogether) for the card and the summary.
 
 ## 5. Testing
 
@@ -101,3 +129,8 @@ the pot fell below it), computed by the domain, so counted + kept = cash + inves
 | A pot below its kept amount counts 0, never negative | The goal can't owe money to the emergency fund; it just has none of that pot |
 | The chart shows the counted amount when something is kept | So the line meets the target exactly when the goal is reached, as before |
 | Show the kept-aside money and its growth (user's suggestion) | Keeping money aside shouldn't look like losing it; counted + kept always adds up to cash + investments |
+| "Don't touch my investments" is its own what-if flag, not an amount | The chat must not copy the investments figure into the question; the domain resolves "all of it" from the plan, so the model still never handles a number it wasn't given |
+| In a description, "all of my investments" follows that amount until another is said | A correction ("sorry, 9k invested") shouldn't leave a stale kept amount behind; copying is all the code does, no arithmetic |
+| "I keep 10k in my savings account" is cash, not money kept aside | In everyday speech "keep" often just means "have"; reading it as kept aside would quietly remove the money from the goal |
+| A keep sentence is never read as the goal | "Emergency fund" is also a goal type, so "keep 5k as an emergency fund" would otherwise turn a car goal into an emergency-fund goal |
+| The summary says what is kept aside as its own point | It's a fact the projection depends on, like the assumptions; leaving it out would make "€5,000 counted" look like an error |

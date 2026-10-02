@@ -19,10 +19,10 @@ assumptions it depends on.
 
 | Page | What you get |
 |---|---|
-| **Projection** | Where you are today (progress towards the goal, net worth, savings rate), when the goal is reached, the value on the target date, the monthly amount needed to get there on time, and a month-by-month chart with a table view. **How sure is this?** 1,000 simulated futures with varying investment returns: the share that reaches the goal on time (with its precision), the range of goal dates, how the share grows year by year, and how far off the misses are, drawn as a band around the projection, and what it would take: the monthly investment that reaches the goal on time in half, 8 in 10 or 9 in 10 of the futures. Switch between conservative, base and optimistic assumptions. **What does this mean for me?** A plain-language summary of the page, on request. |
-| **Compare** | Scenarios side by side (invest more, earn more, your own what-ifs), with differences from the current plan, including the share of simulated futures each one is on time in, all on the same futures. A plain-language summary on request. |
+| **Projection** | Where you are today (progress towards the goal, net worth, savings rate), when the goal is reached, the value on the target date, the monthly amount needed to get there on time, and a month-by-month chart with a table view. **How sure is this?** 1,000 simulated futures with varying investment returns: the share that reaches the goal on time (with its precision), the range of goal dates, how the share grows year by year, and how far off the misses are, drawn as a band around the projection, and what it would take: the monthly investment that reaches the goal on time in half, 8 in 10 or 9 in 10 of the futures. Switch between conservative, base and optimistic assumptions. **Kept aside:** when the goal keeps money aside, the chart counts only what the goal may use, and a card shows what the kept money is projected to be by the target date. **What does this mean for me?** A plain-language summary of the page, on request. |
+| **Compare** | Scenarios side by side (invest more, earn more, keep more aside, your own what-ifs), with differences from the current plan, including the share of simulated futures each one is on time in, all on the same futures. A plain-language summary on request. |
 | **Ask** | A chat that answers questions about your plan. Replies show the engine's figures as cards, how the question was understood, and whether rules or the model understood it. Answers "how likely" from simulated futures and one-off market drops as what-ifs. What-ifs can be saved to Compare. Advice requests are declined. |
-| **Your plan** | Where a new user starts. **Describe your situation** in your own words: the forms fill in as a draft, with how each value was worked out ("€900 + €700"), one question at a time for what's missing, and a "please check" label on anything the language model read. Nothing is saved until you check the forms and save them. Or fill in the forms directly: your finances, your goal, an investment risk level (low, medium, high), and three editable assumption sets. When you open the app with a plan saved, you choose: continue with it, or start fresh (after a confirmation; the assumption sets stay). |
+| **Your plan** | Where a new user starts. **Describe your situation** in your own words: the forms fill in as a draft, with how each value was worked out ("€900 + €700"), one question at a time for what's missing, and a "please check" label on anything the language model read. Nothing is saved until you check the forms and save them. Or fill in the forms directly: your finances, your goal (optionally with money it doesn't use: an emergency fund, investments you don't want to sell), an investment risk level (low, medium, high), and three editable assumption sets. When you open the app with a plan saved, you choose: continue with it, or start fresh (after a confirmation; the assumption sets stay). |
 
 Everything runs locally: SQLite for storage, and optionally [Ollama](https://ollama.com) for a
 small local language model. Without a model, the chat still works with rules and templates.
@@ -160,6 +160,14 @@ treat these numbers as a sanity check, not a benchmark.
   confirms; summaries are facts chosen by code. Measuring the model on both changed the design
   twice: model-read values are flagged for review, and summaries stay templated. See
   [docs/PHASE3_DESIGN.md](docs/PHASE3_DESIGN.md).
+- **Money kept aside, end to end:** a goal can leave part of today's savings and investments
+  untouched. With €10,000 saved and €10,000 invested, a €20,000 car no longer shows as "already
+  covered" once an emergency fund and the investments are kept aside: the engine counts €5,000,
+  reaches the goal a month late, and is on time in about 45% of the simulated futures. Kept
+  investments keep their own growth, which the goal never counts. One domain rule
+  (`counted = cash + investments − kept`) carries through the projection, the simulated
+  futures, what-ifs, the chat ("what if I don't touch my investments?"), plan descriptions and
+  summaries. See [docs/KEPT_ASIDE_DESIGN.md](docs/KEPT_ASIDE_DESIGN.md).
 - **Grounding tests:** every euro amount and percentage in a chat reply must come from the
   engine's results.
 - **One contract, generated types:** the frontend's TypeScript types are generated from the
@@ -223,10 +231,10 @@ After changing the API, regenerate the frontend's types: `python -m app.export_o
 
 ```bash
 # backend/
-.venv/bin/python -m pytest          # 538 tests: domain, database, services, API, chat
+.venv/bin/python -m pytest          # 573 tests: domain, database, services, API, chat
 .venv/bin/ruff check . && .venv/bin/ruff format --check .
 # frontend/
-npm test                            # 109 tests: formatting, chart geometry, pages
+npm test                            # 118 tests: formatting, chart geometry, pages
 npm run build                       # includes the type check
 ```
 
@@ -261,6 +269,7 @@ frontend/
 docs/PHASE1_DESIGN.md   financial model, architecture, decision log
 docs/PHASE2_DESIGN.md   uncertainty: simulated futures (Monte Carlo)
 docs/PHASE3_DESIGN.md   the AI as a guide: describe your plan, page summaries
+docs/KEPT_ASIDE_DESIGN.md  money a goal doesn't use (an emergency fund, untouched investments)
 ```
 
 ## Scope
