@@ -49,7 +49,10 @@ def projection_facts(r: ScenarioResultOut, f: UncertaintyOut) -> list[Fact]:
     and a caution if the plan runs short somewhere."""
     goal = f"Goal ({eur(r.target_amount)} by {day(r.target_date)})"
     if r.months_to_goal == 0:
-        return [Fact(goal, "already covered by today's cash and investments.")] + _caution(r)
+        covered = "already covered by today's cash and investments"
+        if r.kept_aside:
+            covered += ", without the money kept aside"
+        return [Fact(goal, covered + "."), *_kept(r)] + _caution(r)
 
     if r.reaches_goal and r.projected_goal_date and r.months_to_goal is not None:
         early = r.months_to_target_date - r.months_to_goal
@@ -64,6 +67,7 @@ def projection_facts(r: ScenarioResultOut, f: UncertaintyOut) -> list[Fact]:
         status = f"under these assumptions, not reached: {eur(r.shortfall)} short; {later}"
     facts = [
         Fact(goal, status),
+        *_kept(r),
         Fact(
             "Simulated futures",
             f"on time in {share(f.probability_by_target_date)} of {f.paths:,}.",
@@ -92,6 +96,25 @@ def projection_facts(r: ScenarioResultOut, f: UncertaintyOut) -> list[Fact]:
     if missed is not None and f.probability_by_target_date < NINE_IN_TEN:
         facts.append(Fact("When it's missed", f"typically {eur(missed.p50)} short."))
     return facts + _caution(r)
+
+
+def _kept(r: ScenarioResultOut) -> list[Fact]:
+    """Money the goal doesn't use: what is kept today and what it is projected to be by the
+    target date (kept investments grow), as the Kept aside card shows it."""
+    k = r.kept_aside
+    if k is None:
+        return []
+    pots = [
+        f"{eur(amount)} of {pot}"
+        for amount, pot in ((k.savings_today, "savings"), (k.investments_today, "investments"))
+        if amount
+    ]
+    if not pots:
+        return []
+    text = f"{' and '.join(pots)} not counted for this goal"
+    if k.total_at_target != k.total_today:
+        text += f"; about {eur(k.total_at_target)} by the target date"
+    return [Fact("Kept aside", text + ".")]
 
 
 def _caution(r: ScenarioResultOut) -> list[Fact]:

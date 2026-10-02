@@ -37,4 +37,11 @@ describe("scenarioName", () => {
       "Spend €150 less a month and a 3% yearly return",
     );
   });
+
+  it("names money kept aside, an amount or a whole pot", () => {
+    expect(scenarioName({ keep_savings: 5000, keep_all_investments: true })).toBe(
+      "Keep €5,000 of savings aside and keep all of today's investments aside",
+    );
+    expect(scenarioName({ keep_all_savings: false })).toBe("");
+  });
 });

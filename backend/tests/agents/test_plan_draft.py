@@ -171,6 +171,42 @@ class TestQuestions:
         assert d.monthly_expenses == 1800
 
 
+class TestKeptAside:
+    def test_money_the_goal_does_not_use(self):
+        reply = conversation(
+            "I have 10k saved and 10k in an ETF. I want 20k for a car by October 2028, "
+            "but I want to keep 5k as an emergency fund."
+        )
+        d = reply.draft
+        assert (d.goal_keep_savings, d.goal_keep_investments) == (5000, None)
+        assert d.goal_target_amount == 20_000  # the emergency fund isn't the goal
+        assert d.goal_type is GoalType.VEHICLE  # not an emergency-fund goal
+
+    def test_all_of_a_pot_follows_its_amount(self):
+        reply = conversation("I don't want to touch my investments")
+        assert reply.understood == [
+            "Kept aside from investments: all of today's investments (once that amount is known)"
+        ]
+        reply = conversation("I don't want to touch my investments", "I have 8k invested")
+        assert reply.draft.goal_keep_investments == 8000
+        d = conversation(
+            "I don't want to touch my investments", "I have 8k invested", "sorry, 9k invested"
+        ).draft
+        assert d.goal_keep_investments == 9000
+
+    def test_an_amount_for_the_pot_replaces_all_of_it(self):
+        d = conversation(
+            "I have 8k invested and I don't want to touch my investments",
+            "keep 3,000 of my investments",
+            "I have 12k invested",
+        ).draft
+        assert (d.investments, d.goal_keep_investments) == (12_000, 3000)
+
+    def test_keeping_money_somewhere_is_what_there_is(self):
+        d = conversation("I keep 10k in my savings account").draft
+        assert (d.cash, d.goal_keep_savings) == (10_000, None)
+
+
 DESCRIPTIONS = [
     "I take home about 2,400 a month, spend 1,600, have 8k saved and 5k in an ETF. "
     "I want 60k for a house deposit by June 2032.",

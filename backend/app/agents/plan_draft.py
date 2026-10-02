@@ -24,7 +24,14 @@ FlowField = Literal[
     "monthly_investment_contribution",
     "monthly_debt_payment",
 ]
-StockField = Literal["cash", "investments", "debt_balance", "goal_target_amount"]
+StockField = Literal[
+    "cash",
+    "investments",
+    "debt_balance",
+    "goal_target_amount",
+    "goal_keep_savings",
+    "goal_keep_investments",
+]
 AmountField = FlowField | StockField
 FLOW_FIELDS: tuple[str, ...] = FlowField.__args__  # type: ignore[attr-defined]
 
@@ -40,6 +47,8 @@ LABELS = {
     "age": "Age",
     "goal_name": "Goal name",
     "goal_target_amount": "Goal amount",
+    "goal_keep_savings": "Kept aside from savings",
+    "goal_keep_investments": "Kept aside from investments",
     "goal_target_date": "Goal date",
 }
 
@@ -108,6 +117,9 @@ class Extraction(BaseModel):
     goal_date: GoalDate | None = None
     goal_share: GoalShare | None = None
     answer: Answer | None = None
+    keep_all: list[Literal["savings", "investments"]] = Field(
+        [], description="\"Don't touch my investments\": keep all of today's pot aside."
+    )
     from_model: list[str] = Field(
         [], description="Fields a language model read (not the rules): shown for review."
     )
@@ -130,6 +142,11 @@ class PlanDraft(BaseModel):
     goal_type: GoalType | None = None
     goal_target_amount: float | None = None
     goal_target_date: date | None = None
+    goal_keep_savings: float | None = None
+    goal_keep_investments: float | None = None
+    keep_all: list[str] = Field(
+        [], description="Pots to keep aside in full, waiting for their amount."
+    )
     notes: dict[str, str] = Field({}, description='How a value was worked out: "€900 + €700".')
     skipped: list[str] = []
     asked: str | None = Field(None, description="The field the last question was about.")
@@ -249,6 +266,23 @@ def apply_extraction(draft: PlanDraft, found: Extraction, today: date) -> DraftR
 
     if found.age is not None:
         put("age", found.age, None, f"Age: {found.age}")
+
+    # "Don't touch my investments": all of today's pot, once its amount is known (copied).
+    # It follows that amount if it changes later; an amount said for the pot replaces it.
+    said = {a.field for a in found.amounts}
+    for pot in found.keep_all:
+        if pot not in d.keep_all and f"goal_keep_{pot}" not in said:
+            d.keep_all.append(pot)
+    for pot in list(d.keep_all):
+        field = f"goal_keep_{pot}"
+        amount = d.cash if pot == "savings" else d.investments
+        note = f"all of today's {pot}"
+        if field in said:
+            d.keep_all.remove(pot)
+        elif amount is None and pot in found.keep_all:
+            understood.append(f"{LABELS[field]}: {note} (once that amount is known)")
+        elif amount is not None and getattr(d, field) != amount:
+            put(field, amount, note, f"{LABELS[field]}: {eur(amount)} ({note})")
 
     # A short answer to the question asked: "no" means nothing, "skip" leaves it empty.
     asked = draft.asked

@@ -83,6 +83,15 @@ class TestToIntent:
         with pytest.raises(UntrustedOutput, match="not in the message"):
             to_intent(request, "what if stocks tank next year")
 
+    def test_money_kept_aside(self):
+        request = ModelRequest(keep_savings_eur=4000, dont_touch_investments=True, kind="what_if")
+        intent = to_intent(request, "suppose 4000 stays as my safety net and the ETFs stay put")
+        assert isinstance(intent, WhatIf)
+        assert intent.overrides.keep_savings == 4000
+        assert intent.overrides.keep_all_investments is True
+        with pytest.raises(UntrustedOutput):
+            to_intent(ModelRequest(keep_savings_eur=5000, kind="what_if"), "a safety net of 4k")
+
     def test_how_sure_for_the_monthly_amount(self):
         request = ModelRequest(sure_percent=85, kind="needed_per_month")
         intent = to_intent(request, "what must I put away monthly to be 85 percent safe")

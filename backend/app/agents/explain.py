@@ -293,6 +293,14 @@ def describe_overrides(o: OverridesIn) -> str:
         parts.append(f"salary growth of {percent(o.annual_salary_growth)} a year")
     if o.annual_expense_growth is not None:
         parts.append(f"expense growth of {percent(o.annual_expense_growth)} a year")
+    if o.keep_all_savings:
+        parts.append("all of today's savings kept aside")
+    elif o.keep_savings is not None:
+        parts.append(f"{eur(o.keep_savings)} of savings kept aside")
+    if o.keep_all_investments:
+        parts.append("all of today's investments kept aside")
+    elif o.keep_investments is not None:
+        parts.append(f"{eur(o.keep_investments)} of investments kept aside")
     if o.first_year_return is not None:
         move = "fall" if o.first_year_return < 0 else "rise"
         parts.append(

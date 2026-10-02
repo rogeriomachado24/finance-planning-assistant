@@ -25,6 +25,8 @@ export const GOAL_FIELDS = {
   goal_type: "goal_type",
   goal_target_amount: "target_amount",
   goal_target_date: "target_date",
+  goal_keep_savings: "keep_savings",
+  goal_keep_investments: "keep_investments",
 } as const;
 
 type DraftField = (typeof PROFILE_FIELDS)[number] | keyof typeof GOAL_FIELDS;
@@ -32,13 +34,15 @@ const ALL_FIELDS: DraftField[] = [...PROFILE_FIELDS, ...(Object.keys(GOAL_FIELDS
 
 /** The saved plan as the starting draft, so a description changes only what it mentions. */
 export function draftFromPlan(profile: Profile | null, goal: Goal | null): PlanDraft {
-  const draft: PlanDraft = { notes: {}, skipped: [], to_check: [] };
+  const draft: PlanDraft = { notes: {}, skipped: [], to_check: [], keep_all: [] };
   if (profile) for (const f of PROFILE_FIELDS) draft[f] = profile[f];
   if (goal) {
     draft.goal_name = goal.name;
     draft.goal_type = goal.goal_type;
     draft.goal_target_amount = goal.target_amount;
     draft.goal_target_date = goal.target_date;
+    draft.goal_keep_savings = goal.keep_savings;
+    draft.goal_keep_investments = goal.keep_investments;
   }
   return draft;
 }

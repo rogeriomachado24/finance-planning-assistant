@@ -135,8 +135,11 @@ def parse_message(message: str, previous: Intent | None = None) -> Intent:
             assumption_set = previous.assumption_set  # type: ignore[union-attr]
         return RequiredContribution(share=share, assumption_set=assumption_set)
     # "What if the stock market crashes 30%?" names stocks but asks for a projection.
-    market_what_if = re.search(_WHAT_IF, text) and _market_move(text)
-    if re.search(_ADVICE, text) and not (market_what_if and not re.search(_ASKS_ADVICE, text)):
+    # Likewise "what if I keep 5k as an emergency fund?" names a fund but describes a plan.
+    describes_a_plan = re.search(_WHAT_IF, text) and (
+        _market_move(text) or re.search(KEEP_VERB, text)
+    )
+    if re.search(_ADVICE, text) and not (describes_a_plan and not re.search(_ASKS_ADVICE, text)):
         return Unsupported(reason="advice")
 
     overrides, clarification = _extract_overrides(text, previous)
@@ -247,6 +250,9 @@ def _extract_overrides(text: str, previous: Intent | None) -> tuple[dict[str, fl
         if re.search(r"\bstop (investing|contributing|saving)\b", clause):
             overrides["monthly_investment_contribution"] = 0
             continue
+        if kept := _kept_aside(clause):
+            overrides.update(kept)
+            continue
         if percent := _PERCENT.search(clause):
             rate = round(float(percent["num"]) / 100, 6)
             if sign := _market_move(clause):
@@ -278,6 +284,28 @@ def _extract_overrides(text: str, previous: Intent | None) -> tuple[dict[str, fl
             )
 
     return overrides, None if overrides else unplaced
+
+
+# Money a goal doesn't use: "keep 5k in savings", "don't touch my investments".
+KEEP_VERB = (
+    r"\b(keep|keeping|set aside|put aside|leave|leaving|hold back|not (?:use|touch|spend)\w*"
+    r"|(?:don'?t|do not|won'?t|rather not)(?: want to| wanna)? (?:use|touch|spend)"
+    r"|without (?:using|touching))\b"
+)
+SAVINGS_POT = r"\b(savings?|cash|bank|emergency fund|rainy day|current account)\b"
+INVESTMENT_POT = r"\b(investments?|etfs?|portfolio|stocks?|shares|funds?)\b"
+
+
+def _kept_aside(clause: str) -> dict[str, float | bool] | None:
+    """'keep 5k in savings' -> keep_savings 5000; "don't touch my investments" -> keep all of
+    today's investments aside (the engine copies the amount; nothing is computed here)."""
+    if not re.search(KEEP_VERB, clause):
+        return None
+    amount = _parse_amount(clause)
+    for pot, name in ((SAVINGS_POT, "savings"), (INVESTMENT_POT, "investments")):
+        if re.search(pot, clause):
+            return {f"keep_{name}": amount} if amount is not None else {f"keep_all_{name}": True}
+    return None
 
 
 def _parse_amount(clause: str) -> float | None:

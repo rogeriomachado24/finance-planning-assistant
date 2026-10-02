@@ -78,9 +78,14 @@ watch(
       if (key === "goal_type") form.goal_type = d.goal_type ?? "other";
       if (key === "goal_target_amount") form.target_amount = d.goal_target_amount ?? null;
       if (key === "goal_target_date") form.target_date = d.goal_target_date ?? "";
+      if (key === "goal_keep_savings") form.keep_savings = d.goal_keep_savings ?? null;
+      if (key === "goal_keep_investments") form.keep_investments = d.goal_keep_investments ?? null;
     }
   },
 );
+const KEEP_SAVINGS_HINT = "Cash this goal doesn't count. Leave empty for €0.";
+const KEEP_INVESTMENTS_HINT =
+  "Today's investments this goal doesn't count; their growth isn't counted either. Leave empty for €0.";
 const label = (key: string) => fieldLabel(props.update?.draft ?? null, described.value, key);
 const withNote = (key: string, hint: string | undefined) => {
   const note = label(key)?.note;
@@ -195,26 +200,26 @@ const borderFor = (field: string) => (fieldErrors.value[field] ? "border-error" 
             v-model="form.keep_savings"
             unit="eur"
             label="Keep in savings"
-            hint="Cash this goal doesn't count. Leave empty for €0."
+            :hint="withNote('goal_keep_savings', KEEP_SAVINGS_HINT)"
             placeholder="e.g. 5,000"
             optional
             :min="0"
             :error="fieldErrors.keep_savings"
-            :badge="label('keep_savings')?.badge"
-            :badge-tone="label('keep_savings')?.tone"
+            :badge="label('goal_keep_savings')?.badge"
+            :badge-tone="label('goal_keep_savings')?.tone"
           />
           <NumberField
             id="goal-keep_investments"
             v-model="form.keep_investments"
             unit="eur"
             label="Keep in investments"
-            hint="Today's investments this goal doesn't count; their growth isn't counted either. Leave empty for €0."
+            :hint="withNote('goal_keep_investments', KEEP_INVESTMENTS_HINT)"
             placeholder="e.g. 7,000"
             optional
             :min="0"
             :error="fieldErrors.keep_investments"
-            :badge="label('keep_investments')?.badge"
-            :badge-tone="label('keep_investments')?.tone"
+            :badge="label('goal_keep_investments')?.badge"
+            :badge-tone="label('goal_keep_investments')?.tone"
           />
         </div>
       </fieldset>

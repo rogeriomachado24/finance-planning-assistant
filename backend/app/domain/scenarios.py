@@ -17,7 +17,7 @@ from app.domain.goals import (
     find_goal_month,
     months_to_target_date,
 )
-from app.domain.models import NOTHING_KEPT, Assumptions, FinancialProfile, Goal
+from app.domain.models import NOTHING_KEPT, Assumptions, FinancialProfile, Goal, KeptAside
 from app.domain.projection import (
     MAX_PROJECTION_MONTHS,
     MonthSnapshot,
@@ -47,10 +47,22 @@ class ScenarioOverrides:
     first_year_return: float | None = None
     """Return of the first projected year only, e.g. -0.30 for "markets fall 30% next year";
     later years use the assumed return again."""
+    keep_savings: float | None = None
+    """Savings the goal doesn't use, instead of the goal's own amount."""
+    keep_investments: float | None = None
+    """Today's investments the goal doesn't use, instead of the goal's own amount."""
+    keep_all_savings: bool | None = None
+    """"Don't touch my savings": keep all of today's cash aside (copied from the profile)."""
+    keep_all_investments: bool | None = None
+    """"Don't touch my investments": keep all of today's investments aside."""
 
     def __post_init__(self) -> None:
         if self.first_year_return is not None:
             validate_annual_rate(self.first_year_return, "first_year_return")
+        for name in ("keep_savings", "keep_investments"):
+            value = getattr(self, name)
+            if value is not None and value < 0:
+                raise InvalidInputError(f"{name} must be >= 0; got {value}")
         for name in _AMOUNTS_WITH_DELTA:
             if getattr(self, name) is not None and getattr(self, f"{name}_delta") is not None:
                 raise InvalidInputError(f"set either {name} or its delta, not both")
@@ -73,6 +85,16 @@ class ScenarioOverrides:
             ),
         )
         return new_profile, new_assumptions
+
+    def kept_aside(self, goal: Goal, profile: FinancialProfile) -> KeptAside:
+        """What the goal keeps aside under this what-if: the override, or "all of today's"
+        (the profile's amount, copied), or else the goal's own amount."""
+        savings = profile.cash if self.keep_all_savings else self.keep_savings
+        investments = profile.investments if self.keep_all_investments else self.keep_investments
+        return KeptAside(
+            savings=_keep(savings, goal.keep_savings),
+            investments=_keep(investments, goal.keep_investments),
+        )
 
     def yearly_returns(self, assumptions: Assumptions, years: int) -> list[float] | None:
         """The return of each projected year, or None when every year uses the assumption."""
@@ -176,7 +198,7 @@ def run_scenario(
 
     eff_profile, eff_assumptions = scenario.overrides.apply(profile, assumptions)
     yearly_returns = scenario.overrides.yearly_returns(eff_assumptions, -(-max_months // 12))
-    kept = goal.kept_aside
+    kept = scenario.overrides.kept_aside(goal, eff_profile)
     projection = project(
         eff_profile, eff_assumptions, start, max_months, yearly_returns, kept_aside=kept
     )

@@ -53,6 +53,16 @@ class ModelPlanForm(BaseModel):
     goal_in_years: int | None = None
     goal_in_months: int | None = None
     goal_kind: Kind | None = None
+    keep_savings: float | None = Field(
+        None, description="Savings to keep aside, not used for the goal (an emergency fund)."
+    )
+    keep_investments: float | None = Field(
+        None, description="Investments to keep aside, not used for the goal."
+    )
+    dont_touch_savings: bool | None = Field(None, description="Keep all of today's savings.")
+    dont_touch_investments: bool | None = Field(
+        None, description="Keep all of today's investments (\"don't touch my investments\")."
+    )
 
 
 SYSTEM = """You copy facts about a person's finances from their message into JSON. Never answer
@@ -107,6 +117,8 @@ _SINGLE = [
     ("debt", "debt_balance", None),
     ("debt_payment_per_month", "monthly_debt_payment", Period.MONTH),
     ("goal_amount", "goal_target_amount", None),
+    ("keep_savings", "goal_keep_savings", None),
+    ("keep_investments", "goal_keep_investments", None),
 ]
 _YEAR_WORDS = r"\b(year|yearly|annual\w*|p\.?a\.?|per annum)\b"
 _MONTH_NAMES = r"\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b"
@@ -151,6 +163,14 @@ def to_extraction(form: ModelPlanForm, message: str) -> Extraction:
         found.goal_share = GoalShare(percent=percent, price=price)
         found.amounts = [a for a in found.amounts if a.field != "goal_target_amount"]
     found.goal_date = _goal_date(form, written, message)
+    found.keep_all = [  # type: ignore[assignment]
+        pot
+        for pot, flag in (
+            ("savings", form.dont_touch_savings),
+            ("investments", form.dont_touch_investments),
+        )
+        if flag
+    ]
     if form.goal_kind:
         found.goal_type = _KINDS[form.goal_kind]
         if form.goal_kind == "wedding":
@@ -193,6 +213,7 @@ def merge(rules: Extraction, model: Extraction) -> Extraction:
     if rules.goal_share:
         have.add("goal_target_amount")
     merged.amounts += [a for a in model.amounts if a.field not in have]
+    merged.keep_all = [*merged.keep_all, *(p for p in model.keep_all if p not in merged.keep_all)]
     for name in ("age", "goal_date", "goal_type", "goal_name"):
         if getattr(merged, name) is None:
             setattr(merged, name, getattr(model, name))

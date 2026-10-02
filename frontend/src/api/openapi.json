@@ -1960,6 +1960,58 @@
             ],
             "title": "First Year Return",
             "description": "Return of the first year only, e.g. -0.3 for a 30% market drop."
+          },
+          "keep_savings": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Keep Savings",
+            "description": "Savings the goal doesn't use, instead of the goal's amount."
+          },
+          "keep_investments": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Keep Investments",
+            "description": "Today's investments the goal doesn't use, instead of the goal's."
+          },
+          "keep_all_savings": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Keep All Savings",
+            "description": "Keep all of today's savings aside (\"don't touch my savings\")."
+          },
+          "keep_all_investments": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Keep All Investments",
+            "description": "Keep all of today's investments aside (\"don't touch them\")."
           }
         },
         "additionalProperties": false,
@@ -2134,6 +2186,37 @@
               }
             ],
             "title": "Goal Target Date"
+          },
+          "goal_keep_savings": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goal Keep Savings"
+          },
+          "goal_keep_investments": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goal Keep Investments"
+          },
+          "keep_all": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Keep All",
+            "description": "Pots to keep aside in full, waiting for their amount.",
+            "default": []
           },
           "notes": {
             "additionalProperties": {

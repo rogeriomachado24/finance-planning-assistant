@@ -74,6 +74,18 @@ class ModelRequest(BaseModel):
         description="Investments fall (negative) or rise (positive) by this percent in the "
         "next year only: -30 for a 30% crash.",
     )
+    keep_savings_eur: float | None = Field(
+        None, description="Savings kept aside, not used for the goal (e.g. an emergency fund)."
+    )
+    keep_investments_eur: float | None = Field(
+        None, description="Investments kept aside, not used for the goal."
+    )
+    dont_touch_savings: bool | None = Field(
+        None, description="True if the goal should not use any of today's savings."
+    )
+    dont_touch_investments: bool | None = Field(
+        None, description="True if the goal should not use any of today's investments."
+    )
     sure_percent: float | None = Field(
         None,
         description="For needed_per_month only: how sure, in percent of simulated futures "
@@ -111,7 +123,8 @@ kind:
 Copy amounts exactly from the message. "less" or "cut" makes a change negative.
 Percentages go in the *_percent fields as written (3% -> 3). A one-off fall or crash of
 the market or investments goes in market_change_next_year_percent, negative (falls 30% -> -30).
-Leave everything else null."""
+Money the goal should not use goes in keep_savings_eur / keep_investments_eur; "don't touch my
+investments" (no amount) sets dont_touch_investments. Leave everything else null."""
 
 EXAMPLES: list[tuple[str, dict]] = [
     ("What if I invest €200 more per month?", {"invest_change_eur": 200, "kind": "what_if"}),
@@ -144,6 +157,8 @@ _MONEY = {
     "pay_new_eur": "monthly_net_income",
     "spending_change_eur": "monthly_expenses_delta",
     "spending_new_eur": "monthly_expenses",
+    "keep_savings_eur": "keep_savings",
+    "keep_investments_eur": "keep_investments",
 }
 _RATES = {
     "return_percent": "annual_return",
@@ -380,6 +395,13 @@ def to_intent(request: ModelRequest, message: str) -> Intent:
         if as_number(value) not in written:
             raise UntrustedOutput(f"{field}={value} is not in the message")
         overrides[target] = round(value / 100, 6)
+
+    for field, target in (
+        ("dont_touch_savings", "keep_all_savings"),
+        ("dont_touch_investments", "keep_all_investments"),
+    ):
+        if getattr(request, field):
+            overrides[target] = True
 
     if request.assumptions and not re.search(_SET_WORDS[request.assumptions], message, re.I):
         raise UntrustedOutput(f"assumption set {request.assumptions!r} is not named in the message")

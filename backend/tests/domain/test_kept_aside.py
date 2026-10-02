@@ -12,7 +12,7 @@ from app.domain.errors import InvalidInputError
 from app.domain.goals import calculate_required_monthly_contribution
 from app.domain.models import Assumptions, FinancialProfile, Goal, GoalType, KeptAside
 from app.domain.projection import project
-from app.domain.scenarios import Scenario, run_scenario
+from app.domain.scenarios import Scenario, ScenarioOverrides, run_scenario
 from app.domain.uncertainty import simulate_uncertainty
 
 START = date(2026, 10, 1)
@@ -159,3 +159,38 @@ def test_the_kept_aside_view_today_and_on_the_target_date():
     )
     assert kept.liquid_at_target == pytest.approx(at_target.liquid_assets)
     assert run_scenario(Scenario("Plan"), STILL, RETURN_5, CAR, START).kept_aside is None
+
+
+class TestWhatIfs:
+    def test_a_what_if_replaces_the_goal_s_amounts(self):
+        goal = replace(CAR, **_keep())
+        what_if = Scenario("Keep less", ScenarioOverrides(keep_savings=2_000))
+        result = run_scenario(what_if, STILL, RETURN_5, goal, START)
+        assert result.kept_aside.savings_today == 2_000
+        assert result.kept_aside.investments_today == 7_000  # the goal's own amount
+        assert result.goal_progress.current_amount == 8_000 + 3_000
+
+    def test_don_t_touch_my_investments_keeps_all_of_today_s(self):
+        what_if = Scenario("Untouched", ScenarioOverrides(keep_all_investments=True))
+        result = run_scenario(what_if, STILL, RETURN_5, CAR, START)
+        assert result.kept_aside.investments_today == 10_000
+        assert result.goal_progress.current_amount == 10_000  # the savings only
+
+    def test_don_t_touch_my_savings_keeps_all_of_today_s_cash(self):
+        what_if = Scenario("Untouched", ScenarioOverrides(keep_all_savings=True))
+        result = run_scenario(what_if, STILL, RETURN_5, CAR, START)
+        assert result.kept_aside.savings_today == 10_000
+        assert result.goal_progress.current_amount == 10_000  # the investments only
+
+    def test_the_same_what_if_in_the_simulated_futures(self):
+        what_if = Scenario("Untouched", ScenarioOverrides(keep_all_investments=True))
+        saving = replace(STILL, monthly_net_income=600)
+        futures = simulate_uncertainty(what_if, saving, RETURN_5, CAR, START, 0, paths=5)
+        plan = run_scenario(what_if, saving, RETURN_5, CAR, START)
+        assert futures.value_at_target_date.p50 == pytest.approx(
+            plan.projected_value_at_target_date
+        )
+
+    def test_rejects_a_negative_override(self):
+        with pytest.raises(InvalidInputError):
+            ScenarioOverrides(keep_savings=-1)

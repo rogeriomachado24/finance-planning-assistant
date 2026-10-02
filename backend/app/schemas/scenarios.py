@@ -49,6 +49,18 @@ class OverridesIn(BaseModel):
     first_year_return: Rate | None = Field(
         None, description="Return of the first year only, e.g. -0.3 for a 30% market drop."
     )
+    keep_savings: Money | None = Field(
+        None, description="Savings the goal doesn't use, instead of the goal's amount."
+    )
+    keep_investments: Money | None = Field(
+        None, description="Today's investments the goal doesn't use, instead of the goal's."
+    )
+    keep_all_savings: bool | None = Field(
+        None, description="Keep all of today's savings aside (\"don't touch my savings\")."
+    )
+    keep_all_investments: bool | None = Field(
+        None, description="Keep all of today's investments aside (\"don't touch them\")."
+    )
 
     def to_domain(self) -> ScenarioOverrides:
         return ScenarioOverrides(**self.model_dump())

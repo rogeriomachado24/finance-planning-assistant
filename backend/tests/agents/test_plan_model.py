@@ -69,6 +69,13 @@ class TestChecks:
         invented = ModelPlanForm(goal_amount=60_000)  # "20% of 300k" worked out by the model
         assert to_extraction(invented, "a 20% deposit on a 300k flat").amounts == []
 
+    def test_money_kept_aside(self):
+        message = "Keep 5k for emergencies and leave my ETFs alone"
+        form = ModelPlanForm(keep_savings=5000, dont_touch_investments=True)
+        found = to_extraction(form, message)
+        assert amounts(found) == {"goal_keep_savings": ([5000], None)}
+        assert found.keep_all == ["investments"]
+
 
 class TestWhenToAsk:
     def test_not_when_the_rules_used_every_number(self):

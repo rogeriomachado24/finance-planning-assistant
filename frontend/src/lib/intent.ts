@@ -18,6 +18,14 @@ const CHANGES: [keyof Overrides, Change][] = [
   ["annual_salary_growth", (v) => `salary growth of ${formatPercent(v)} a year`],
   ["annual_expense_growth", (v) => `expense growth of ${formatPercent(v)} a year`],
   ["first_year_return", (v) => `investments ${v < 0 ? "fall" : "rise"} ${formatPercent(Math.abs(v))} in the first year`],
+  ["keep_savings", (v) => `keep ${formatEur(v)} of savings aside`],
+  ["keep_investments", (v) => `keep ${formatEur(v)} of investments aside`],
+];
+
+/** "Don't touch my investments": the whole pot, whatever it holds today. */
+const KEEP_ALL: [keyof Overrides, string][] = [
+  ["keep_all_savings", "keep all of today's savings aside"],
+  ["keep_all_investments", "keep all of today's investments aside"],
 ];
 
 const QUESTIONS: Record<string, string> = {
@@ -38,10 +46,11 @@ const REASONS: Record<string, string> = {
 
 /** The changes a what-if makes, in words: ["invest €200 more a month", ...]. */
 export function describeChanges(overrides: Overrides): string[] {
-  return CHANGES.flatMap(([key, describe]) => {
+  const changes = CHANGES.flatMap(([key, describe]) => {
     const value = overrides[key];
-    return value === null || value === undefined ? [] : [describe(value)];
+    return typeof value === "number" ? [describe(value)] : [];
   });
+  return [...changes, ...KEEP_ALL.filter(([key]) => overrides[key] === true).map(([, text]) => text)];
 }
 
 /** A default name for saving a what-if: "Invest €200 more a month". */

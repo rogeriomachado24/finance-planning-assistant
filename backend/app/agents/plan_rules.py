@@ -9,6 +9,7 @@ parts, and "36k a year" keeps its period; the draft (via the domain) does the ar
 
 import re
 
+from app.agents.mock_parser import INVESTMENT_POT, KEEP_VERB, SAVINGS_POT
 from app.agents.plan_draft import (
     FLOW_FIELDS,
     Amount,
@@ -133,7 +134,12 @@ def extract_rules(message: str, asked: str | None = None) -> Extraction:
         text = text[: age.start()] + " " + text[age.end() :]
 
     found.goal_date, text = _goal_date(text)  # first, so "in 6 years" isn't read as €6
-    goal_text = " ".join(c for c in _clauses(text) if _is_goal_clause(c))
+    clauses = _clauses(text)
+    # "I want to keep 5k as an emergency fund" is money kept aside, not the goal.
+    goal_text = " ".join(c for c in clauses if _is_goal_clause(c) and not _kept_pot(c))
+    found.keep_all = [  # type: ignore[assignment]
+        pot for c in clauses if (pot := _kept_pot(c)) and not _AMOUNT.search(c)
+    ]
     found.goal_type = next((t for t, p in _GOAL_TYPES if re.search(p, goal_text)), None)
     if found.goal_type is GoalType.OTHER:
         found.goal_name = "Wedding"
@@ -183,6 +189,24 @@ def _is_goal_clause(clause: str) -> bool:
     return has_type and bool(re.search(r"\bfor\b", clause)) and not re.search(_HAVE, clause)
 
 
+_HOLDING = r"\bi (?:usually |always |currently )?keep\b"
+_ASIDE = r"\b(aside|emergenc\w*|rainy day|untouched|separate|safety net|buffer)\b"
+
+
+def _kept_pot(clause: str) -> str | None:
+    """Which pot a clause keeps aside: "keep 5k as an emergency fund" -> savings, "don't touch
+    my investments" -> investments; None when it isn't about keeping money aside."""
+    if not re.search(KEEP_VERB, clause):
+        return None
+    if re.search(_HOLDING, clause) and not re.search(_ASIDE, clause):
+        return None  # "I keep 10k in my savings account" says what there is
+    if re.search(SAVINGS_POT, clause):
+        return "savings"
+    if re.search(INVESTMENT_POT, clause):
+        return "investments"
+    return None
+
+
 def _goal_date(text: str) -> tuple[GoalDate | None, str]:
     """The first date-like phrase, removed from the text so its numbers aren't amounts."""
     if m := _DATE_IN.search(text):
@@ -217,6 +241,8 @@ def _period(clause: str) -> Period | None:
 
 
 def _field(clause: str) -> str | None:
+    if kept := _kept_pot(clause):
+        return f"goal_keep_{kept}"
     if _is_goal_clause(clause):
         return "goal_target_amount"
     for name, pattern in _FIELDS:

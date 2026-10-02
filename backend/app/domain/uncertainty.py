@@ -155,7 +155,7 @@ def simulate_uncertainty(
     eff_profile, eff_assumptions = scenario.overrides.apply(profile, assumptions)
     first_year = scenario.overrides.first_year_return
     target = goal.target_amount
-    kept = goal.kept_aside
+    kept = scenario.overrides.kept_aside(goal, eff_profile)
 
     # The same seed draws the same returns for every scenario (common random numbers).
     rng = random.Random(seed)

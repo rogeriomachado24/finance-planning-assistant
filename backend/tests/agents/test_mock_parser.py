@@ -239,3 +239,24 @@ class TestHowSureForTheMonthlyAmount:
 
     def test_a_percentage_alone_is_not_a_share_without_the_question(self):
         assert parse_message("And 95%?").kind == "needs_clarification"
+
+
+@pytest.mark.parametrize(
+    ("message", "expected"),
+    [
+        ("What if I keep 5k in savings?", {"keep_savings": 5000}),
+        ("What if I don't touch my investments?", {"keep_all_investments": True}),
+        ("What if I leave 7,000 in my portfolio?", {"keep_investments": 7000}),
+        (
+            "What if I keep €5,000 as an emergency fund and spend 200 less?",
+            {"keep_savings": 5000, "monthly_expenses_delta": -200},
+        ),
+    ],
+)
+def test_money_kept_aside(message: str, expected: dict):
+    """Regression included: "what ... emergency fund" matched the advice rule."""
+    assert overrides_of(message) == expected
+
+
+def test_asking_whether_to_keep_money_aside_is_advice():
+    assert parse_message("Should I keep 5k in savings?").kind == "unsupported"

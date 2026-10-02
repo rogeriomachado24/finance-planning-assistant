@@ -59,6 +59,18 @@ def test_a_goal_already_covered_needs_no_more_facts(plan_client: TestClient):
     ]
 
 
+def test_money_kept_aside_is_a_fact(plan_client: TestClient):
+    keep = {"keep_savings": 5000, "keep_investments": 7000}
+    plan_client.post("/goals", json=GOAL_JSON | keep).raise_for_status()
+    kept = plan_client.post("/simulate", json={}).json()["kept_aside"]
+    points = points_of(plan_client.post("/explain/projection", json={}).json())
+    assert list(points)[1] == "Kept aside"
+    assert points["Kept aside"] == (
+        "€5,000 of savings and €7,000 of investments not counted for this goal; "
+        f"about €{round(kept['total_at_target']):,} by the target date."
+    )
+
+
 def test_every_figure_in_the_summary_is_in_the_facts(plan_client: TestClient):
     body = plan_client.post("/explain/projection", json={"assumption_set": "base"}).json()
     figures = re.compile(r"€[\d,]+|\d+%|\d{1,2} \w{3} \d{4}")

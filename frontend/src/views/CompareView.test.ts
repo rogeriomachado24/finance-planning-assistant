@@ -129,6 +129,7 @@ describe("compare page", () => {
     await wrapper.find("#whatif-name").setValue("Return only 3%");
     await wrapper.find("#whatif-return").setValue("3");
     await wrapper.find("#whatif-contribution").setValue("-100");
+    await wrapper.find("#whatif-keep-savings").setValue("5000");
     await wrapper.find("form").trigger("submit");
     await flushPromises();
 
@@ -143,6 +144,8 @@ describe("compare page", () => {
         annual_salary_growth: null,
         first_year_return: null,
         annual_expense_growth: null,
+        keep_savings: 5000,
+        keep_investments: null,
       },
     });
     expect(wrapper.text()).toContain("It's now in the comparison");

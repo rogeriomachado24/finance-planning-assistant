@@ -33,7 +33,7 @@ const FINANCES_ONLY = { has_profile: true, has_goal: false, ready: false };
 const READY = { has_profile: true, has_goal: true, ready: true };
 
 const FIRST_QUESTION: DraftReply = {
-  draft: { notes: {}, skipped: [], to_check: [], asked: "monthly_net_income" },
+  draft: { notes: {}, skipped: [], to_check: [], keep_all: [], asked: "monthly_net_income" },
   understood: [],
   question: "How much do you take home each month, after tax?",
   still_missing: ["Take-home pay", "Expenses", "Goal amount", "Goal date", "Goal name"],
@@ -219,7 +219,8 @@ describe("describe your situation", () => {
     draft: {
       monthly_net_income: 2400, monthly_expenses: 1600, cash: 8000, goal_name: "House deposit",
       goal_type: "house", goal_target_amount: 60_000, goal_target_date: "2032-06-01",
-      notes: { monthly_expenses: "€900 + €700" }, skipped: [], to_check: ["cash"],
+      goal_keep_savings: 5000,
+      notes: { monthly_expenses: "€900 + €700" }, skipped: [], to_check: ["cash"], keep_all: [],
       asked: "investments",
     },
     understood: [
@@ -251,11 +252,13 @@ describe("describe your situation", () => {
     expect(value("#profile-cash")).toBe("8000");
     expect(value("#goal-name")).toBe("House deposit");
     expect(value("#goal-target_date")).toBe("2032-06-01");
+    expect(value("#goal-keep_savings")).toBe("5000");
 
     const label = (id: string) => wrapper.find(`label[for="${id}"]`).text();
     expect(label("profile-monthly_net_income")).toContain("From your description");
     expect(label("profile-cash")).toContain("Read by the AI: please check");
     expect(label("profile-investments")).not.toContain("From your description");
+    expect(label("goal-keep_savings")).toContain("From your description");
     expect(wrapper.find("#profile-monthly_expenses-hint").text()).toContain("€900 + €700.");
 
     const box = wrapper.find('[aria-labelledby="describe-heading"]').text();

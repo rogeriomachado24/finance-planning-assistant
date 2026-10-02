@@ -926,6 +926,26 @@ export interface components {
              * @description Return of the first year only, e.g. -0.3 for a 30% market drop.
              */
             first_year_return?: number | null;
+            /**
+             * Keep Savings
+             * @description Savings the goal doesn't use, instead of the goal's amount.
+             */
+            keep_savings?: number | null;
+            /**
+             * Keep Investments
+             * @description Today's investments the goal doesn't use, instead of the goal's.
+             */
+            keep_investments?: number | null;
+            /**
+             * Keep All Savings
+             * @description Keep all of today's savings aside ("don't touch my savings").
+             */
+            keep_all_savings?: boolean | null;
+            /**
+             * Keep All Investments
+             * @description Keep all of today's investments aside ("don't touch them").
+             */
+            keep_all_investments?: boolean | null;
         };
         /** PercentilesOut */
         PercentilesOut: {
@@ -967,6 +987,16 @@ export interface components {
             goal_target_amount?: number | null;
             /** Goal Target Date */
             goal_target_date?: string | null;
+            /** Goal Keep Savings */
+            goal_keep_savings?: number | null;
+            /** Goal Keep Investments */
+            goal_keep_investments?: number | null;
+            /**
+             * Keep All
+             * @description Pots to keep aside in full, waiting for their amount.
+             * @default []
+             */
+            keep_all: string[];
             /**
              * Notes
              * @description How a value was worked out: "€900 + €700".

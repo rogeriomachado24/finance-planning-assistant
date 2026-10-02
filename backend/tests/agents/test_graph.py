@@ -299,3 +299,12 @@ def test_a_lower_share_from_investing_more_is_explained(chat: Chat):
     assert what_if["probability_difference"] < 0
     assert "moves money from cash" in state["reply"]
     assert_grounded(state)
+
+
+def test_a_kept_aside_what_if_is_answered_from_the_engine(chat: Chat):
+    state = chat.say("What if I don't touch my investments?")
+    current, what_if = state["results"]
+    assert what_if["result"]["kept_aside"]["investments_today"] == 15_000
+    assert what_if["result"]["goal_progress"]["current_amount"] == 10_000  # the savings only
+    assert "all of today's investments kept aside" in state["reply"]
+    assert_grounded(state)

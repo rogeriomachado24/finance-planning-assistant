@@ -25,11 +25,13 @@ const form = reactive({
   salaryGrowthPercent: null as number | null,
   expenseGrowthPercent: null as number | null,
   marketChangePercent: null as number | null,
+  keepSavings: null as number | null,
+  keepInvestments: null as number | null,
 });
 
 /** Today's values: formatted for the hints, bare numbers for the placeholders. */
 const now = computed(() => {
-  const { profile, assumptions, monthly_contribution } = props.currentPlan;
+  const { profile, assumptions, monthly_contribution, kept_aside } = props.currentPlan;
   const money = (v: number) => ({ hint: `Now ${formatEur(v)}.`, placeholder: String(v) });
   const pct = (r: number) => ({ hint: `Now ${formatPercent(r)}.`, placeholder: String(rateToPercent(r)) });
   return {
@@ -39,6 +41,8 @@ const now = computed(() => {
     return: pct(assumptions.annual_return),
     salary: pct(assumptions.annual_salary_growth),
     expenseGrowth: pct(assumptions.annual_expense_growth),
+    keepSavings: money(kept_aside?.savings_today ?? 0),
+    keepInvestments: money(kept_aside?.investments_today ?? 0),
   };
 });
 
@@ -54,6 +58,8 @@ const { status, error, fieldErrors, submit, markEdited } = useSubmit(
       annual_salary_growth: rate(form.salaryGrowthPercent),
       annual_expense_growth: rate(form.expenseGrowthPercent),
       first_year_return: rate(form.marketChangePercent),
+      keep_savings: form.keepSavings,
+      keep_investments: form.keepInvestments,
     };
     if (Object.values(overrides).every((v) => v === null)) {
       throw new ApiError(0, "Change at least one value; otherwise it's the current plan.");
@@ -174,6 +180,26 @@ watch(form, markEdited);
           :min="-99.99"
           :max="100"
           :error="fieldErrors.first_year_return"
+        />
+        <NumberField
+          id="whatif-keep-savings"
+          v-model="form.keepSavings"
+          unit="eur"
+          label="Savings kept aside"
+          :hint="`${now.keepSavings.hint} Today's cash the goal doesn't count.`"
+          :placeholder="now.keepSavings.placeholder"
+          :min="0"
+          :error="fieldErrors.keep_savings"
+        />
+        <NumberField
+          id="whatif-keep-investments"
+          v-model="form.keepInvestments"
+          unit="eur"
+          label="Investments kept aside"
+          :hint="`${now.keepInvestments.hint} Today's investments the goal doesn't count.`"
+          :placeholder="now.keepInvestments.placeholder"
+          :min="0"
+          :error="fieldErrors.keep_investments"
         />
       </div>
     </fieldset>
