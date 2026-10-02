@@ -38,6 +38,8 @@ const form = reactive({
   target_amount: (active.value?.target_amount ?? null) as number | null,
   target_date: active.value?.target_date ?? "",
   description: active.value?.description ?? "",
+  keep_savings: (active.value?.keep_savings ?? null) as number | null,
+  keep_investments: (active.value?.keep_investments ?? null) as number | null,
 });
 
 // Projections start on the first of the current month, so that's the earliest target date.
@@ -52,6 +54,8 @@ const { status, error, fieldErrors, submit, markEdited } = useSubmit(
       target_amount: form.target_amount ?? 0,
       target_date: form.target_date,
       description: form.description.trim() || null,
+      keep_savings: form.keep_savings ?? 0,
+      keep_investments: form.keep_investments ?? 0,
     };
     return api.createGoal(body);
   },

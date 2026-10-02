@@ -118,6 +118,8 @@ class ScenarioResult:
     """None when the goal is not reached within the projection horizon."""
     months_to_goal: int | None
     projected_value_at_target_date: float
+    """What counts towards the goal on the target date: cash + investments minus what the
+    goal keeps aside."""
     reaches_goal: bool
     """Whether liquid assets reach the target by the target date."""
     shortfall: float
@@ -141,9 +143,12 @@ def run_scenario(
 
     eff_profile, eff_assumptions = scenario.overrides.apply(profile, assumptions)
     yearly_returns = scenario.overrides.yearly_returns(eff_assumptions, -(-max_months // 12))
-    projection = project(eff_profile, eff_assumptions, start, max_months, yearly_returns)
+    kept = goal.kept_aside
+    projection = project(
+        eff_profile, eff_assumptions, start, max_months, yearly_returns, kept_aside=kept
+    )
     goal_month = find_goal_month(projection, goal.target_amount)
-    value_at_target = projection.at(months_to_target).liquid_assets
+    value_at_target = projection.at(months_to_target).counted
 
     series_end = max(months_to_target, goal_month or 0)
     series = projection.snapshots[: series_end + 1]
@@ -171,8 +176,9 @@ def run_scenario(
             eff_profile.investments,
             eff_assumptions.annual_return,
             yearly_returns,
+            kept_aside=kept,
         ),
-        goal_progress=calculate_goal_progress(eff_profile.liquid_assets, goal.target_amount),
+        goal_progress=calculate_goal_progress(projection.at(0).counted, goal.target_amount),
         warnings=warnings,
         snapshots=series,
     )

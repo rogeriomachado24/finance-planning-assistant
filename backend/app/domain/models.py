@@ -85,17 +85,42 @@ class GoalType(StrEnum):
 
 
 @dataclass(frozen=True)
+class KeptAside:
+    """Money a goal doesn't use (docs/KEPT_ASIDE_DESIGN.md): an amount of today's savings, and
+    an amount of today's investments, which keeps its own growth."""
+
+    savings: float = 0.0
+    investments: float = 0.0
+
+    def __post_init__(self) -> None:
+        _require_non_negative(self, "savings", "investments")
+
+
+NOTHING_KEPT = KeptAside()
+
+
+@dataclass(frozen=True)
 class Goal:
-    """An amount to accumulate by a date. Measured against liquid assets (cash + investments)."""
+    """An amount to accumulate by a date. Measured against cash + investments, minus whatever
+    the goal keeps aside."""
 
     name: str
     target_amount: float
     target_date: date
     goal_type: GoalType = GoalType.OTHER
     description: str | None = None
+    keep_savings: float = 0.0
+    """Savings this goal doesn't use, e.g. an emergency fund."""
+    keep_investments: float = 0.0
+    """Today's investments this goal doesn't use (with their growth)."""
 
     def __post_init__(self) -> None:
         if not self.name.strip():
             raise InvalidInputError("goal name must not be empty")
         if self.target_amount <= 0:
             raise InvalidInputError(f"target_amount must be > 0; got {self.target_amount}")
+        _require_non_negative(self, "keep_savings", "keep_investments")
+
+    @property
+    def kept_aside(self) -> KeptAside:
+        return KeptAside(self.keep_savings, self.keep_investments)

@@ -40,6 +40,7 @@ function result(name: string, goalDate: string, monthsToGoal: number, value: num
       month: m, date: `${2026 + Math.floor((8 + m) / 12)}-${String(((8 + m) % 12) + 1).padStart(2, "0")}-01`,
       income: 2500, expenses: 1700, debt_payment: 0, surplus: 800, contribution: 400, withdrawal: 0,
       cash: 10_000, investments: 15_000 + m * 900, debt: 0, liquid_assets: 25_000 + m * 970, net_worth: 25_000 + m * 970,
+      kept_savings: 0, kept_investments: 0, counted: 25_000 + m * 970,
     })),
   };
 }

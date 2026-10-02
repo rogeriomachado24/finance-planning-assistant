@@ -11,7 +11,7 @@ const Page = { template: "<div />" };
 
 const GOAL: Goal = {
   id: 1, is_active: true, name: "Buy a house", goal_type: "house", target_amount: 80_000,
-  target_date: "2032-06-01", description: null,
+  target_date: "2032-06-01", description: null, keep_savings: 0, keep_investments: 0,
 };
 const PROFILE: ProfileOut = {
   profile: {

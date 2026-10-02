@@ -13,7 +13,7 @@ const SETS: AssumptionSet[] = [
 
 const HOUSE: Goal = {
   id: 1, is_active: true, name: "Buy a house", goal_type: "house", target_amount: 80_000,
-  target_date: "2032-06-01", description: null,
+  target_date: "2032-06-01", description: null, keep_savings: 0, keep_investments: 0,
 };
 
 const SAVED_PROFILE: ProfileOut = {
@@ -151,7 +151,7 @@ describe("plan page", () => {
     await flushPromises();
 
     expect(lastBody(fetchMock, "POST", "/goals")).toEqual({
-      name: "Buy a car", goal_type: "house", target_amount: 15_000, target_date: "2032-06-01", description: null,
+      name: "Buy a car", goal_type: "house", target_amount: 15_000, target_date: "2032-06-01", description: null, keep_savings: 0, keep_investments: 0,
     });
     expect(wrapper.text()).toContain("Saved. This is now your active goal.");
   });

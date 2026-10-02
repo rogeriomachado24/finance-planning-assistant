@@ -55,6 +55,8 @@ def goal_from_record(record: GoalRecord) -> Goal:
         target_date=record.target_date,
         goal_type=record.goal_type,
         description=record.description,
+        keep_savings=float(record.keep_savings),
+        keep_investments=float(record.keep_investments),
     )
 
 
@@ -65,6 +67,8 @@ def goal_to_record(goal: Goal) -> GoalRecord:
         target_date=goal.target_date,
         goal_type=goal.goal_type,
         description=goal.description,
+        keep_savings=to_money(goal.keep_savings),
+        keep_investments=to_money(goal.keep_investments),
     )
 
 

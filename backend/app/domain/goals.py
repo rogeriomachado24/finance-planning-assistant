@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import date
 
 from app.domain.errors import InvalidInputError
-from app.domain.models import Assumptions, FinancialProfile
+from app.domain.models import NOTHING_KEPT, Assumptions, FinancialProfile, KeptAside
 from app.domain.periods import months_between
 from app.domain.projection import MAX_PROJECTION_MONTHS, Projection, project
 from app.domain.rates import (
@@ -63,9 +63,10 @@ def calculate_goal_progress(current_amount: float, target_amount: float) -> Goal
 
 
 def find_goal_month(projection: Projection, target_amount: float) -> int | None:
-    """First month whose closing liquid assets reach the target, or None within the horizon."""
+    """First month whose counted amount (cash + investments minus what the goal keeps aside)
+    reaches the target, or None within the horizon."""
     for snapshot in projection.snapshots:
-        if snapshot.liquid_assets >= target_amount:
+        if snapshot.counted >= target_amount:
             return snapshot.month
     return None
 
@@ -76,15 +77,16 @@ def calculate_goal_date(
     target_amount: float,
     start: date,
     max_months: int = MAX_PROJECTION_MONTHS,
+    kept_aside: KeptAside = NOTHING_KEPT,
 ) -> date | None:
-    """Date on which liquid assets first reach the target under the current plan.
+    """Date on which the counted amount first reaches the target under the current plan.
 
     Returns `start` when the goal is already reached, and None when it is not reached
     within `max_months` (50 years by default).
     """
     if target_amount <= 0:
         raise InvalidInputError(f"target_amount must be > 0; got {target_amount}")
-    projection = project(profile, assumptions, start, max_months)
+    projection = project(profile, assumptions, start, max_months, kept_aside=kept_aside)
     month = find_goal_month(projection, target_amount)
     return None if month is None else projection.at(month).date
 
@@ -96,6 +98,7 @@ def calculate_required_monthly_contribution(
     current_investments: float,
     annual_return: float,
     annual_returns: Sequence[float] | None = None,
+    kept_aside: KeptAside = NOTHING_KEPT,
 ) -> float | None:
     """Monthly amount that, invested at the assumed return from next month, brings today's
     cash + investments to the target after `months` months.
@@ -114,6 +117,11 @@ def calculate_required_monthly_contribution(
     With `annual_returns` (one return per projected year, e.g. a market drop in year 1),
     G and A are built month by month instead: a contribution made at the end of month k
     grows over months k+1..n, so A is the sum of those growth products.
+
+    With `kept_aside`, only what the goal may use counts: cash above the kept savings, and
+    the investments beyond the kept slice, whose growth isn't counted either:
+        required = max(0, (target - max(0, cash - kept_savings)
+                           - (investments - kept_investments) * G) / A)
     """
     if target_amount <= 0:
         raise InvalidInputError(f"target_amount must be > 0; got {target_amount}")
@@ -121,15 +129,20 @@ def calculate_required_monthly_contribution(
         raise InvalidInputError(f"months must be >= 0; got {months}")
     if current_cash < 0 or current_investments < 0:
         raise InvalidInputError("current_cash and current_investments must be >= 0")
+    # What the goal may use: cash above the kept savings (cash doesn't grow), and the
+    # investments minus the kept slice (negative if more is kept than held: new
+    # contributions first make up the slice, as in the projection).
+    usable_cash = max(0.0, current_cash - kept_aside.savings)
+    usable_investments = current_investments - kept_aside.investments
 
     if annual_returns is not None:
         return _required_with_yearly_returns(
-            target_amount, months, current_cash, current_investments, annual_returns
+            target_amount, months, usable_cash, usable_investments, annual_returns
         )
 
     monthly_return = annual_to_monthly_rate(annual_return)
     growth_minus_one = compound_growth_minus_one(monthly_return, months)
-    gap = target_amount - current_cash - current_investments * (1 + growth_minus_one)
+    gap = target_amount - usable_cash - usable_investments * (1 + growth_minus_one)
     if gap <= 0:
         return 0.0
     if months == 0:

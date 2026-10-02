@@ -20,7 +20,7 @@ const GOAL: Goal = {
   goal_type: "house",
   target_amount: 80_000,
   target_date: "2032-06-01",
-  description: null,
+  description: null, keep_savings: 0, keep_investments: 0,
 };
 
 function snapshot(month: number, liquid: number): Snapshot {
@@ -28,6 +28,7 @@ function snapshot(month: number, liquid: number): Snapshot {
   return {
     month, date, income: 2500, expenses: 1700, debt_payment: 0, surplus: 800, contribution: 400,
     withdrawal: 0, cash: liquid / 2, investments: liquid / 2, debt: 0, liquid_assets: liquid, net_worth: liquid,
+    kept_savings: 0, kept_investments: 0, counted: liquid,
   };
 }
 

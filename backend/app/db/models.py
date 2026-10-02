@@ -81,6 +81,7 @@ class GoalRecord(TimestampMixin, Base):
     __tablename__ = "goals"
     __table_args__ = (
         CheckConstraint("target_amount > 0", name="target_amount_gt_0"),
+        *_non_negative("keep_savings", "keep_investments"),
         # Partial unique index: uniqueness applies only to rows where is_active is true.
         Index(
             "uq_goals_single_active",
@@ -98,6 +99,10 @@ class GoalRecord(TimestampMixin, Base):
     target_date: Mapped[date]
     description: Mapped[str | None] = mapped_column(Text)
     is_active: Mapped[bool] = mapped_column(default=True)
+    keep_savings: Mapped[Money] = mapped_column(default=0, server_default="0")
+    """Savings this goal doesn't use (docs/KEPT_ASIDE_DESIGN.md)."""
+    keep_investments: Mapped[Money] = mapped_column(default=0, server_default="0")
+    """Today's investments this goal doesn't use, with their growth."""
 
 
 class AssumptionSetRecord(TimestampMixin, Base):

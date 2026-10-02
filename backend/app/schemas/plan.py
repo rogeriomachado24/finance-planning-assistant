@@ -93,6 +93,12 @@ class GoalIn(BaseModel):
     target_amount: Money = Field(gt=0, description="Amount of cash + investments to reach.")
     target_date: date
     description: Annotated[str, StringConstraints(max_length=1000)] | None = None
+    keep_savings: Money = Field(
+        0, description="Savings this goal doesn't use, e.g. an emergency fund."
+    )
+    keep_investments: Money = Field(
+        0, description="Today's investments this goal doesn't use; their growth isn't counted."
+    )
 
     def to_domain(self) -> Goal:
         return Goal(**self.model_dump())
@@ -104,7 +110,12 @@ class GoalOut(GoalIn):
 
     @classmethod
     def from_saved(cls, saved: SavedGoal) -> Self:
-        goal = asdict(saved.goal) | {"target_amount": cents(saved.goal.target_amount)}
+        g = saved.goal
+        goal = asdict(g) | {
+            "target_amount": cents(g.target_amount),
+            "keep_savings": cents(g.keep_savings),
+            "keep_investments": cents(g.keep_investments),
+        }
         return cls(id=saved.id, is_active=saved.is_active, **goal)
 
 

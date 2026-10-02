@@ -165,3 +165,22 @@ class TestStartFresh:
 
     def test_clearing_an_empty_plan_is_fine(self, client: TestClient):
         assert client.delete("/plan").status_code == 204
+
+
+class TestKeptAside:
+    def test_a_goal_keeps_money_aside_and_the_projection_counts_the_rest(self, client):
+        client.put("/profile", json=PROFILE_JSON).raise_for_status()  # €10,000 + €15,000
+        client.put("/assumptions/base", json=BASE_JSON).raise_for_status()
+        keep = {"keep_savings": 5000, "keep_investments": 7000}
+        goal = client.post("/goals", json=GOAL_JSON | keep).json()
+        assert (goal["keep_savings"], goal["keep_investments"]) == (5000, 7000)
+
+        result = client.post("/simulate", json={}).json()
+        today = result["snapshots"][0]
+        assert (today["kept_savings"], today["kept_investments"]) == (5000, 7000)
+        assert today["counted"] == 13_000  # 25,000 - 12,000 kept aside
+        assert result["goal_progress"]["current_amount"] == 13_000
+
+    def test_kept_amounts_must_not_be_negative(self, client):
+        response = client.post("/goals", json=GOAL_JSON | {"keep_savings": -1})
+        assert response.status_code == 422

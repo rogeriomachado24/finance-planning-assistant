@@ -139,10 +139,21 @@ class SnapshotOut(BaseModel):
     debt: float
     liquid_assets: float
     net_worth: float
+    kept_savings: float = Field(description="Cash the goal keeps aside this month.")
+    kept_investments: float = Field(
+        description="Investments the goal keeps aside this month, with their growth."
+    )
+    counted: float = Field(
+        description="What counts towards the goal: cash + investments minus what is kept aside."
+    )
 
     @classmethod
     def from_domain(cls, s: MonthSnapshot) -> Self:
-        money = asdict(s) | {"liquid_assets": s.liquid_assets, "net_worth": s.net_worth}
+        money = asdict(s) | {
+            "liquid_assets": s.liquid_assets,
+            "net_worth": s.net_worth,
+            "counted": s.counted,
+        }
         return cls(**{k: v if k in ("month", "date") else cents(v) for k, v in money.items()})
 
 

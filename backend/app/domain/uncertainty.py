@@ -109,7 +109,8 @@ class UncertaintyResult:
     target_date: date
     months_to_target_date: int
     probability_by_target_date: float
-    """Share of futures with cash + investments at or above the target on the target date
+    """Share of futures whose counted amount (cash + investments minus what is kept aside) is at
+    or above the target on the target date
     (the Monte Carlo version of Phase 1's `reaches_goal`)."""
     probability_margin: float
     """Half-width of the 95% interval of that probability: 1.96 * sqrt(p(1 - p) / n)."""
@@ -122,7 +123,7 @@ class UncertaintyResult:
     reached_by: tuple[ReachedBy, ...]
     """Each 1 January within the horizon, and the target date."""
     bands: tuple[BandPoint, ...]
-    """Cash + investments percentiles for every month, 0..horizon."""
+    """Percentiles of the counted amount for every month, 0..horizon."""
     required_monthly_investment: tuple[RequiredInvestment, ...]
 
 
@@ -154,6 +155,7 @@ def simulate_uncertainty(
     eff_profile, eff_assumptions = scenario.overrides.apply(profile, assumptions)
     first_year = scenario.overrides.first_year_return
     target = goal.target_amount
+    kept = goal.kept_aside
 
     # The same seed draws the same returns for every scenario (common random numbers).
     rng = random.Random(seed)
@@ -164,12 +166,14 @@ def simulate_uncertainty(
         returns = sample_yearly_returns(rng, eff_assumptions.annual_return, volatility, years)
         if first_year is not None:
             returns[0] = first_year  # a chosen market drop; later years stay random
-        liquid = [
-            s.liquid_assets
-            for s in project(eff_profile, eff_assumptions, start, horizon, returns).snapshots
+        counted = [
+            s.counted
+            for s in project(
+                eff_profile, eff_assumptions, start, horizon, returns, kept_aside=kept
+            ).snapshots
         ]
-        series.append(liquid)
-        goal_months.append(next((m for m, v in enumerate(liquid) if v >= target), None))
+        series.append(counted)
+        goal_months.append(next((m for m, v in enumerate(counted) if v >= target), None))
         amount = calculate_required_monthly_contribution(
             target,
             months_to_target,
@@ -177,10 +181,11 @@ def simulate_uncertainty(
             eff_profile.investments,
             eff_assumptions.annual_return,
             returns,
+            kept_aside=kept,
         )
         needed.append(math.inf if amount is None else amount)
 
-    at_target = [liquid[months_to_target] for liquid in series]
+    at_target = [path[months_to_target] for path in series]
     probability = sum(v >= target for v in at_target) / paths
     shortfalls = [target - v for v in at_target if v < target]
 

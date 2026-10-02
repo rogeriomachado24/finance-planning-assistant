@@ -724,6 +724,18 @@ export interface components {
             target_date: string;
             /** Description */
             description?: string | null;
+            /**
+             * Keep Savings
+             * @description Savings this goal doesn't use, e.g. an emergency fund.
+             * @default 0
+             */
+            keep_savings: number;
+            /**
+             * Keep Investments
+             * @description Today's investments this goal doesn't use; their growth isn't counted.
+             * @default 0
+             */
+            keep_investments: number;
         };
         /** GoalOut */
         GoalOut: {
@@ -743,6 +755,18 @@ export interface components {
             target_date: string;
             /** Description */
             description?: string | null;
+            /**
+             * Keep Savings
+             * @description Savings this goal doesn't use, e.g. an emergency fund.
+             * @default 0
+             */
+            keep_savings: number;
+            /**
+             * Keep Investments
+             * @description Today's investments this goal doesn't use; their growth isn't counted.
+             * @default 0
+             */
+            keep_investments: number;
             /** Id */
             id: number;
             /** Is Active */
@@ -1298,6 +1322,21 @@ export interface components {
             liquid_assets: number;
             /** Net Worth */
             net_worth: number;
+            /**
+             * Kept Savings
+             * @description Cash the goal keeps aside this month.
+             */
+            kept_savings: number;
+            /**
+             * Kept Investments
+             * @description Investments the goal keeps aside this month, with their growth.
+             */
+            kept_investments: number;
+            /**
+             * Counted
+             * @description What counts towards the goal: cash + investments minus what is kept aside.
+             */
+            counted: number;
         };
         /** SummaryOut */
         SummaryOut: {

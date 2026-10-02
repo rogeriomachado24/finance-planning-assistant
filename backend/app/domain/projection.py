@@ -24,7 +24,7 @@ from datetime import date
 from enum import StrEnum
 
 from app.domain.errors import InvalidInputError
-from app.domain.models import Assumptions, FinancialProfile
+from app.domain.models import NOTHING_KEPT, Assumptions, FinancialProfile, KeptAside
 from app.domain.periods import month_dates
 from app.domain.rates import annual_step_factor, yearly_to_monthly_rate
 
@@ -50,11 +50,25 @@ class MonthSnapshot:
     cash: float
     investments: float
     debt: float
+    kept_savings: float = 0.0
+    """Cash a goal keeps aside: the kept amount, or what is left of it if cash fell below."""
+    kept_investments: float = 0.0
+    """Investments a goal keeps aside: the kept amount with its own growth, or what is left
+    of it if the investments fell below."""
 
     @property
     def liquid_assets(self) -> float:
-        """Cash + investments: the amount that counts toward a goal."""
+        """Cash + investments."""
         return self.cash + self.investments
+
+    @property
+    def kept_aside(self) -> float:
+        return self.kept_savings + self.kept_investments
+
+    @property
+    def counted(self) -> float:
+        """What counts towards the goal: cash + investments minus what is kept aside."""
+        return self.liquid_assets - self.kept_aside
 
     @property
     def net_worth(self) -> float:
@@ -114,12 +128,17 @@ def project(
     start: date,
     months: int,
     annual_returns: Sequence[float] | None = None,
+    kept_aside: KeptAside = NOTHING_KEPT,
 ) -> Projection:
     """Simulate `months` months from `start`. Returns months + 1 snapshots (0..months).
 
     `annual_returns` sets the investment return of each projected year (index 0 = months
     1-12). By default every year earns `assumptions.annual_return`; a market drop or a
     Monte Carlo future passes its own sequence.
+
+    `kept_aside` is money a goal doesn't use: a fixed amount of cash, and an amount of
+    today's investments that grows with the same returns. Each month's snapshot says how much
+    is kept (never more than the pot holds), so `counted` = cash + investments - kept.
     """
     if not 0 <= months <= MAX_PROJECTION_MONTHS:
         raise InvalidInputError(
@@ -141,6 +160,7 @@ def project(
     cash = profile.cash
     investments = profile.investments
     debt = profile.debt_balance
+    growth = 1.0  # of the investments since the start, for the kept-aside slice
 
     snapshots = [
         MonthSnapshot(
@@ -155,6 +175,8 @@ def project(
             cash=cash,
             investments=investments,
             debt=debt,
+            kept_savings=_kept(cash, kept_aside.savings),
+            kept_investments=_kept(investments, kept_aside.investments),
         )
     ]
     warnings: dict[WarningCode, ProjectionWarning] = {}
@@ -177,6 +199,7 @@ def project(
         debt -= debt_payment
 
         investments *= 1 + monthly_return
+        growth *= 1 + monthly_return
         available = cash + surplus
         contribution = min(profile.monthly_investment_contribution, max(available, 0.0))
         cash = available - contribution
@@ -210,11 +233,19 @@ def project(
                 cash=cash,
                 investments=investments,
                 debt=debt,
+                kept_savings=_kept(cash, kept_aside.savings),
+                kept_investments=_kept(investments, kept_aside.investments * growth),
             )
         )
 
     ordered = sorted(warnings.values(), key=lambda w: (w.month, w.code))
     return Projection(snapshots=tuple(snapshots), warnings=tuple(ordered))
+
+
+def _kept(pot: float, wanted: float) -> float:
+    """What a pot can keep aside: the wanted amount, at most what the pot holds, never
+    negative (the goal doesn't owe the kept money anything; it just has none of that pot)."""
+    return min(wanted, max(pot, 0.0))
 
 
 def project_cash_balance(
