@@ -1,8 +1,8 @@
 """Score "describe your plan" readers on the labelled set (`app/agents/setup_eval_set.py`).
 
-    python -m app.agents.evaluate_setup                    # rules only (no model needed)
-    python -m app.agents.evaluate_setup --model qwen2.5:3b # also the model alone, and
-                                                           # rules then model (what the app does)
+    python -m app.agents.evaluate_setup                            # rules only (no model)
+    python -m app.agents.evaluate_setup --model qwen3:4b-instruct  # also the model alone,
+                                                                   # and rules then model
 
 Each description goes through the same path as the app (extraction -> draft), and the draft
 is scored field by field: correct, missing, or wrong (an invented or misread value). Wrong is

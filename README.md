@@ -121,22 +121,25 @@ a wrong one may go unnoticed), with `python -m app.agents.evaluate_setup`:
 | qwen2.5:3b alone | 66% | 14 | 10 / 30 |
 | **Rules, then qwen2.5:3b** (used) | **91%** | 6 | 23 / 30 |
 
-And three local models compared on every task, on the same sets:
+And four local models compared on every task, on the same sets:
 
-| | phi3 (3.8B) | **qwen2.5:3b** (used) | qwen3:4b |
-|---|---|---|---|
-| Chat questions, rules then model | 86% | **95%** | 95% |
-| Plan descriptions, rules then model | 89% | **91%** | 90% |
-| Wrong values, model alone | 8 | 14 | **7** |
-| Time per message, model alone | ~1.7 s | **~1.2 s** | ~3.0 s |
-| Page summaries passing the checks (11 pages) | 1 | 1 | – (its reasoning leaks into free text) |
+| | phi3 (3.8B) | qwen2.5:3b | qwen3:4b | **qwen3:4b-instruct** (used) |
+|---|---|---|---|---|
+| Chat questions, rules then model | 86% | 95% | 95% | **95%** |
+| Plan descriptions, rules then model | 89% | 91% | 90% | 89% |
+| Wrong values, rules then model | 6 | 6 | 6 | **5** |
+| Time per message, model alone | ~1.7 s | ~1.2 s | ~3.0 s | **~0.5 s** |
+| Page summaries passing the checks (11 pages) | 1 | 0 | – (its reasoning leaks into free text) | **10** |
 
-The summaries settled a design question: a 3–4B model misstated facts on almost every page, and
-the few texts that passed the figure checks were still wrong in meaning ("You have €80,000" when
-€105,000 covers an €80,000 goal). So summaries are the code-chosen facts by default
-(`python -m app.agents.evaluate_summaries --model …` to measure another model). qwen2.5:3b stays:
-as accurate as qwen3:4b where the app uses a model, and two to three times faster. The sets are
-small and written by the author, so treat these numbers as a sanity check, not a benchmark.
+The summaries settled a design question. The 3B models misstated facts on almost every page,
+and the few texts that passed the figure checks were still wrong in meaning ("You have €80,000"
+when €105,000 covers an €80,000 goal). qwen3:4b-instruct writes far better, but reading its ten
+passing texts still found a fact misapplied ("in 9 of 10 cases the goal would be missed by
+€29,050", where €29,050 is the typical miss) and two cut off mid-sentence. So summaries are the
+code-chosen facts by default (`python -m app.agents.evaluate_summaries --model …` to measure
+another model). qwen3:4b-instruct is used: as accurate as the others where the app uses a model,
+with the fewest wrong values, and the fastest. The sets are small and written by the author, so
+treat these numbers as a sanity check, not a benchmark.
 
 ## Engineering highlights
 
@@ -182,7 +185,7 @@ Requirements: Python 3.12+, Node.js 20+. Optional: Ollama, for the chat's langua
 If PowerShell blocks scripts, run them as `powershell -ExecutionPolicy Bypass -File .\setup.ps1`.
 The API's interactive documentation is at <http://127.0.0.1:8000/api/docs>.
 
-For the language model: install Ollama, then `ollama pull qwen2.5:3b`. `backend/.env` selects
+For the language model: install Ollama, then `ollama pull qwen3:4b-instruct`. `backend/.env` selects
 it (`LLM_PROVIDER=ollama`); without Ollama the chat falls back to rules.
 
 ### Any OS, step by step
@@ -229,9 +232,10 @@ npm run build                       # includes the type check
 
 The test suite never needs a language model: it forces the rule-based provider. Two optional
 extras use a real one: `OLLAMA_TESTS=1 pytest -k real_model` checks that the model doesn't make
-parsing worse, and `python -m app.agents.evaluate --model qwen2.5:3b --show-misses`,
-`python -m app.agents.evaluate_setup --model qwen2.5:3b --show-misses` and
-`python -m app.agents.evaluate_summaries --model qwen2.5:3b --show` print the scores above. CI runs on every push (`.github/workflows/ci.yml`).
+parsing worse, and `python -m app.agents.evaluate --model qwen3:4b-instruct --show-misses`,
+`python -m app.agents.evaluate_setup --model qwen3:4b-instruct --show-misses` and
+`python -m app.agents.evaluate_summaries --model qwen3:4b-instruct --show` print the scores
+above. CI runs on every push (`.github/workflows/ci.yml`).
 
 ## Project structure
 

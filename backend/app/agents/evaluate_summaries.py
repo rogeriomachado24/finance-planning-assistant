@@ -1,6 +1,6 @@
 """How often a model's page summaries pass the checks, and why they fail when they don't.
 
-    python -m app.agents.evaluate_summaries --model qwen2.5:3b [--show]
+    python -m app.agents.evaluate_summaries --model qwen3:4b-instruct [--show]
 
 Each plan runs through the engine (projection and simulated futures, or every scenario for
 Compare), the facts are chosen as for the page, and the model rewords them. The same checks
