@@ -1689,6 +1689,57 @@
         "title": "InvestmentRisk",
         "description": "How widely the portfolio's yearly returns vary (docs/PHASE2_DESIGN.md, 2.3)."
       },
+      "KeptAsideOut": {
+        "properties": {
+          "savings_today": {
+            "type": "number",
+            "title": "Savings Today"
+          },
+          "investments_today": {
+            "type": "number",
+            "title": "Investments Today"
+          },
+          "total_today": {
+            "type": "number",
+            "title": "Total Today"
+          },
+          "savings_at_target": {
+            "type": "number",
+            "title": "Savings At Target"
+          },
+          "investments_at_target": {
+            "type": "number",
+            "title": "Investments At Target"
+          },
+          "investment_growth": {
+            "type": "number",
+            "title": "Investment Growth",
+            "description": "Growth of the kept investments by then."
+          },
+          "total_at_target": {
+            "type": "number",
+            "title": "Total At Target"
+          },
+          "liquid_at_target": {
+            "type": "number",
+            "title": "Liquid At Target",
+            "description": "Cash + investments altogether on the target date (counted + kept aside)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "savings_today",
+          "investments_today",
+          "total_today",
+          "savings_at_target",
+          "investments_at_target",
+          "investment_growth",
+          "total_at_target",
+          "liquid_at_target"
+        ],
+        "title": "KeptAsideOut",
+        "description": "What the goal keeps aside, today and on the target date."
+      },
       "Likelihood": {
         "properties": {
           "assumption_set": {
@@ -2709,6 +2760,17 @@
           "goal_progress": {
             "$ref": "#/components/schemas/GoalProgressOut"
           },
+          "kept_aside": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/KeptAsideOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the goal keeps aside; null when nothing is."
+          },
           "warnings": {
             "items": {
               "$ref": "#/components/schemas/WarningOut"
@@ -2742,6 +2804,7 @@
           "shortfall",
           "required_monthly_contribution",
           "goal_progress",
+          "kept_aside",
           "warnings",
           "snapshots"
         ],
@@ -2842,6 +2905,11 @@
             "title": "Kept Investments",
             "description": "Investments the goal keeps aside this month, with their growth."
           },
+          "kept_aside": {
+            "type": "number",
+            "title": "Kept Aside",
+            "description": "Kept savings + kept investments."
+          },
           "counted": {
             "type": "number",
             "title": "Counted",
@@ -2865,6 +2933,7 @@
           "net_worth",
           "kept_savings",
           "kept_investments",
+          "kept_aside",
           "counted"
         ],
         "title": "SnapshotOut",

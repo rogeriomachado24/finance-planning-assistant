@@ -141,3 +141,21 @@ class TestSimulatedFutures:
 
 def _keep() -> dict[str, float]:
     return {"keep_savings": KEEP.savings, "keep_investments": KEEP.investments}
+
+
+def test_the_kept_aside_view_today_and_on_the_target_date():
+    """The car example, nothing coming in: €5,000 of savings stays €5,000; €7,000 of
+    investments grows for two years at 5% to €7,717.50."""
+    result = run_scenario(Scenario("Plan"), STILL, RETURN_5, replace(CAR, **_keep()), START)
+    kept = result.kept_aside
+    assert (kept.savings_today, kept.investments_today) == (5_000, 7_000)
+    assert kept.total_today == 12_000
+    assert kept.savings_at_target == 5_000
+    assert kept.investments_at_target == pytest.approx(7_000 * 1.05**2)
+    assert kept.investment_growth == pytest.approx(7_000 * 1.05**2 - 7_000)
+    at_target = result.snapshots[result.months_to_target_date]
+    assert kept.total_at_target + result.projected_value_at_target_date == pytest.approx(
+        kept.liquid_at_target
+    )
+    assert kept.liquid_at_target == pytest.approx(at_target.liquid_assets)
+    assert run_scenario(Scenario("Plan"), STILL, RETURN_5, CAR, START).kept_aside is None

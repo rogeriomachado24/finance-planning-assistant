@@ -25,7 +25,7 @@ function scenario(name: string, goalDate: string, value: number, earlier: number
       target_date: "2032-06-01", months_to_target_date: 69, projected_goal_date: goalDate,
       months_to_goal: 58 - earlier, projected_value_at_target_date: value, reaches_goal: true,
       shortfall: 0, required_monthly_contribution: 630.81,
-    goal_progress: { current_amount: 25_000, remaining: 55_000, fraction: 0.3125 }, warnings: [], snapshots: [],
+    goal_progress: { current_amount: 25_000, remaining: 55_000, fraction: 0.3125 }, kept_aside: null, warnings: [], snapshots: [],
     },
   };
 }

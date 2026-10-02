@@ -39,6 +39,9 @@ const label = computed(
       <span class="font-medium">{{ label }}</span>
       <span class="text-ink-2">
         · {{ covered ? "the target is already covered" : `${formatEur(progress.remaining)} to go` }}
+        <template v-if="result.kept_aside">
+          · {{ formatEur(result.kept_aside.total_today) }} kept aside, not counted
+        </template>
       </span>
     </p>
 

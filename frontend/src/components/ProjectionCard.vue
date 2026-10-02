@@ -20,10 +20,16 @@ const showTable = ref(false);
   <figure class="rounded-lg border border-hairline bg-surface p-4 sm:p-5">
     <figcaption class="mb-3 flex items-start justify-between gap-4">
       <div>
-        <h2 class="font-semibold">Cash + investments over time</h2>
+        <h2 class="font-semibold">
+          {{ result.kept_aside ? "Counted towards the goal over time" : "Cash + investments over time" }}
+        </h2>
         <p class="text-sm text-ink-2">
-          Monthly projection under the {{ assumptionSetName }} assumptions. Both count towards
-          the goal.
+          Monthly projection under the {{ assumptionSetName }} assumptions.
+          {{
+            result.kept_aside
+              ? "Cash + investments, minus the money this goal keeps aside."
+              : "Both count towards the goal."
+          }}
         </p>
       </div>
       <button

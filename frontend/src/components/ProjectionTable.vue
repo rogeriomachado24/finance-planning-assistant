@@ -11,6 +11,9 @@ const props = defineProps<{
   band?: BandPoint[];
 }>();
 
+/** A goal keeps money aside: show what is kept and what counts, next to the balances. */
+const keeps = computed(() => props.snapshots.some((s) => s.kept_aside > 0));
+
 const rows = computed(() => {
   const last = props.snapshots.length - 1;
   const months = new Set([0, last, props.monthsToTarget]);
@@ -47,6 +50,8 @@ const rows = computed(() => {
           <th scope="col" class="py-2 pr-4 text-right font-medium">Cash</th>
           <th scope="col" class="py-2 pr-4 text-right font-medium">Investments</th>
           <th scope="col" class="py-2 pr-4 text-right font-medium">Cash + investments</th>
+          <th v-if="keeps" scope="col" class="py-2 pr-4 text-right font-medium">Kept aside</th>
+          <th v-if="keeps" scope="col" class="py-2 pr-4 text-right font-medium">Counted</th>
           <th v-if="band" scope="col" class="py-2 pr-4 text-right font-medium">
             Middle 80% of futures
           </th>
@@ -58,7 +63,11 @@ const rows = computed(() => {
           <td class="py-1.5 pr-4 whitespace-nowrap">{{ formatDate(snapshot.date) }}</td>
           <td class="py-1.5 pr-4 text-right">{{ formatEur(snapshot.cash) }}</td>
           <td class="py-1.5 pr-4 text-right">{{ formatEur(snapshot.investments) }}</td>
-          <td class="py-1.5 pr-4 text-right font-medium">{{ formatEur(snapshot.liquid_assets) }}</td>
+          <td class="py-1.5 pr-4 text-right" :class="{ 'font-medium': !keeps }">
+            {{ formatEur(snapshot.liquid_assets) }}
+          </td>
+          <td v-if="keeps" class="py-1.5 pr-4 text-right">{{ formatEur(snapshot.kept_aside) }}</td>
+          <td v-if="keeps" class="py-1.5 pr-4 text-right font-medium">{{ formatEur(snapshot.counted) }}</td>
           <td v-if="band" class="py-1.5 pr-4 text-right whitespace-nowrap">
             {{ range ? `${formatEur(range.p10)} – ${formatEur(range.p90)}` : "—" }}
           </td>

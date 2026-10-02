@@ -34,13 +34,13 @@ function result(name: string, goalDate: string, monthsToGoal: number, value: num
     reaches_goal: true,
     shortfall: 0,
     required_monthly_contribution: 630.81,
-    goal_progress: { current_amount: 25_000, remaining: 55_000, fraction: 0.3125 },
+    goal_progress: { current_amount: 25_000, remaining: 55_000, fraction: 0.3125 }, kept_aside: null,
     warnings: [],
     snapshots: Array.from({ length: 70 }, (_, m) => ({
       month: m, date: `${2026 + Math.floor((8 + m) / 12)}-${String(((8 + m) % 12) + 1).padStart(2, "0")}-01`,
       income: 2500, expenses: 1700, debt_payment: 0, surplus: 800, contribution: 400, withdrawal: 0,
       cash: 10_000, investments: 15_000 + m * 900, debt: 0, liquid_assets: 25_000 + m * 970, net_worth: 25_000 + m * 970,
-      kept_savings: 0, kept_investments: 0, counted: 25_000 + m * 970,
+      kept_savings: 0, kept_investments: 0, kept_aside: 0, counted: 25_000 + m * 970,
     })),
   };
 }

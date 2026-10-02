@@ -17,7 +17,7 @@ from app.domain.goals import (
     find_goal_month,
     months_to_target_date,
 )
-from app.domain.models import Assumptions, FinancialProfile, Goal
+from app.domain.models import NOTHING_KEPT, Assumptions, FinancialProfile, Goal
 from app.domain.projection import (
     MAX_PROJECTION_MONTHS,
     MonthSnapshot,
@@ -102,6 +102,36 @@ class Scenario:
 
 
 @dataclass(frozen=True)
+class KeptAsideView:
+    """The money a goal keeps aside, today and on the target date (docs/KEPT_ASIDE_DESIGN.md):
+    kept savings stay the amount kept; kept investments grow with the portfolio."""
+
+    savings_today: float
+    investments_today: float
+    total_today: float
+    savings_at_target: float
+    investments_at_target: float
+    investment_growth: float
+    """Growth of the kept investments by the target date (negative if they fell)."""
+    total_at_target: float
+    liquid_at_target: float
+    """Cash + investments altogether on the target date: counted + kept aside."""
+
+    @classmethod
+    def of(cls, today: MonthSnapshot, at_target: MonthSnapshot) -> "KeptAsideView":
+        return cls(
+            savings_today=today.kept_savings,
+            investments_today=today.kept_investments,
+            total_today=today.kept_aside,
+            savings_at_target=at_target.kept_savings,
+            investments_at_target=at_target.kept_investments,
+            investment_growth=at_target.kept_investments - today.kept_investments,
+            total_at_target=at_target.kept_aside,
+            liquid_at_target=at_target.liquid_assets,
+        )
+
+
+@dataclass(frozen=True)
 class ScenarioResult:
     scenario_name: str
     profile: FinancialProfile
@@ -125,7 +155,10 @@ class ScenarioResult:
     shortfall: float
     required_monthly_contribution: float | None
     goal_progress: GoalProgress
-    """How far today's cash + investments already are towards the target."""
+    """How far today's counted amount (cash + investments minus what is kept aside) already
+    is towards the target."""
+    kept_aside: KeptAsideView | None
+    """What the goal keeps aside, today and on the target date; None when nothing is."""
     warnings: tuple[ProjectionWarning, ...]
     snapshots: tuple[MonthSnapshot, ...]
     """Monthly series up to the later of the target date and the goal date."""
@@ -179,6 +212,11 @@ def run_scenario(
             kept_aside=kept,
         ),
         goal_progress=calculate_goal_progress(projection.at(0).counted, goal.target_amount),
+        kept_aside=(
+            KeptAsideView.of(projection.at(0), projection.at(months_to_target))
+            if kept != NOTHING_KEPT
+            else None
+        ),
         warnings=warnings,
         snapshots=series,
     )

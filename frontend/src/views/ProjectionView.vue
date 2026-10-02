@@ -4,6 +4,7 @@ import { computed } from "vue";
 import AssumptionSetPicker from "../components/AssumptionSetPicker.vue";
 import AssumptionsPanel from "../components/AssumptionsPanel.vue";
 import GoalStatus from "../components/GoalStatus.vue";
+import KeptAsideCard from "../components/KeptAsideCard.vue";
 import PageSummary from "../components/PageSummary.vue";
 import SetupNeeded from "../components/SetupNeeded.vue";
 import ProjectionCard from "../components/ProjectionCard.vue";
@@ -78,6 +79,12 @@ const noPlanYet = computed(() => error.value?.status === 404);
           @retry="futures.reload"
         />
         <TodayCard :result="result" :today="today" />
+        <KeptAsideCard
+          v-if="result.kept_aside"
+          :kept="result.kept_aside"
+          :target-date="result.target_date"
+          :annual-return="result.assumptions.annual_return"
+        />
 
         <div class="grid gap-4 sm:grid-cols-3">
           <StatTile

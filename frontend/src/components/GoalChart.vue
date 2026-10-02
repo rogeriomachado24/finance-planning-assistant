@@ -50,6 +50,11 @@ onMounted(() => {
 onBeforeUnmount(() => observer?.disconnect());
 
 const single = computed(() => props.series.length === 1);
+/** A goal keeps money aside: the line is the counted amount, not all cash + investments. */
+const keeps = computed(() =>
+  props.series.some((s) => s.snapshots.some((p) => p.kept_aside > 0)),
+);
+const measure = computed(() => (keeps.value ? "Counted towards the goal" : "Cash + investments"));
 /** The longest series sets the months on the x axis (series end at different months). */
 const months = computed(() =>
   props.series.reduce((a, b) => (b.snapshots.length > a.length ? b.snapshots : a), [] as Snapshot[]),
@@ -59,7 +64,7 @@ const bandPoints = computed(() =>
 );
 const yAxis = computed(() =>
   valueDomain([
-    ...props.series.flatMap((s) => s.snapshots.map((p) => p.liquid_assets)),
+    ...props.series.flatMap((s) => s.snapshots.map((p) => p.counted)),
     ...bandPoints.value.flatMap((b) => [b.p10, b.p90]),
     props.targetAmount,
   ]),
@@ -71,12 +76,12 @@ const xTicks = computed(() => yearTicks(months.value.map((s) => s.date)));
 const lines = computed(() =>
   props.series.map((s) => {
     const path = s.snapshots
-      .map((p, i) => `${i ? "L" : "M"}${x.value(i).toFixed(1)},${y.value(p.liquid_assets).toFixed(1)}`)
+      .map((p, i) => `${i ? "L" : "M"}${x.value(i).toFixed(1)},${y.value(p.counted).toFixed(1)}`)
       .join("");
     const goal =
       s.monthsToGoal === null
         ? null
-        : { x: x.value(s.monthsToGoal), y: y.value(s.snapshots[s.monthsToGoal].liquid_assets) };
+        : { x: x.value(s.monthsToGoal), y: y.value(s.snapshots[s.monthsToGoal].counted) };
     return { ...s, path, goal };
   }),
 );
@@ -104,7 +109,7 @@ const goalLabel = computed(() => {
   const px = x.value(s.monthsToGoal);
   return {
     x: px,
-    y: y.value(s.snapshots[s.monthsToGoal].liquid_assets),
+    y: y.value(s.snapshots[s.monthsToGoal].counted),
     text: `Goal reached · ${formatDate(s.snapshots[s.monthsToGoal].date)}`,
     anchor: px < M.left + 160 ? "start" : "end",
   } as const;
@@ -131,7 +136,7 @@ const readout = computed(() => {
   if (!activeDate.value) return "";
   const values = readings.value
     .filter((r) => r.point)
-    .map((r) => `${single.value ? "" : `${r.name} `}${formatEur(r.point!.liquid_assets)}`);
+    .map((r) => `${single.value ? "" : `${r.name} `}${formatEur(r.point!.counted)}`);
   const band = activeBand.value
     ? `; middle 80% of simulated futures ${formatEur(activeBand.value.p10)} to ${formatEur(activeBand.value.p90)}`
     : "";
@@ -171,7 +176,7 @@ function onKeydown(event: KeyboardEvent) {
     class="relative outline-none focus-visible:ring-2 focus-visible:ring-series-1 rounded-md"
     tabindex="0"
     role="group"
-    aria-label="Chart of cash plus investments by month. Use the arrow keys to read values, Page Up and Page Down to move by a year."
+    :aria-label="`Chart of ${measure.toLowerCase()} by month. Use the arrow keys to read values, Page Up and Page Down to move by a year.`"
     @keydown="onKeydown"
     @focus="active ??= 0"
     @blur="active = null"
@@ -310,7 +315,7 @@ function onKeydown(event: KeyboardEvent) {
           <circle
             v-if="r.point"
             :cx="x(active)"
-            :cy="y(r.point.liquid_assets)"
+            :cy="y(r.point.counted)"
             r="4"
             class="stroke-surface"
             :style="{ fill: r.color }"
@@ -330,14 +335,20 @@ function onKeydown(event: KeyboardEvent) {
       <template v-if="single && readings[0]?.point">
         <div class="mt-1 flex items-center gap-2">
           <span class="h-0.5 w-3 rounded-full" :style="{ background: series[0].color }" />
-          <span class="text-sm font-semibold text-ink">{{ formatEur(readings[0].point.liquid_assets) }}</span>
+          <span class="text-sm font-semibold text-ink">{{ formatEur(readings[0].point.counted) }}</span>
         </div>
-        <div class="text-ink-2">Cash + investments</div>
+        <div class="text-ink-2">{{ measure }}</div>
         <dl class="mt-1.5 grid grid-cols-[1fr_auto] gap-x-3 text-ink-2 tabular-nums">
           <dt>Cash</dt>
           <dd class="text-right">{{ formatEur(readings[0].point.cash) }}</dd>
           <dt>Investments</dt>
           <dd class="text-right">{{ formatEur(readings[0].point.investments) }}</dd>
+          <template v-if="keeps">
+            <dt>Kept aside</dt>
+            <dd class="text-right">
+              {{ formatEur(readings[0].point.kept_aside) }}
+            </dd>
+          </template>
         </dl>
         <div v-if="activeBand" class="mt-1.5 border-t border-grid pt-1.5 text-ink-2">
           <div>Middle 80% of simulated futures</div>
@@ -350,7 +361,7 @@ function onKeydown(event: KeyboardEvent) {
         <li v-for="r in readings" :key="r.key" class="flex items-center gap-2">
           <span class="h-0.5 w-3 shrink-0 rounded-full" :style="{ background: r.color }" />
           <span class="font-semibold text-ink tabular-nums">
-            {{ r.point ? formatEur(r.point.liquid_assets) : "—" }}
+            {{ r.point ? formatEur(r.point.counted) : "—" }}
           </span>
           <span class="truncate text-ink-2">{{ r.name }}</span>
         </li>

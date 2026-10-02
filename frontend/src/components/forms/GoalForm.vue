@@ -183,6 +183,42 @@ const borderFor = (field: string) => (fieldErrors.value[field] ? "border-error" 
         </FormField>
       </div>
 
+      <fieldset>
+        <legend class="text-sm font-semibold">Money this goal doesn't use (optional)</legend>
+        <p class="mt-1 text-xs text-ink-2">
+          Keep part of today's savings or investments aside, e.g. an emergency fund. Everything
+          you save from now on still counts towards the goal.
+        </p>
+        <div class="mt-2 grid gap-4 sm:grid-cols-2">
+          <NumberField
+            id="goal-keep_savings"
+            v-model="form.keep_savings"
+            unit="eur"
+            label="Keep in savings"
+            hint="Cash this goal doesn't count. Leave empty for €0."
+            placeholder="e.g. 5,000"
+            optional
+            :min="0"
+            :error="fieldErrors.keep_savings"
+            :badge="label('keep_savings')?.badge"
+            :badge-tone="label('keep_savings')?.tone"
+          />
+          <NumberField
+            id="goal-keep_investments"
+            v-model="form.keep_investments"
+            unit="eur"
+            label="Keep in investments"
+            hint="Today's investments this goal doesn't count; their growth isn't counted either. Leave empty for €0."
+            placeholder="e.g. 7,000"
+            optional
+            :min="0"
+            :error="fieldErrors.keep_investments"
+            :badge="label('keep_investments')?.badge"
+            :badge-tone="label('keep_investments')?.tone"
+          />
+        </div>
+      </fieldset>
+
       <FormField id="goal-description" label="Description" optional :error="fieldErrors.description">
         <template #default="{ describedBy }">
           <textarea

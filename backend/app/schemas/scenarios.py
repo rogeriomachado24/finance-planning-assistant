@@ -8,7 +8,13 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from app.domain.goals import GoalProgress
 from app.domain.projection import MonthSnapshot, ProjectionWarning, WarningCode
-from app.domain.scenarios import Scenario, ScenarioDelta, ScenarioOverrides, ScenarioResult
+from app.domain.scenarios import (
+    KeptAsideView,
+    Scenario,
+    ScenarioDelta,
+    ScenarioOverrides,
+    ScenarioResult,
+)
 from app.schemas.common import MAX_MONEY, Money, Rate, cents
 from app.schemas.plan import Name, Profile, Rates
 from app.services.assumptions import DEFAULT_ASSUMPTION_SET
@@ -96,6 +102,25 @@ class CompareRequest(BaseModel):
     )
 
 
+class KeptAsideOut(BaseModel):
+    """What the goal keeps aside, today and on the target date."""
+
+    savings_today: float
+    investments_today: float
+    total_today: float
+    savings_at_target: float
+    investments_at_target: float
+    investment_growth: float = Field(description="Growth of the kept investments by then.")
+    total_at_target: float
+    liquid_at_target: float = Field(
+        description="Cash + investments altogether on the target date (counted + kept aside)."
+    )
+
+    @classmethod
+    def from_domain(cls, kept: KeptAsideView) -> Self:
+        return cls(**{k: cents(v) for k, v in asdict(kept).items()})
+
+
 class GoalProgressOut(BaseModel):
     current_amount: float = Field(description="Cash + investments today.")
     remaining: float = Field(description="Still to go; 0 once the target is covered.")
@@ -143,6 +168,7 @@ class SnapshotOut(BaseModel):
     kept_investments: float = Field(
         description="Investments the goal keeps aside this month, with their growth."
     )
+    kept_aside: float = Field(description="Kept savings + kept investments.")
     counted: float = Field(
         description="What counts towards the goal: cash + investments minus what is kept aside."
     )
@@ -152,6 +178,7 @@ class SnapshotOut(BaseModel):
         money = asdict(s) | {
             "liquid_assets": s.liquid_assets,
             "net_worth": s.net_worth,
+            "kept_aside": s.kept_aside,
             "counted": s.counted,
         }
         return cls(**{k: v if k in ("month", "date") else cents(v) for k, v in money.items()})
@@ -176,6 +203,9 @@ class ScenarioResultOut(BaseModel):
         "return. Null when the target date has arrived and the goal isn't reached."
     )
     goal_progress: GoalProgressOut
+    kept_aside: KeptAsideOut | None = Field(
+        description="What the goal keeps aside; null when nothing is."
+    )
     warnings: list[WarningOut]
     snapshots: list[SnapshotOut] = Field(description="Monthly series, from today (month 0).")
 
@@ -198,6 +228,7 @@ class ScenarioResultOut(BaseModel):
             shortfall=cents(r.shortfall),
             required_monthly_contribution=None if required is None else cents(required),
             goal_progress=GoalProgressOut.from_domain(r.goal_progress),
+            kept_aside=None if r.kept_aside is None else KeptAsideOut.from_domain(r.kept_aside),
             warnings=[WarningOut.from_domain(w) for w in r.warnings],
             snapshots=[SnapshotOut.from_domain(s) for s in r.snapshots],
         )

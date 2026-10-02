@@ -28,7 +28,7 @@ function snapshot(month: number, liquid: number): Snapshot {
   return {
     month, date, income: 2500, expenses: 1700, debt_payment: 0, surplus: 800, contribution: 400,
     withdrawal: 0, cash: liquid / 2, investments: liquid / 2, debt: 0, liquid_assets: liquid, net_worth: liquid,
-    kept_savings: 0, kept_investments: 0, counted: liquid,
+    kept_savings: 0, kept_investments: 0, kept_aside: 0, counted: liquid,
   };
 }
 
@@ -52,7 +52,7 @@ function result(overrides: Partial<ScenarioResult> = {}): ScenarioResult {
     reaches_goal: true,
     shortfall: 0,
     required_monthly_contribution: 630.81,
-    goal_progress: { current_amount: 25_000, remaining: 55_000, fraction: 0.3125 },
+    goal_progress: { current_amount: 25_000, remaining: 55_000, fraction: 0.3125 }, kept_aside: null,
     warnings: [],
     snapshots: Array.from({ length: 70 }, (_, m) => snapshot(m, 25_000 + m * 970)),
     ...overrides,
@@ -308,5 +308,43 @@ describe("what does this mean for me", () => {
     await flushPromises();
     expect(wrapper.text()).not.toContain("Written by qwen2.5:3b");
     expect(wrapper.find('[aria-labelledby="summary-heading"] button').text()).toBe("Explain this page");
+  });
+});
+
+describe("money kept aside", () => {
+  const KEPT = {
+    savings_today: 5_000, investments_today: 7_000, total_today: 12_000,
+    savings_at_target: 5_000, investments_at_target: 7_718, investment_growth: 718,
+    total_at_target: 12_718, liquid_at_target: 35_917,
+  };
+  const keptSnapshot = (m: number) => ({
+    ...snapshot(m, 20_000 + m * 300), kept_savings: 5_000, kept_investments: 7_000, kept_aside: 12_000,
+    counted: 8_000 + m * 300,
+  });
+  const kept = result({
+    goal_progress: { current_amount: 8_000, remaining: 12_000, fraction: 0.4 },
+    kept_aside: KEPT,
+    snapshots: Array.from({ length: 70 }, (_, m) => keptSnapshot(m)),
+  });
+
+  it("shows what is kept aside, today and on the target date, from the API", async () => {
+    fakeApi({ "/assumptions": [200, SETS], "/goals": [200, [GOAL]], "/simulate": [200, kept] });
+    const wrapper = await mountApp();
+    const text = (sel: string) => wrapper.find(sel).text().replace(/\s+/g, " ");
+
+    expect(text('[aria-labelledby="today-heading"]')).toContain("€12,000 kept aside, not counted");
+    const card = text('[aria-labelledby="kept-heading"]');
+    expect(card).toContain("Savings€5,000");
+    expect(card).toContain("€7,000 today, +€718 by 1 Jun 2032 at the assumed 5%");
+    expect(card).toContain("€12,718");
+    expect(card).toContain("Cash + investments altogether: €35,917");
+    expect(wrapper.find("figure h2").text()).toBe("Counted towards the goal over time");
+  });
+
+  it("shows nothing about it when nothing is kept aside", async () => {
+    fakeApi({ "/assumptions": [200, SETS], "/goals": [200, [GOAL]], "/simulate": [200, result()] });
+    const wrapper = await mountApp();
+    expect(wrapper.find('[aria-labelledby="kept-heading"]').exists()).toBe(false);
+    expect(wrapper.find("figure h2").text()).toBe("Cash + investments over time");
   });
 });

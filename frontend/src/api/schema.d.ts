@@ -815,6 +815,34 @@ export interface components {
          */
         InvestmentRisk: "low" | "medium" | "high";
         /**
+         * KeptAsideOut
+         * @description What the goal keeps aside, today and on the target date.
+         */
+        KeptAsideOut: {
+            /** Savings Today */
+            savings_today: number;
+            /** Investments Today */
+            investments_today: number;
+            /** Total Today */
+            total_today: number;
+            /** Savings At Target */
+            savings_at_target: number;
+            /** Investments At Target */
+            investments_at_target: number;
+            /**
+             * Investment Growth
+             * @description Growth of the kept investments by then.
+             */
+            investment_growth: number;
+            /** Total At Target */
+            total_at_target: number;
+            /**
+             * Liquid At Target
+             * @description Cash + investments altogether on the target date (counted + kept aside).
+             */
+            liquid_at_target: number;
+        };
+        /**
          * Likelihood
          * @description 'How likely am I to reach my goal?', optionally for a what-if ('...if I invest €200
          *     more?'). Answered from simulated futures, never from the model.
@@ -1265,6 +1293,8 @@ export interface components {
              */
             required_monthly_contribution: number | null;
             goal_progress: components["schemas"]["GoalProgressOut"];
+            /** @description What the goal keeps aside; null when nothing is. */
+            kept_aside: components["schemas"]["KeptAsideOut"] | null;
             /** Warnings */
             warnings: components["schemas"]["WarningOut"][];
             /**
@@ -1332,6 +1362,11 @@ export interface components {
              * @description Investments the goal keeps aside this month, with their growth.
              */
             kept_investments: number;
+            /**
+             * Kept Aside
+             * @description Kept savings + kept investments.
+             */
+            kept_aside: number;
             /**
              * Counted
              * @description What counts towards the goal: cash + investments minus what is kept aside.
