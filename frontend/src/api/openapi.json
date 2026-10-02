@@ -2133,6 +2133,26 @@
         ],
         "title": "PlanStatusOut"
       },
+      "PointOut": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "description": "What the line is about, e.g. \"Simulated futures\"."
+          },
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "The fact, e.g. \"on time in about 93% of 1,000.\""
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "text"
+        ],
+        "title": "PointOut"
+      },
       "PositionOut": {
         "properties": {
           "total_monthly_income": {
@@ -2802,10 +2822,13 @@
       },
       "SummaryOut": {
         "properties": {
-          "summary": {
-            "type": "string",
-            "title": "Summary",
-            "description": "Three to five sentences about the page."
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/PointOut"
+            },
+            "type": "array",
+            "title": "Points",
+            "description": "The facts chosen by code from the engine's results, as a labelled list: what the page shows."
           },
           "facts": {
             "items": {
@@ -2813,7 +2836,12 @@
             },
             "type": "array",
             "title": "Facts",
-            "description": "What the summary was written from, chosen by code from the engine's results."
+            "description": "The same facts as sentences (\"Label: text\")."
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary",
+            "description": "A paragraph: the model's rewording (checked), or the facts joined."
           },
           "worded_by": {
             "type": "string",
@@ -2823,8 +2851,9 @@
         },
         "type": "object",
         "required": [
-          "summary",
+          "points",
           "facts",
+          "summary",
           "worded_by"
         ],
         "title": "SummaryOut"

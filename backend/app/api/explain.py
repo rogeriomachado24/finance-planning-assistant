@@ -3,7 +3,7 @@ as the pages, computed here from the stored plan, never from figures sent by the
 
 from fastapi import APIRouter, Request
 
-from app.agents.summary import compare_facts, projection_facts
+from app.agents.summary import compare_facts, projection_facts, sentences
 from app.api.deps import SessionDep, TodayDep
 from app.schemas.explain import ExplainRequest, SummaryOut
 from app.schemas.scenarios import ComparedScenarioOut, ScenarioResultOut
@@ -27,8 +27,8 @@ def explain_projection(
         uncertainty.simulate(session, today, assumption_set=body.assumption_set)
     )
     facts = projection_facts(result, futures)
-    worded = request.app.state.chat_provider.summarise(facts)
-    return SummaryOut(summary=worded.text, facts=facts, worded_by=worded.source)
+    worded = request.app.state.chat_provider.summarise(sentences(facts))
+    return SummaryOut.build(facts, worded.text, worded.source)
 
 
 @router.post("/explain/compare")
@@ -45,5 +45,5 @@ def explain_compare(
         uncertainty.compare(session, today, body.assumption_set)
     )
     facts = compare_facts(compared, futures)
-    worded = request.app.state.chat_provider.summarise(facts)
-    return SummaryOut(summary=worded.text, facts=facts, worded_by=worded.source)
+    worded = request.app.state.chat_provider.summarise(sentences(facts))
+    return SummaryOut.build(facts, worded.text, worded.source)

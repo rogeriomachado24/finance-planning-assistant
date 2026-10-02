@@ -963,6 +963,19 @@ export interface components {
              */
             ready: boolean;
         };
+        /** PointOut */
+        PointOut: {
+            /**
+             * Label
+             * @description What the line is about, e.g. "Simulated futures".
+             */
+            label: string;
+            /**
+             * Text
+             * @description The fact, e.g. "on time in about 93% of 1,000."
+             */
+            text: string;
+        };
         /** PositionOut */
         PositionOut: {
             /** Total Monthly Income */
@@ -1289,15 +1302,20 @@ export interface components {
         /** SummaryOut */
         SummaryOut: {
             /**
-             * Summary
-             * @description Three to five sentences about the page.
+             * Points
+             * @description The facts chosen by code from the engine's results, as a labelled list: what the page shows.
              */
-            summary: string;
+            points: components["schemas"]["PointOut"][];
             /**
              * Facts
-             * @description What the summary was written from, chosen by code from the engine's results.
+             * @description The same facts as sentences ("Label: text").
              */
             facts: string[];
+            /**
+             * Summary
+             * @description A paragraph: the model's rewording (checked), or the facts joined.
+             */
+            summary: string;
             /**
              * Worded By
              * @description The model that reworded the facts (checked), or "template" for the facts as they are.

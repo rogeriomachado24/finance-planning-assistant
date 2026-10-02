@@ -236,7 +236,8 @@ describe("what does this mean for me (compare)", () => {
       "POST /scenarios/compare": [200, COMPARISON],
       "POST /explain/compare": [200, {
         summary: "Higher income: the goal is reached on 1 Mar 2031 (4 months earlier).",
-        facts: ["Higher income: the goal is reached on 1 Mar 2031 (4 months earlier)."],
+        facts: ["Higher income: reached on 1 Mar 2031 (4 months earlier)."],
+        points: [{ label: "Higher income", text: "reached on 1 Mar 2031 (4 months earlier)." }],
         worded_by: "template",
       }],
     });

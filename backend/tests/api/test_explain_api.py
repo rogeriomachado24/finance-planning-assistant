@@ -1,5 +1,5 @@
 """'What does this mean for me?' over HTTP, with the mock provider: the facts come from the
-engine, and the summary is the facts themselves (no model)."""
+engine as labelled points, and the summary is the facts themselves (no model)."""
 
 import re
 
@@ -8,33 +8,55 @@ from fastapi.testclient import TestClient
 from tests.api.conftest import GOAL_JSON, PROFILE_JSON
 
 
+def points_of(body: dict) -> dict[str, str]:
+    return {p["label"]: p["text"] for p in body["points"]}
+
+
 def test_projection_summary_from_the_engine(plan_client: TestClient):
     body = plan_client.post("/explain/projection", json={}).json()
     projection = plan_client.post("/simulate", json={}).json()
     futures = plan_client.post("/simulate/uncertainty", json={}).json()
+    points = points_of(body)
 
-    facts = body["facts"]
-    assert facts[0].startswith("Under these assumptions, you reach the €80,000 goal on 1 Aug 2031")
-    assert "of 1,000 simulated futures, the goal is reached by 1 Jun 2032." in facts[1]
-    assert facts[2].startswith("To be on time in 9 of 10 futures, about €")
+    assert list(points) == [
+        "Goal (€80,000 by 1 Jun 2032)",
+        "Simulated futures",
+        "To be on time in 9 of 10",
+    ]
+    assert points["Goal (€80,000 by 1 Jun 2032)"] == (
+        "under these assumptions, reached on 1 Aug 2031, 10 months early."
+    )
+    assert points["Simulated futures"].startswith("on time in about ")
+    assert points["Simulated futures"].endswith(" of 1,000.")
     nine = next(x for x in futures["required_monthly_investment"] if x["share"] == 0.9)
-    assert f"€{round(nine['monthly_amount']):,}" in facts[2]
-    assert f"today €{round(projection['monthly_contribution']):,} is invested" in facts[2]
-    assert body["summary"] == " ".join(facts)
+    assert points["To be on time in 9 of 10"] == (
+        f"about €{round(nine['monthly_amount']):,} a month would need to be invested "
+        f"(today €{round(projection['monthly_contribution']):,})."
+    )
+    # The same facts as sentences, and (without a model) the summary is those sentences
+    assert body["facts"] == [f"{label}: {text}" for label, text in points.items()]
+    assert body["summary"] == " ".join(body["facts"])
     assert body["worded_by"] == "template"
 
 
 def test_a_plan_behind_target_says_how_short(plan_client: TestClient):
     plan_client.post("/goals", json=GOAL_JSON | {"target_amount": 120_000}).raise_for_status()
-    facts = plan_client.post("/explain/projection", json={}).json()["facts"]
-    assert "is not reached by 1 Jun 2032" in facts[0]
-    assert any(f.startswith("In the futures that miss the target date") for f in facts)
+    points = points_of(plan_client.post("/explain/projection", json={}).json())
+    goal = points["Goal (€120,000 by 1 Jun 2032)"]
+    assert goal.startswith("under these assumptions, not reached: €")
+    assert "short; reached on" in goal
+    assert points["When it's missed"].startswith("typically €")
 
 
 def test_a_goal_already_covered_needs_no_more_facts(plan_client: TestClient):
     plan_client.put("/profile", json=PROFILE_JSON | {"cash": 90_000}).raise_for_status()
-    facts = plan_client.post("/explain/projection", json={}).json()["facts"]
-    assert facts == ["Your cash and investments already cover the €80,000 goal."]
+    body = plan_client.post("/explain/projection", json={}).json()
+    assert body["points"] == [
+        {
+            "label": "Goal (€80,000 by 1 Jun 2032)",
+            "text": "already covered by today's cash and investments.",
+        }
+    ]
 
 
 def test_every_figure_in_the_summary_is_in_the_facts(plan_client: TestClient):
@@ -54,23 +76,27 @@ class TestCompareSummary:
             json={"name": "Spend €200 less", "overrides": {"monthly_expenses_delta": -200}},
         ).raise_for_status()
         body = plan_client.post("/explain/compare", json={}).json()
-        facts = body["facts"]
+        points = points_of(body)
 
-        assert facts[0].startswith(
-            "With the current plan, the €80,000 goal is reached on 1 Aug 2031"
+        assert list(points)[:4] == [
+            "Current plan",
+            "Higher contribution",
+            "Higher income",
+            "Spend €200 less",
+        ]
+        assert points["Current plan"].startswith(
+            "€80,000 reached on 1 Aug 2031; on time (1 Jun 2032)"
         )
-        assert "of 1,000 simulated futures it is reached by 1 Jun 2032" in facts[0]
-        assert facts[1].startswith("Higher contribution: the goal is reached on")
-        assert "than the current plan" in facts[1]
-        income = next(f for f in facts if f.startswith("Higher income:"))
-        assert "earlier)" in income
-        assert "Spend €200 less reaches the goal earliest" in " ".join(facts)
+        assert points["Current plan"].endswith(" of 1,000 simulated futures.")
+        assert points["Higher income"].startswith(
+            "reached on 1 Apr 2031 (4 months earlier); on time"
+        )
+        assert points["Earliest"] == "Spend €200 less, on 1 Nov 2030."
         assert not any(word in body["summary"].lower() for word in ("should", "best", "recommend"))
-        assert body["summary"] == " ".join(facts)
 
     def test_investing_more_with_a_lower_share_is_explained(self, plan_client: TestClient):
-        facts = plan_client.post("/explain/compare", json={}).json()["facts"]
+        points = points_of(plan_client.post("/explain/compare", json={}).json())
         compared = plan_client.post("/scenarios/compare/uncertainty", json={}).json()
         higher = next(s for s in compared["scenarios"] if s["name"] == "Higher contribution")
-        explained = any("moves money from cash" in f for f in facts)
+        explained = "moves money from cash" in points.get("Note", "")
         assert explained == (higher["probability_difference"] < 0)

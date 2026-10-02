@@ -258,8 +258,12 @@ describe("what does this mean for me", () => {
   const SUMMARY = {
     summary: "Under these assumptions, you reach the €80,000 goal on 1 Jul 2031. In about 95% of 1,000 simulated futures, the goal is reached by 1 Jun 2032.",
     facts: [
-      "Under these assumptions, you reach the €80,000 goal on 1 Jul 2031.",
-      "In about 95% of 1,000 simulated futures, the goal is reached by 1 Jun 2032.",
+      "Goal (€80,000 by 1 Jun 2032): under these assumptions, reached on 1 Jul 2031, 11 months early.",
+      "Simulated futures: on time in about 95% of 1,000.",
+    ],
+    points: [
+      { label: "Goal (€80,000 by 1 Jun 2032)", text: "under these assumptions, reached on 1 Jul 2031, 11 months early." },
+      { label: "Simulated futures", text: "on time in about 95% of 1,000." },
     ],
     worded_by: "template",
   };
@@ -281,8 +285,13 @@ describe("what does this mean for me", () => {
     await flushPromises();
 
     expect(lastBody(fetchMock, "POST", "/explain/projection")).toEqual({ assumption_set: "base" });
-    expect(card().text()).toContain("In about 95% of 1,000 simulated futures");
-    expect(card().text()).toContain("Summary from templates");
+    const items = card().findAll("li").map((li) => li.text());
+    expect(items).toEqual([
+      "Goal (€80,000 by 1 Jun 2032): under these assumptions, reached on 1 Jul 2031, 11 months early.",
+      "Simulated futures: on time in about 95% of 1,000.",
+    ]);
+    expect(card().find("li .font-semibold").text()).toBe("Goal (€80,000 by 1 Jun 2032):");
+    expect(card().text()).toContain("The facts from the results on this page.");
     expect(card().find("details").exists()).toBe(false); // the summary is the facts
   });
 

@@ -15,7 +15,7 @@ from dataclasses import replace
 from datetime import date
 
 from app.agents.ollama import SUMMARY_SYSTEM, OllamaProvider, check_explanation
-from app.agents.summary import compare_facts, projection_facts
+from app.agents.summary import compare_facts, projection_facts, sentences
 from app.config import get_settings
 from app.domain.models import Assumptions, FinancialProfile, Goal, GoalType
 from app.domain.scenarios import (
@@ -76,7 +76,7 @@ def facts_for(profile: FinancialProfile, goal: Goal) -> list[str]:
         plan, profile, BASE, goal, START, VOLATILITY[profile.investment_risk]
     )
     report = Uncertainty("Current plan", "base", BASE, profile.investment_risk, futures)
-    return projection_facts(result, UncertaintyOut.from_service(report))
+    return sentences(projection_facts(result, UncertaintyOut.from_service(report)))
 
 
 SPEND_LESS = Scenario("Spend €200 less", ScenarioOverrides(monthly_expenses_delta=-200))
@@ -110,7 +110,7 @@ def compare_facts_for(profile: FinancialProfile, goal: Goal) -> list[str]:
             for s, f in zip(scenarios, futures, strict=True)
         ],
     )
-    return compare_facts(compared, FuturesComparisonOut.from_service(comparison))
+    return sentences(compare_facts(compared, FuturesComparisonOut.from_service(comparison)))
 
 
 def main(argv: list[str] | None = None) -> int:

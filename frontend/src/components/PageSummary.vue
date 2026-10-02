@@ -62,10 +62,17 @@ watch(
 
     <div aria-live="polite">
       <template v-if="summary">
-        <p class="mt-2 max-w-prose text-sm leading-relaxed">{{ summary.summary }}</p>
+        <!-- The facts as a labelled list; a model's checked rewording is a paragraph instead -->
+        <ul v-if="summary.worded_by === 'template'" class="mt-2 max-w-prose space-y-1.5 text-sm">
+          <li v-for="point in summary.points" :key="point.label" class="flex gap-2">
+            <span class="mt-2 size-1.5 shrink-0 rounded-full bg-ink-2" aria-hidden="true" />
+            <span><span class="font-semibold">{{ point.label }}:</span> {{ point.text }}</span>
+          </li>
+        </ul>
+        <p v-else class="mt-2 max-w-prose text-sm leading-relaxed">{{ summary.summary }}</p>
         <p class="mt-2 text-xs text-ink-2">
           <template v-if="summary.worded_by === 'template'">
-            Summary from templates, with the figures on this page.
+            The facts from the results on this page.
           </template>
           <template v-else>
             Written by {{ summary.worded_by }} and checked: every figure was copied from the
@@ -77,7 +84,9 @@ watch(
         <details v-if="summary.worded_by !== 'template'" class="mt-2 text-xs text-ink-2">
           <summary class="cursor-pointer hover:text-ink">The facts it was written from</summary>
           <ul class="mt-1 list-disc space-y-0.5 pl-5">
-            <li v-for="fact in summary.facts" :key="fact">{{ fact }}</li>
+            <li v-for="point in summary.points" :key="point.label">
+              <span class="font-medium">{{ point.label }}:</span> {{ point.text }}
+            </li>
           </ul>
         </details>
       </template>
