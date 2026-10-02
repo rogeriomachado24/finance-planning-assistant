@@ -177,7 +177,7 @@ _MONTH = r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"
 _FIGURE = re.compile(
     rf"[−+]?€\d{{1,3}}(?:,\d{{3}})*|\d{{1,2}} {_MONTH} \d{{4}}|{_MONTH} \d{{4}}"
     r"|\d+(?:\.\d+)?%|\d+ years?(?: \d+ months?)?|\d+ months?|±?\d+ points?"
-    r"|\d{1,3}(?:,\d{3})* simulated futures|\d+ (?:in|of) \d+"
+    r"|\d{1,3}(?:,\d{3})* simulated futures|\d+ (?:in|of) \d+|\d{1,3}(?:,\d{3})+"
 )
 _WORD_DURATION = re.compile(
     r"\b(a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|a few|several)"
