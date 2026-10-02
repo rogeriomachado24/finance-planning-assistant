@@ -1,5 +1,11 @@
 # Personal Finance Planning Assistant
 
+[![CI](https://github.com/rogeriomachado24/finance-planning-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/rogeriomachado24/finance-planning-assistant/actions/workflows/ci.yml)
+![Python 3.12](https://img.shields.io/badge/python-3.12-3776AB)
+![Vue 3](https://img.shields.io/badge/vue-3-42b883)
+![Local LLM](https://img.shields.io/badge/LLM-local%20%28Ollama%29-555)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
 A savings-goal simulator with a conversational interface. Describe your situation in your own
 words ("I take home about 2,400 a month… I want 60k for a house deposit by June 2032") or fill in
 a form, see when you're projected to reach the goal and how sure that is across 1,000 simulated
@@ -11,6 +17,12 @@ goal?"*
 model only helps read what people write (questions and descriptions); it never calculates,
 rounds or changes a figure, and everything it reads is checked by code. Every answer shows the
 assumptions it depends on.
+
+![Describe a plan in words, see the projection and its summary, ask what if the market falls 30%](docs/images/demo.gif)
+
+*Describe a plan in your own words → the forms fill in, with how each value was worked out →
+the projection, how sure it is, and a plain-language summary → "What if the market falls 30%
+next year?" and "How likely is that?" (sample data; everything runs locally).*
 
 > A planning tool, not financial advice. Projections depend entirely on the assumptions you
 > enter and are not guarantees.
@@ -26,6 +38,13 @@ assumptions it depends on.
 
 Everything runs locally: SQLite for storage, and optionally [Ollama](https://ollama.com) for a
 small local language model. Without a model, the chat still works with rules and templates.
+
+### Screenshots
+
+| | |
+|---|---|
+| **Projection:** when the goal is reached, how sure that is across 1,000 simulated futures, and what it would take, with a summary on request ![Projection](docs/images/projection.png) | **Compare:** scenarios side by side, all on the same simulated futures ![Compare](docs/images/compare.png) |
+| **Ask:** a what-if and a follow-up; every figure comes from the engine, and the reply says how the question was understood ![Ask](docs/images/ask.png) | **Your plan:** a description fills the forms as a draft, showing how each value was worked out; nothing is saved until you check it ![Describe your plan](docs/images/describe.png) |
 
 ## Architecture
 
