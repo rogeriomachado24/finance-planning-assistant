@@ -277,6 +277,11 @@ def compare_scenarios(
     return [run_scenario(s, profile, assumptions, goal, start) for s in scenarios]
 
 
+def _percent(rate: float) -> str:
+    """0.04 -> "4%", 0.025 -> "2.5%" (for descriptions only)."""
+    return f"{rate * 100:.1f}".removesuffix(".0") + "%"
+
+
 def default_scenarios(
     assumptions: Assumptions,
     contribution_increase: float = 100.0,
@@ -290,13 +295,14 @@ def default_scenarios(
         Scenario(
             "Higher contribution",
             ScenarioOverrides(monthly_investment_contribution_delta=contribution_increase),
-            description=f"Invest {contribution_increase:,.0f} EUR more per month.",
+            description=f"Invest €{contribution_increase:,.0f} more per month.",
         ),
         Scenario(
             "Higher income",
             ScenarioOverrides(annual_salary_growth=higher_growth),
             description=(
-                f"Salary grows {higher_growth:.1%} per year instead of {base_growth:.1%}."
+                f"Salary grows {_percent(higher_growth)} per year "
+                f"instead of {_percent(base_growth)}."
             ),
         ),
     ]

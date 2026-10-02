@@ -27,7 +27,7 @@ DEMO_SCENARIOS = [
     Scenario(
         "Spend €200 less",
         ScenarioOverrides(monthly_expenses=1500),
-        "Monthly expenses of 1,500 EUR instead of 1,700.",
+        "Monthly expenses of €1,500 instead of €1,700.",
     ),
 ]
 

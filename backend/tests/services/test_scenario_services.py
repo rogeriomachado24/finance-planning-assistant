@@ -75,7 +75,7 @@ class TestCompare:
             "Invest 200 more",
         ]
         assert [c.saved_id for c in compared] == [None, None, None, saved.id]
-        assert compared[1].scenario.description == "Invest 100 EUR more per month."
+        assert compared[1].scenario.description == "Invest €100 more per month."
 
     def test_differences_are_measured_against_the_first_scenario(self, plan: Session):
         current, *others = compare(plan, TODAY)
